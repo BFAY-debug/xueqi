@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="300" viewBox="0 0 60 300">
+  <!-- Bamboo shadow decoration for sidebar -->
+  <g fill="#2C2C2C" opacity="0.08">
+    <!-- Bamboo stems -->
+    <rect x="15" y="0" width="3" height="300" rx="1.5"/>
+    <rect x="38" y="30" width="2.5" height="270" rx="1.25"/>
+
+    <!-- Bamboo nodes -->
+    <rect x="13" y="50" width="7" height="3" rx="1"/>
+    <rect x="13" y="120" width="7" height="3" rx="1"/>
+    <rect x="13" y="190" width="7" height="3" rx="1"/>
+    <rect x="13" y="260" width="7" height="3" rx="1"/>
+
+    <!-- Bamboo leaves -->
+    <path d="M18,45 Q30,35 40,40 Q30,42 18,45Z"/>
+    <path d="M18,48 Q28,38 35,45 Q27,45 18,48Z"/>
+    <path d="M18,115 Q8,105 5,110 Q10,112 18,115Z"/>
+    <path d="M18,118 Q30,108 38,115 Q28,115 18,118Z"/>
+    <path d="M18,185 Q30,175 42,180 Q30,182 18,185Z"/>
+    <path d="M18,188 Q8,178 0,183 Q8,185 18,188Z"/>
+    <path d="M40,80 Q50,70 55,75 Q48,77 40,80Z"/>
+    <path d="M40,83 Q52,75 58,82 Q50,82 40,83Z"/>
+    <path d="M40,150 Q30,140 22,145 Q30,147 40,150Z"/>
+    <path d="M40,153 Q52,145 55,152 Q48,152 40,153Z"/>
+  </g>
+</svg>

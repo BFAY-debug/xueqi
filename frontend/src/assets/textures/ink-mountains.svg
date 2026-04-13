@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <!-- Ink wash mountain range for hero section parallax -->
+  <defs>
+    <linearGradient id="ink-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C2C2C" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#2C2C2C" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Far mountains (lightest) -->
+  <path d="M0,350 Q100,200 200,280 Q300,180 400,260 Q500,150 600,240 Q700,180 800,250 Q900,160 1000,230 Q1100,200 1200,270 L1200,400 L0,400Z"
+        fill="#2C2C2C" opacity="0.05"/>
+
+  <!-- Mid mountains -->
+  <path d="M0,320 Q80,220 180,290 Q280,200 380,270 Q480,170 580,250 Q680,200 780,260 Q880,190 980,250 Q1060,220 1200,280 L1200,400 L0,400Z"
+        fill="#2C2C2C" opacity="0.08"/>
+
+  <!-- Near mountains (darkest) -->
+  <path d="M0,360 Q100,280 200,330 Q320,260 420,310 Q540,240 640,300 Q740,270 840,310 Q940,260 1040,300 Q1120,280 1200,320 L1200,400 L0,400Z"
+        fill="#2C2C2C" opacity="0.12"/>
+
+  <!-- Mist layer -->
+  <ellipse cx="300" cy="340" rx="200" ry="20" fill="#F5F0E8" opacity="0.6"/>
+  <ellipse cx="700" cy="320" rx="180" ry="15" fill="#F5F0E8" opacity="0.5"/>
+  <ellipse cx="1000" cy="350" rx="150" ry="12" fill="#F5F0E8" opacity="0.4"/>
+</svg>

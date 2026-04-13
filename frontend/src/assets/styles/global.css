@@ -1,0 +1,226 @@
+/* ============================================================
+   「学栖」全局样式
+   ============================================================ */
+
+@import './variables.css';
+
+/* Reset */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.7;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Background texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('../textures/rice-paper.svg');
+  background-repeat: repeat;
+  background-size: 400px 400px;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Typography ──────────────────────────────────────── */
+
+h1, h2, h3 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+
+/* ── Glass Card ──────────────────────────────────────── */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Lightweight card (no backdrop-filter for performance) */
+.card {
+  background: var(--glass-bg-card);
+  border: var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  background-color: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 37, 0, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  background-color: var(--color-accent-light);
+}
+
+/* ── Seal Stamp (印章等级徽章) ────────────────────────── */
+
+.seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-accent);
+  font-family: var(--font-title);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+
+.seal--level-1 { border-color: var(--level-1); color: var(--level-1); }
+.seal--level-2 { border-color: var(--level-2); color: var(--level-2); }
+.seal--level-3 { border-color: var(--level-3); color: var(--level-3); }
+.seal--level-4 { border-color: var(--level-4); color: var(--level-4); }
+.seal--level-5 { border-color: var(--level-5); color: var(--level-5); }
+.seal--level-6 { border-color: var(--level-6); color: var(--level-6); transform: rotate(-3deg) scale(1.1); }
+
+/* ── Decorative Divider ──────────────────────────────── */
+
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--color-border);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--dir, right), transparent, var(--color-border), transparent);
+}
+
+.divider::before { --dir: right; }
+.divider::after { --dir: left; }
+
+/* ── Container ───────────────────────────────────────── */
+
+.container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── Utility Classes ─────────────────────────────────── */
+
+.text-accent { color: var(--color-accent); }
+.text-green { color: var(--color-green); }
+.text-blue { color: var(--color-blue); }
+.text-gold { color: var(--color-gold); }
+.text-muted { color: var(--color-text-secondary); }
+.text-title { font-family: var(--font-title); }
+
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* ── Scrollbar ───────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ── Selection ───────────────────────────────────────── */
+
+::selection {
+  background: rgba(139, 37, 0, 0.2);
+  color: var(--color-text-primary);
+}

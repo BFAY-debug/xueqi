@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # ── MySQL ──────────────────────────────────────────────
+  xueqi-mysql:
+    image: mysql:8.4
+    container_name: xueqi-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - xueqi-net
+
+  # ── Redis ──────────────────────────────────────────────
+  xueqi-redis:
+    image: redis:5.0
+    container_name: xueqi-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xueqi-net
+
+  # ── User Service ───────────────────────────────────────
+  xueqi-user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    container_name: xueqi-user-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_HOST=xueqi-mysql
+      - REDIS_HOST=xueqi-redis
+      - PORT=${USER_SERVICE_PORT}
+    ports:
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
+    volumes:
+      - upload-data:/app/uploads
+    depends_on:
+      xueqi-mysql:
+        condition: service_healthy
+      xueqi-redis:
+        condition: service_healthy
+    networks:
+      - xueqi-net
+
+  # ── Study Service ──────────────────────────────────────
+  xueqi-study-service:
+    build:
+      context: .
+      dockerfile: services/study-service/Dockerfile
+    container_name: xueqi-study-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_HOST=xueqi-mysql
+      - REDIS_HOST=xueqi-redis
+      - PORT=${STUDY_SERVICE_PORT}
+    ports:
+      - "${STUDY_SERVICE_PORT}:${STUDY_SERVICE_PORT}"
+    volumes:
+      - upload-data:/app/uploads
+    depends_on:
+      xueqi-mysql:
+        condition: service_healthy
+      xueqi-redis:
+        condition: service_healthy
+    networks:
+      - xueqi-net
+
+  # ── Community Service ──────────────────────────────────
+  xueqi-community-service:
+    build:
+      context: .
+      dockerfile: services/community-service/Dockerfile
+    container_name: xueqi-community-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_HOST=xueqi-mysql
+      - REDIS_HOST=xueqi-redis
+      - PORT=${COMMUNITY_SERVICE_PORT}
+    ports:
+      - "${COMMUNITY_SERVICE_PORT}:${COMMUNITY_SERVICE_PORT}"
+    depends_on:
+      xueqi-mysql:
+        condition: service_healthy
+      xueqi-redis:
+        condition: service_healthy
+    networks:
+      - xueqi-net
+
+  # ── API Gateway ────────────────────────────────────────
+  xueqi-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: xueqi-gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=${GATEWAY_PORT}
+      - USER_SERVICE_URL=http://xueqi-user-service:${USER_SERVICE_PORT}
+      - STUDY_SERVICE_URL=http://xueqi-study-service:${STUDY_SERVICE_PORT}
+      - COMMUNITY_SERVICE_URL=http://xueqi-community-service:${COMMUNITY_SERVICE_PORT}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    depends_on:
+      - xueqi-user-service
+      - xueqi-study-service
+      - xueqi-community-service
+    networks:
+      - xueqi-net
+
+  # ── Frontend (Nginx) ──────────────────────────────────
+  xueqi-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: xueqi-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - upload-data:/usr/share/nginx/uploads:ro
+    depends_on:
+      - xueqi-gateway
+    networks:
+      - xueqi-net
+
+volumes:
+  mysql-data:
+  redis-data:
+  upload-data:
+
+networks:
+  xueqi-net:
+    driver: bridge

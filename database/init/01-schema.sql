@@ -1,0 +1,392 @@
+-- ============================================================
+-- 「学栖」数据库 Schema - 完整建表语句
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS xueqi_db
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE xueqi_db;
+
+-- ----------------------------------------------------------
+-- 角色表（三级权限）
+-- ----------------------------------------------------------
+CREATE TABLE roles (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    name        VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(200),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 等级定义
+-- ----------------------------------------------------------
+CREATE TABLE levels (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    name       VARCHAR(50) NOT NULL,
+    min_points INT NOT NULL DEFAULT 0,
+    badge      VARCHAR(10),
+    UNIQUE KEY uk_min_points (min_points)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 用户表
+-- ----------------------------------------------------------
+CREATE TABLE users (
+    id              INT PRIMARY KEY AUTO_INCREMENT,
+    username        VARCHAR(50)  NOT NULL UNIQUE,
+    email           VARCHAR(120) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    nickname        VARCHAR(50),
+    avatar_url      VARCHAR(500),
+    bio             TEXT,
+    role_id         INT NOT NULL DEFAULT 3,
+    status          TINYINT NOT NULL DEFAULT 1 COMMENT '1=active, 0=muted',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 用户学习统计
+-- ----------------------------------------------------------
+CREATE TABLE user_stats (
+    id                  INT PRIMARY KEY AUTO_INCREMENT,
+    user_id             INT NOT NULL UNIQUE,
+    total_study_minutes INT DEFAULT 0,
+    total_pomodoros     INT DEFAULT 0,
+    total_points        INT DEFAULT 0,
+    level_id            INT DEFAULT 1,
+    daily_points        INT DEFAULT 0,
+    daily_reset_date    DATE,
+    penalty_count       INT DEFAULT 0 COMMENT '本月违约次数',
+    penalty_reset_date  DATE COMMENT '违约计数重置日期',
+    ban_until           DATETIME DEFAULT NULL COMMENT '禁止预约截止时间',
+    checkin_streak      INT DEFAULT 0 COMMENT '连续签到天数',
+    last_study_date     DATE,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (level_id) REFERENCES levels(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 积分流水
+-- ----------------------------------------------------------
+CREATE TABLE points_log (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    user_id     INT NOT NULL,
+    action      VARCHAR(50) NOT NULL COMMENT 'study/pomodoro/book_rate/post/comment/volunteer etc.',
+    points      INT NOT NULL COMMENT 'positive=earned, negative=deducted',
+    description VARCHAR(200),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_created (user_id, created_at DESC),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 通知
+-- ----------------------------------------------------------
+CREATE TABLE notifications (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    user_id      INT NOT NULL,
+    type         VARCHAR(30) NOT NULL COMMENT 'review_result/like/points/level_up/system',
+    title        VARCHAR(200) NOT NULL,
+    content      TEXT,
+    is_read      TINYINT DEFAULT 0,
+    related_id   INT,
+    related_type VARCHAR(30),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_read (user_id, is_read, created_at DESC),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 虚拟自习室
+-- ----------------------------------------------------------
+CREATE TABLE study_rooms (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    name         VARCHAR(100) NOT NULL,
+    description  TEXT,
+    capacity     INT NOT NULL DEFAULT 50,
+    type         ENUM('virtual', 'real') NOT NULL DEFAULT 'virtual',
+    cover_image  VARCHAR(500),
+    status       TINYINT NOT NULL DEFAULT 1 COMMENT '1=open, 0=closed',
+    created_by   INT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 自习室参与者
+-- ----------------------------------------------------------
+CREATE TABLE room_participants (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    room_id     INT NOT NULL,
+    user_id     INT NOT NULL,
+    seat_number INT,
+    joined_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_studying TINYINT DEFAULT 1,
+    UNIQUE KEY uk_room_user (room_id, user_id),
+    FOREIGN KEY (room_id) REFERENCES study_rooms(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 学习记录（番茄钟/自由学习）
+-- ----------------------------------------------------------
+CREATE TABLE study_sessions (
+    id               INT PRIMARY KEY AUTO_INCREMENT,
+    user_id          INT NOT NULL,
+    room_id          INT,
+    start_time       TIMESTAMP NOT NULL,
+    end_time         TIMESTAMP NULL,
+    duration_minutes INT,
+    session_type     ENUM('pomodoro', 'free', 'timed') DEFAULT 'free',
+    status           ENUM('active', 'completed', 'abandoned') DEFAULT 'active',
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_status (user_id, status),
+    INDEX idx_room (room_id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 实体教学楼/图书馆
+-- ----------------------------------------------------------
+CREATE TABLE real_locations (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    name        VARCHAR(100) NOT NULL,
+    building    VARCHAR(100),
+    floor       INT,
+    open_time   TIME NOT NULL DEFAULT '08:00:00',
+    close_time  TIME NOT NULL DEFAULT '22:00:00',
+    total_seats INT NOT NULL,
+    description TEXT,
+    status      TINYINT DEFAULT 1 COMMENT '1=active, 0=inactive'
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 实体座位
+-- ----------------------------------------------------------
+CREATE TABLE real_seats (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    location_id  INT NOT NULL,
+    seat_code    VARCHAR(20) NOT NULL,
+    row_num      INT,
+    col_num      INT,
+    has_power    TINYINT DEFAULT 0 COMMENT 'has power outlet',
+    status       ENUM('available', 'occupied', 'reserved', 'maintenance') DEFAULT 'available',
+    UNIQUE KEY uk_location_seat (location_id, seat_code),
+    FOREIGN KEY (location_id) REFERENCES real_locations(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 座位预约记录
+-- ----------------------------------------------------------
+CREATE TABLE seat_reservations (
+    id            INT PRIMARY KEY AUTO_INCREMENT,
+    user_id       INT NOT NULL,
+    seat_id       INT NOT NULL,
+    reserve_date  DATE NOT NULL,
+    start_time    TIME NOT NULL,
+    end_time      TIME NOT NULL,
+    status        ENUM('pending', 'checked_in', 'completed', 'cancelled', 'no_show') DEFAULT 'pending',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_seat_time (seat_id, reserve_date, start_time),
+    INDEX idx_user_date (user_id, reserve_date),
+    FOREIGN KEY (seat_id) REFERENCES real_seats(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 志愿任务
+-- ----------------------------------------------------------
+CREATE TABLE volunteer_tasks (
+    id               INT PRIMARY KEY AUTO_INCREMENT,
+    name             VARCHAR(100) NOT NULL,
+    description      TEXT,
+    reward_penalty   INT NOT NULL DEFAULT 1 COMMENT 'how many penalty counts to reduce',
+    reward_points    INT NOT NULL DEFAULT 5 COMMENT 'bonus points',
+    status           TINYINT DEFAULT 1 COMMENT '1=active, 0=inactive',
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 志愿记录
+-- ----------------------------------------------------------
+CREATE TABLE volunteer_records (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    user_id      INT NOT NULL,
+    task_id      INT NOT NULL,
+    status       ENUM('pending', 'confirmed', 'rejected') DEFAULT 'pending',
+    admin_id     INT COMMENT 'admin who confirmed',
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    confirmed_at TIMESTAMP NULL,
+    INDEX idx_user (user_id, status),
+    INDEX idx_status (status),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (task_id) REFERENCES volunteer_tasks(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 书籍
+-- ----------------------------------------------------------
+CREATE TABLE books (
+    id             INT PRIMARY KEY AUTO_INCREMENT,
+    isbn           VARCHAR(20) UNIQUE,
+    title          VARCHAR(200) NOT NULL,
+    author         VARCHAR(200),
+    publisher      VARCHAR(200),
+    publish_year   INT,
+    category       VARCHAR(100),
+    cover_url      VARCHAR(500),
+    description    TEXT,
+    avg_rating     DECIMAL(2,1) DEFAULT 0.0,
+    rating_count   INT DEFAULT 0,
+    status         ENUM('pending', 'published', 'rejected') DEFAULT 'published',
+    submitted_by   INT COMMENT 'user who submitted, NULL=admin added',
+    reviewed_by    INT,
+    reviewed_at    TIMESTAMP NULL,
+    reject_reason  VARCHAR(500),
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_status (status),
+    INDEX idx_category (category)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 书籍-课程关联
+-- ----------------------------------------------------------
+CREATE TABLE book_courses (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    book_id      INT NOT NULL,
+    course_name  VARCHAR(100) NOT NULL,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 书籍评分/书评
+-- ----------------------------------------------------------
+CREATE TABLE book_ratings (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    user_id     INT NOT NULL,
+    book_id     INT NOT NULL,
+    rating      TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    review      TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_book (user_id, book_id),
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 书籍收藏
+-- ----------------------------------------------------------
+CREATE TABLE book_collections (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    user_id     INT NOT NULL,
+    book_id     INT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_book (user_id, book_id),
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 社区帖子
+-- ----------------------------------------------------------
+CREATE TABLE posts (
+    id            INT PRIMARY KEY AUTO_INCREMENT,
+    user_id       INT NOT NULL,
+    title         VARCHAR(200) NOT NULL,
+    content       TEXT NOT NULL,
+    category      ENUM('experience', 'question', 'resource', 'general') DEFAULT 'general',
+    is_anonymous  TINYINT DEFAULT 0,
+    is_pinned     TINYINT DEFAULT 0,
+    is_featured   TINYINT DEFAULT 0,
+    view_count    INT DEFAULT 0,
+    like_count    INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
+    status        ENUM('pending', 'published', 'rejected', 'hidden') DEFAULT 'pending',
+    reviewed_by   INT,
+    reviewed_at   TIMESTAMP NULL,
+    reject_reason VARCHAR(500),
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category (category),
+    INDEX idx_status_created (status, created_at DESC),
+    INDEX idx_pinned (is_pinned DESC, created_at DESC)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 帖子评论（支持嵌套）
+-- ----------------------------------------------------------
+CREATE TABLE comments (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    post_id      INT NOT NULL,
+    user_id      INT NOT NULL,
+    parent_id    INT DEFAULT NULL COMMENT 'NULL=top-level, else reply to parent',
+    content      TEXT NOT NULL,
+    is_anonymous TINYINT DEFAULT 0,
+    like_count   INT DEFAULT 0,
+    status       ENUM('pending', 'published', 'rejected') DEFAULT 'pending',
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_post_created (post_id, created_at),
+    INDEX idx_parent (parent_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 标签
+-- ----------------------------------------------------------
+CREATE TABLE tags (
+    id   INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 帖子-标签（多对多）
+-- ----------------------------------------------------------
+CREATE TABLE post_tags (
+    post_id INT NOT NULL,
+    tag_id  INT NOT NULL,
+    PRIMARY KEY (post_id, tag_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 帖子点赞
+-- ----------------------------------------------------------
+CREATE TABLE post_likes (
+    user_id    INT NOT NULL,
+    post_id    INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, post_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 评论点赞
+-- ----------------------------------------------------------
+CREATE TABLE comment_likes (
+    user_id     INT NOT NULL,
+    comment_id  INT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, comment_id),
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 审核日志
+-- ----------------------------------------------------------
+CREATE TABLE review_logs (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    reviewer_id  INT NOT NULL,
+    target_type  VARCHAR(30) NOT NULL COMMENT 'post/comment/book',
+    target_id    INT NOT NULL,
+    action       ENUM('approve', 'reject') NOT NULL,
+    reason       VARCHAR(500),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_target (target_type, target_id),
+    FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB;

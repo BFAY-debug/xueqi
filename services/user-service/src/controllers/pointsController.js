@@ -1,0 +1,39 @@
+const pointsService = require('../services/pointsService');
+
+async function getPoints(req, res, next) {
+  try {
+    const data = await pointsService.getMyPoints(req.user.userId);
+    res.success(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getPointsLog(req, res, next) {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 20;
+    const { data, total } = await pointsService.getPointsLog(req.user.userId, page, pageSize);
+    res.paginate(data, total, page, pageSize);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Internal API: Award points (called by other services)
+ */
+async function awardPoints(req, res, next) {
+  try {
+    const { userId, action, points, description } = req.body;
+    if (!userId || !action) {
+      return res.error('userId and action are required', 400);
+    }
+    const result = await pointsService.awardPoints(userId, action, { points, description });
+    res.success(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getPoints, getPointsLog, awardPoints };

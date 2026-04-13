@@ -1,0 +1,45 @@
+/* ============================================================
+   「学栖」古典中国风主题 — CSS 变量
+   ============================================================ */
+
+:root {
+  /* Colors */
+  --color-bg-primary: #F5F0E8;        /* 宣纸白 */
+  --color-bg-secondary: #EDE6D6;      /* 古卷黄 */
+  --color-text-primary: #2C2C2C;      /* 浓墨 */
+  --color-text-secondary: #6B6B6B;    /* 淡墨 */
+  --color-accent: #8B2500;            /* 朱砂红 */
+  --color-accent-hover: #A52D00;
+  --color-accent-light: rgba(139, 37, 0, 0.1);
+  --color-green: #2E5C4C;             /* 松绿 */
+  --color-blue: #4A6B8A;              /* 靛蓝 */
+  --color-gold: #B8860B;              /* 赭金 */
+  --color-border: #C4B99A;            /* 旧绢 */
+  --color-border-light: rgba(196, 185, 154, 0.4);
+
+  /* Glass effect */
+  --glass-bg: rgba(245, 240, 232, 0.65);
+  --glass-bg-card: rgba(245, 240, 232, 0.85);
+  --glass-blur: 12px;
+  --glass-border: 1px solid rgba(196, 185, 154, 0.4);
+  --glass-shadow: 0 4px 24px rgba(44, 44, 44, 0.06);
+
+  /* Fonts */
+  --font-title: "楷体", "STKaiti", "KaiTi", serif;
+  --font-body: "思源宋体", "Noto Serif SC", "宋体", serif;
+  --font-mono: "Fira Code", monospace;
+
+  /* Spacing */
+  --nav-height: 64px;
+  --content-max-width: 1200px;
+  --border-radius: 12px;
+  --border-radius-sm: 8px;
+
+  /* Level colors */
+  --level-1: #4CAF50;
+  --level-2: #2196F3;
+  --level-3: #FF5722;
+  --level-4: #E91E63;
+  --level-5: #9C27B0;
+  --level-6: #8B2500;
+}
