@@ -1,0 +1,20 @@
+{
+  "name": "xueqi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "「学栖」校园学习社区平台",
+  "scripts": {
+    "install:all": "cd services/shared && npm install && cd ../../services/user-service && npm install && cd ../study-service && npm install && cd ../community-service && npm install && cd ../api-gateway && npm install && cd ../../frontend && npm install",
+    "dev:user": "cd services/user-service && npm run dev",
+    "dev:study": "cd services/study-service && npm run dev",
+    "dev:community": "cd services/community-service && npm run dev",
+    "dev:gateway": "cd services/api-gateway && npm run dev",
+    "dev": "concurrently -n gateway,user,study,community -c blue,green,yellow,magenta \"npm run dev:gateway\" \"npm run dev:user\" \"npm run dev:study\" \"npm run dev:community\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:full": "concurrently -n backend,frontend -c cyan,magenta \"npm run dev\" \"npm run dev:frontend\"",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

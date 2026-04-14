@@ -1,14 +1,15 @@
 FROM node:24-alpine
 WORKDIR /app
 
-COPY services/shared/package.json ./services/shared/
-COPY services/shared/src/ ./services/shared/src/
+# Shared module is needed for logger
+COPY services/shared/ ./services/shared/
 RUN cd services/shared && npm install --production
 
-COPY services/api-gateway/package.json ./
-RUN npm install --production
+COPY services/api-gateway/package.json ./services/api-gateway/
+RUN cd services/api-gateway && npm install --production
 
-COPY services/api-gateway/src/ ./src/
+COPY services/api-gateway/src/ ./services/api-gateway/src/
 
+WORKDIR /app/services/api-gateway
 EXPOSE 3000
 CMD ["node", "src/app.js"]

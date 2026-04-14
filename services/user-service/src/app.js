@@ -1,7 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+const rootDir = path.resolve(__dirname, '../../../');
+require('dotenv').config({ path: path.join(rootDir, '.env.local') });
+require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { responseHandler, errorHandler, logger } = require('xueqi-shared');
 
 const authRoutes = require('./routes/auth');

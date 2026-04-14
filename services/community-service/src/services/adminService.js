@@ -188,7 +188,7 @@ async function getReviewLogs({ page = 1, pageSize = 20, targetType = '' }) {
 }
 
 function getServiceToken() {
-  const { generateToken } = require('xueqi-shared');
+  const { jwt: { generateToken } } = require('xueqi-shared');
   return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin' });
 }
 

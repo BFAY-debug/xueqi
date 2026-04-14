@@ -353,7 +353,7 @@ async function getRecommendations(userId) {
 }
 
 function getServiceToken() {
-  const { generateToken } = require('xueqi-shared');
+  const { jwt: { generateToken } } = require('xueqi-shared');
   return generateToken({
     userId: 0, username: 'study-service', roleId: 1, roleName: 'super_admin'
   });

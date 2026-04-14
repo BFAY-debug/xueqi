@@ -24,30 +24,30 @@ INSERT INTO levels (id, name, min_points, badge) VALUES
 (6, '大儒', 10000, '👑');
 
 -- ----------------------------------------------------------
--- 超级管理员账户（密码: admin123）
--- 注意：这是 bcrypt hash of 'admin123'
+-- 超级管理员账户（密码: password）
+-- 注意：所有种子用户密码均为 'password'，hash: $2b$10$N9qo8uLOickgx2ZMRZoMy...
 -- ----------------------------------------------------------
 INSERT INTO users (id, username, email, password_hash, nickname, bio, role_id, status) VALUES
 (1, 'superadmin', 'admin@xueqi.edu.cn',
- '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2b$10$p9rNpyJIH5LbNngB1LWHIupseHsbLYzL5IHVDbikLM86egRAPx5wm',
  '学栖掌门', '学栖平台超级管理员', 1, 1);
 
 -- 管理员账户
 INSERT INTO users (id, username, email, password_hash, nickname, bio, role_id, status) VALUES
 (2, 'admin01', 'admin01@xueqi.edu.cn',
- '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2b$10$p9rNpyJIH5LbNngB1LWHIupseHsbLYzL5IHVDbikLM86egRAPx5wm',
  '书院山长', '学栖平台管理员', 2, 1);
 
 -- 普通用户示例
 INSERT INTO users (id, username, email, password_hash, nickname, bio, role_id, status) VALUES
 (3, 'zhangsan', 'zhangsan@stu.edu.cn',
- '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2b$10$p9rNpyJIH5LbNngB1LWHIupseHsbLYzL5IHVDbikLM86egRAPx5wm',
  '学海无涯', '每天进步一点点', 3, 1),
 (4, 'lisi', 'lisi@stu.edu.cn',
- '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2b$10$p9rNpyJIH5LbNngB1LWHIupseHsbLYzL5IHVDbikLM86egRAPx5wm',
  '书虫小李', '阅读使我快乐', 3, 1),
 (5, 'wangwu', 'wangwu@stu.edu.cn',
- '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+ '$2b$10$p9rNpyJIH5LbNngB1LWHIupseHsbLYzL5IHVDbikLM86egRAPx5wm',
  '考研加油', '目标：上岸！', 3, 1);
 
 -- ----------------------------------------------------------

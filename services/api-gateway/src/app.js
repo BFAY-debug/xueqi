@@ -1,4 +1,7 @@
-require('dotenv').config();
+const path = require('path');
+const rootDir = path.resolve(__dirname, '../../../');
+require('dotenv').config({ path: path.join(rootDir, '.env.local') });
+require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -15,11 +18,10 @@ const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL || 'http://local
 
 // Middleware
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 500,
   message: { success: false, message: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
@@ -39,16 +41,22 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'api-gateway' });
 });
 
-// ── Proxy to User Service ─────────────────────────────
+// Auth rate limiting (before proxy)
 app.use('/api/user/register', authLimiter);
 app.use('/api/user/login', authLimiter);
 
+// ── Proxy to User Service ─────────────────────────────
 app.use('/api/user', createProxyMiddleware({
   target: USER_SERVICE_URL,
   changeOrigin: true,
   timeout: 30000,
   proxyTimeout: 30000,
+  pathRewrite: (path) => path,  // preserve full path
   on: {
+    proxyReq: (proxyReq, req) => {
+      // Restore original URL path that Express stripped
+      proxyReq.path = req.originalUrl;
+    },
     error: (err, req, res) => {
       logger.error(`User service proxy error: ${err.message}`);
       res.status(503).json({ success: false, message: '用户服务暂时不可用' });
@@ -62,8 +70,12 @@ app.use('/api/study', createProxyMiddleware({
   changeOrigin: true,
   timeout: 30000,
   proxyTimeout: 30000,
-  ws: true, // Enable WebSocket proxy
+  ws: true,
+  pathRewrite: (path) => path,
   on: {
+    proxyReq: (proxyReq, req) => {
+      proxyReq.path = req.originalUrl;
+    },
     error: (err, req, res) => {
       logger.error(`Study service proxy error: ${err.message}`);
       res.status(503).json({ success: false, message: '学习服务暂时不可用' });
@@ -77,7 +89,11 @@ app.use('/api/community', createProxyMiddleware({
   changeOrigin: true,
   timeout: 30000,
   proxyTimeout: 30000,
+  pathRewrite: (path) => path,
   on: {
+    proxyReq: (proxyReq, req) => {
+      proxyReq.path = req.originalUrl;
+    },
     error: (err, req, res) => {
       logger.error(`Community service proxy error: ${err.message}`);
       res.status(503).json({ success: false, message: '社区服务暂时不可用' });

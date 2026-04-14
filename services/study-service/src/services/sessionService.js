@@ -129,7 +129,7 @@ async function getMySessions(userId, page = 1, pageSize = 20) {
  * Generate a service-to-service JWT token
  */
 function getServiceToken() {
-  const { generateToken } = require('xueqi-shared');
+  const { jwt: { generateToken } } = require('xueqi-shared');
   return generateToken({
     userId: 0,
     username: 'study-service',
