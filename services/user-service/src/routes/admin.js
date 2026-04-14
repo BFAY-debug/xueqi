@@ -18,4 +18,11 @@ router.put('/users/:id/status', requireRole('admin', 'super_admin'), adminContro
 // System stats (super_admin only)
 router.get('/stats', requireRole('super_admin'), adminController.getSystemStats);
 
+// Admin application - any logged-in user can apply
+router.post('/apply', adminController.applyForAdmin);
+
+// Admin application review (super_admin only)
+router.get('/applications', requireRole('super_admin'), adminController.getPendingApplications);
+router.put('/applications/:id', requireRole('super_admin'), adminController.reviewApplication);
+
 module.exports = router;

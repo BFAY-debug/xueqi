@@ -144,9 +144,119 @@ async function getSystemStats() {
   };
 }
 
+/**
+ * Apply for admin role
+ */
+async function applyForAdmin(userId, reason) {
+  // Check if user is already admin or super_admin
+  const [users] = await db.execute('SELECT role_id FROM users WHERE id = ?', [userId]);
+  if (users.length === 0) {
+    const error = new Error('用户不存在');
+    error.status = 404;
+    throw error;
+  }
+  if (users[0].role_id <= 2) {
+    const error = new Error('你已经是管理员');
+    error.status = 400;
+    throw error;
+  }
+
+  // Check for existing pending application
+  const [existing] = await db.execute(
+    "SELECT id FROM admin_applications WHERE user_id = ? AND status = 'pending'",
+    [userId]
+  );
+  if (existing.length > 0) {
+    const error = new Error('你已有一份待审核的申请');
+    error.status = 400;
+    throw error;
+  }
+
+  const [result] = await db.execute(
+    'INSERT INTO admin_applications (user_id, reason) VALUES (?, ?)',
+    [userId, reason]
+  );
+
+  logger.info(`User ${userId} applied for admin role`);
+  return { applicationId: result.insertId };
+}
+
+/**
+ * Get pending admin applications (super_admin only)
+ */
+async function getPendingApplications({ page = 1, pageSize = 20 }) {
+  const offset = (page - 1) * pageSize;
+
+  const [rows] = await db.execute(
+    `SELECT a.id, a.reason, a.status, a.created_at, a.reviewed_at,
+            u.id AS user_id, u.username, u.nickname, u.avatar_url,
+            r.name AS reviewer_name
+     FROM admin_applications a
+     JOIN users u ON a.user_id = u.id
+     LEFT JOIN users r ON a.reviewer_id = r.id
+     ORDER BY a.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [pageSize, offset]
+  );
+
+  const [countRows] = await db.execute(
+    "SELECT COUNT(*) AS total FROM admin_applications WHERE status = 'pending'"
+  );
+
+  return { data: rows, total: countRows[0].total };
+}
+
+/**
+ * Review an admin application (super_admin only)
+ */
+async function reviewApplication(applicationId, action, reviewerId) {
+  const [apps] = await db.execute(
+    'SELECT id, user_id, status FROM admin_applications WHERE id = ?',
+    [applicationId]
+  );
+  if (apps.length === 0) {
+    const error = new Error('申请不存在');
+    error.status = 404;
+    throw error;
+  }
+  if (apps[0].status !== 'pending') {
+    const error = new Error('该申请已被处理');
+    error.status = 400;
+    throw error;
+  }
+
+  const newStatus = action === 'approve' ? 'approved' : 'rejected';
+  await db.execute(
+    'UPDATE admin_applications SET status = ?, reviewer_id = ?, reviewed_at = NOW() WHERE id = ?',
+    [newStatus, reviewerId, applicationId]
+  );
+
+  // If approved, change user role to admin (role_id = 2)
+  if (action === 'approve') {
+    await db.execute('UPDATE users SET role_id = 2 WHERE id = ?', [apps[0].user_id]);
+  }
+
+  // Send notification to the applicant
+  const title = action === 'approve' ? '管理员申请已通过' : '管理员申请被拒绝';
+  const content = action === 'approve'
+    ? '恭喜！你的管理员申请已通过，现在可以访问管理后台了。'
+    : '你的管理员申请未获批准，请继续为社区做出贡献后再尝试。';
+
+  await db.execute(
+    'INSERT INTO notifications (user_id, type, title, content) VALUES (?, ?, ?, ?)',
+    [apps[0].user_id, 'system', title, content]
+  );
+
+  logger.info(`Application ${applicationId} ${newStatus} by reviewer ${reviewerId}`);
+  return { applicationId, status: newStatus };
+}
+
 module.exports = {
   getUsers,
   changeUserRole,
   changeUserStatus,
-  getSystemStats
+  getSystemStats,
+  applyForAdmin,
+  getPendingApplications,
+  reviewApplication
 };

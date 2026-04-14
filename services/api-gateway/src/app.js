@@ -32,7 +32,7 @@ app.use(limiter);
 // Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,
   message: { success: false, message: '登录尝试过多，请稍后再试' }
 });
 
@@ -51,11 +51,16 @@ app.use('/api/user', createProxyMiddleware({
   changeOrigin: true,
   timeout: 30000,
   proxyTimeout: 30000,
-  pathRewrite: (path) => path,  // preserve full path
+  pathRewrite: (path) => path,
   on: {
     proxyReq: (proxyReq, req) => {
-      // Restore original URL path that Express stripped
       proxyReq.path = req.originalUrl;
+    },
+    proxyRes: (proxyRes) => {
+      const ct = proxyRes.headers['content-type'];
+      if (ct && ct.includes('application/json') && !ct.includes('charset')) {
+        proxyRes.headers['content-type'] = ct + '; charset=utf-8';
+      }
     },
     error: (err, req, res) => {
       logger.error(`User service proxy error: ${err.message}`);
@@ -76,6 +81,12 @@ app.use('/api/study', createProxyMiddleware({
     proxyReq: (proxyReq, req) => {
       proxyReq.path = req.originalUrl;
     },
+    proxyRes: (proxyRes) => {
+      const ct = proxyRes.headers['content-type'];
+      if (ct && ct.includes('application/json') && !ct.includes('charset')) {
+        proxyRes.headers['content-type'] = ct + '; charset=utf-8';
+      }
+    },
     error: (err, req, res) => {
       logger.error(`Study service proxy error: ${err.message}`);
       res.status(503).json({ success: false, message: '学习服务暂时不可用' });
@@ -93,6 +104,12 @@ app.use('/api/community', createProxyMiddleware({
   on: {
     proxyReq: (proxyReq, req) => {
       proxyReq.path = req.originalUrl;
+    },
+    proxyRes: (proxyRes) => {
+      const ct = proxyRes.headers['content-type'];
+      if (ct && ct.includes('application/json') && !ct.includes('charset')) {
+        proxyRes.headers['content-type'] = ct + '; charset=utf-8';
+      }
     },
     error: (err, req, res) => {
       logger.error(`Community service proxy error: ${err.message}`);

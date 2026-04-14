@@ -14,7 +14,7 @@
         <a href="#">开发团队</a>
       </div>
       <div class="footer-copy">
-        &copy; {{ year }} 学栖 · 以学习为核心的校园社区平台
+        &copy; {{ year }} 学栖 · 以学习为核心的社区平台
       </div>
     </div>
   </footer>

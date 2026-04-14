@@ -2,6 +2,8 @@
 -- 「学栖」数据库 Schema - 完整建表语句
 -- ============================================================
 
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS xueqi_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -389,4 +391,20 @@ CREATE TABLE review_logs (
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_target (target_type, target_id),
     FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 管理员申请
+-- ----------------------------------------------------------
+CREATE TABLE admin_applications (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    user_id      INT NOT NULL,
+    reason       VARCHAR(500) NOT NULL COMMENT '申请理由',
+    status       ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    reviewer_id  INT,
+    reviewed_at  TIMESTAMP NULL,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (reviewer_id) REFERENCES users(id),
+    INDEX idx_status (status)
 ) ENGINE=InnoDB;

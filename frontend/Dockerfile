@@ -1,4 +1,6 @@
-FROM node:24-alpine AS build
+FROM node:24-slim AS build
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 WORKDIR /app
 COPY package.json ./
 RUN npm install

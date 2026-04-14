@@ -51,4 +51,50 @@ async function getSystemStats(req, res, next) {
   }
 }
 
-module.exports = { getUsers, changeUserRole, changeUserStatus, getSystemStats };
+async function applyForAdmin(req, res, next) {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 5) {
+      return res.error('请填写申请理由（至少5个字）', 400);
+    }
+    const result = await adminService.applyForAdmin(req.user.userId, reason.trim());
+    res.success(result, '申请已提交');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getPendingApplications(req, res, next) {
+  try {
+    const { page, pageSize } = req.query;
+    const result = await adminService.getPendingApplications({
+      page: parseInt(page, 10) || 1,
+      pageSize: parseInt(pageSize, 10) || 20
+    });
+    res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function reviewApplication(req, res, next) {
+  try {
+    const { action } = req.body;
+    if (!['approve', 'reject'].includes(action)) {
+      return res.error('action 必须为 approve 或 reject', 400);
+    }
+    const result = await adminService.reviewApplication(
+      parseInt(req.params.id, 10),
+      action,
+      req.user.userId
+    );
+    res.success(result, action === 'approve' ? '已通过申请' : '已拒绝申请');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getUsers, changeUserRole, changeUserStatus, getSystemStats,
+  applyForAdmin, getPendingApplications, reviewApplication
+};

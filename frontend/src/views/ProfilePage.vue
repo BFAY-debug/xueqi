@@ -18,6 +18,7 @@
           <div class="info-row"><label>积分</label><span class="points-value">{{ stats.total_points || 0 }}</span></div>
           <div class="info-row"><label>签名</label><span>{{ userStore.user.bio || '暂无签名' }}</span></div>
           <el-button size="small" @click="showEdit = true" style="margin-top:8px">编辑书斋</el-button>
+          <el-button v-if="userStore.user?.roleName === 'user'" size="small" type="warning" @click="showApplyAdmin = true" style="margin-top:8px">申请管理员</el-button>
         </div>
       </div>
 
@@ -82,6 +83,19 @@
       </template>
     </el-dialog>
 
+    <!-- Apply Admin Dialog -->
+    <el-dialog v-model="showApplyAdmin" title="申请成为管理员" width="450px">
+      <el-form label-width="80px">
+        <el-form-item label="申请理由">
+          <el-input v-model="applyReason" type="textarea" :rows="4" placeholder="请说明你为什么想成为管理员（至少5个字）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showApplyAdmin = false">取消</el-button>
+        <el-button type="primary" @click="submitAdminApply" :loading="applying">提交申请</el-button>
+      </template>
+    </el-dialog>
+
     <AppFooter />
   </div>
 </template>
@@ -91,7 +105,7 @@ import { ref, reactive, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { useUserStore } from '@/stores/user'
-import { userAPI, pointsAPI, notificationAPI } from '@/api/user'
+import { userAPI, pointsAPI, notificationAPI, adminAPI } from '@/api/user'
 import { reservationAPI } from '@/api/study'
 import { ElMessage } from 'element-plus'
 
@@ -100,6 +114,9 @@ const activeTab = ref('stats')
 const showEdit = ref(false)
 const saving = ref(false)
 const fileInput = ref(null)
+const showApplyAdmin = ref(false)
+const applyReason = ref('')
+const applying = ref(false)
 
 const stats = ref({})
 const pointsLog = ref([])
@@ -161,6 +178,20 @@ async function saveProfile() {
     showEdit.value = false
   } catch (err) { ElMessage.error(err.message) }
   finally { saving.value = false }
+}
+
+async function submitAdminApply() {
+  if (!applyReason.value || applyReason.value.trim().length < 5) {
+    return ElMessage.warning('请填写至少5个字的申请理由')
+  }
+  applying.value = true
+  try {
+    await adminAPI.applyAdmin(applyReason.value.trim())
+    ElMessage.success('申请已提交，请等待超级管理员审核')
+    showApplyAdmin.value = false
+    applyReason.value = ''
+  } catch (err) { ElMessage.error(err.message) }
+  finally { applying.value = false }
 }
 
 function openEdit() {

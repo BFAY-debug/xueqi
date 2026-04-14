@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="300" viewBox="0 0 1400 300">
+  <!-- Far mountains — low, flat, very faint ink wash -->
+  <defs>
+    <linearGradient id="far-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C2C2C" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#2C2C2C" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Distant range 1 -->
+  <path d="M0,260 Q60,200 140,230 Q220,170 340,210 Q440,160 560,200 Q650,150 760,190 Q860,140 960,180 Q1060,150 1160,190 Q1260,170 1400,210 L1400,300 L0,300Z"
+        fill="#2C2C2C" opacity="0.04"/>
+  <!-- Distant range 2 (even fainter) -->
+  <path d="M0,270 Q80,230 180,250 Q280,200 400,240 Q520,190 640,230 Q740,180 860,220 Q960,190 1080,220 Q1180,200 1300,230 L1400,240 L1400,300 L0,300Z"
+        fill="#4A4A4A" opacity="0.03"/>
+  <!-- Faint mist -->
+  <ellipse cx="350" cy="250" rx="180" ry="15" fill="#F5F0E8" opacity="0.3"/>
+  <ellipse cx="900" cy="240" rx="200" ry="12" fill="#F5F0E8" opacity="0.25"/>
+</svg>

@@ -25,7 +25,29 @@ async function getMyProfile(userId) {
     throw error;
   }
 
-  return rows[0];
+  const row = rows[0];
+  return {
+    id: row.id,
+    userId: row.id,
+    username: row.username,
+    email: row.email,
+    nickname: row.nickname,
+    avatar_url: row.avatar_url,
+    bio: row.bio,
+    roleId: row.role_id,
+    roleName: row.role_name,
+    status: row.status,
+    created_at: row.created_at,
+    total_study_minutes: row.total_study_minutes,
+    total_pomodoros: row.total_pomodoros,
+    total_points: row.total_points,
+    level_id: row.level_id,
+    checkin_streak: row.checkin_streak,
+    penalty_count: row.penalty_count,
+    ban_until: row.ban_until,
+    level_name: row.level_name,
+    level_badge: row.level_badge
+  };
 }
 
 /**

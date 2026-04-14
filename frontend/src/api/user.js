@@ -46,5 +46,8 @@ export const adminAPI = {
   getUsers: (params) => request.get('/user/admin/users', { params }),
   changeRole: (id, roleId) => request.put(`/user/admin/users/${id}/role`, { roleId }),
   changeStatus: (id, status) => request.put(`/user/admin/users/${id}/status`, { status }),
-  getStats: () => request.get('/user/admin/stats')
+  getStats: () => request.get('/user/admin/stats'),
+  applyAdmin: (reason) => request.post('/user/admin/apply', { reason }),
+  getApplications: (params) => request.get('/user/admin/applications', { params }),
+  reviewApplication: (id, action) => request.put(`/user/admin/applications/${id}`, { action })
 }

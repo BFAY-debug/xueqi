@@ -9,7 +9,7 @@
           <router-link to="/" class="back-link">回到前台</router-link>
         </div>
         <nav class="sidebar-nav">
-          <a v-for="item in menuItems" :key="item.key" :class="{ active: activeSection === item.key }" @click="activeSection = item.key">
+          <a v-for="item in filteredMenu" :key="item.key" :class="{ active: activeSection === item.key }" @click="activeSection = item.key">
             {{ item.icon }} {{ item.label }}
           </a>
         </nav>
@@ -91,6 +91,74 @@
           </el-table>
         </template>
 
+        <!-- Seat Management -->
+        <template v-if="activeSection === 'seats'">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="margin:0">座位管理</h2>
+            <el-button type="primary" size="small" @click="showLocationDialog = true">新增地点</el-button>
+          </div>
+
+          <!-- Location List -->
+          <el-table :data="locations" stripe style="margin-bottom:20px">
+            <el-table-column prop="id" label="ID" width="50" />
+            <el-table-column prop="name" label="名称" width="140" />
+            <el-table-column prop="building" label="楼栋" width="100" />
+            <el-table-column prop="floor" label="楼层" width="60" />
+            <el-table-column prop="open_time" label="开放时间" width="100" />
+            <el-table-column prop="close_time" label="关闭时间" width="100" />
+            <el-table-column label="座位" width="80">
+              <template #default="{ row }">
+                {{ row.available_seats || 0 }}/{{ row.total_seats || 0 }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作">
+              <template #default="{ row }">
+                <el-button size="small" @click="openSeatManager(row)">管理座位</el-button>
+                <el-button size="small" @click="editLocation(row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="deleteLocation(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Seat Grid for selected location -->
+          <template v-if="selectedLocation">
+            <h3 style="margin-bottom:12px">{{ selectedLocation.name }} — 座位图</h3>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+              <el-button size="small" type="primary" @click="showAddSeatsDialog = true">批量添加座位</el-button>
+              <el-button size="small" type="danger" @click="clearSeats(selectedLocation.id)">清空座位</el-button>
+              <el-button size="small" @click="selectedLocation = null">关闭</el-button>
+            </div>
+            <div class="seat-grid">
+              <div v-for="seat in currentSeats" :key="seat.id" class="seat-cell" :class="seatClass(seat)">
+                {{ seat.seat_code }}
+                <span v-if="seat.has_power" class="power-icon">⚡</span>
+              </div>
+            </div>
+            <p v-if="!currentSeats.length" class="empty-text">暂无座位，请点击"批量添加座位"</p>
+          </template>
+        </template>
+
+        <!-- Admin Applications (super_admin) -->
+        <template v-if="activeSection === 'applications'">
+          <h2>管理员申请</h2>
+          <div v-for="a in adminApplications" :key="a.id" class="review-item card">
+            <div class="review-content">
+              <span class="review-badge">[申请]</span>
+              <strong>{{ a.nickname || a.username }}</strong> 申请成为管理员
+              <p class="review-excerpt">理由：{{ a.reason }}</p>
+              <span class="app-time">{{ a.created_at }}</span>
+            </div>
+            <div class="review-actions" v-if="a.status === 'pending'">
+              <el-button type="success" size="small" @click="reviewAdminApp(a.id, 'approve')">通过</el-button>
+              <el-button type="danger" size="small" @click="reviewAdminApp(a.id, 'reject')">拒绝</el-button>
+            </div>
+            <div v-else>
+              <el-tag :type="a.status === 'approved' ? 'success' : 'danger'" size="small">{{ a.status === 'approved' ? '已通过' : '已拒绝' }}</el-tag>
+            </div>
+          </div>
+          <p v-if="!adminApplications.length" class="empty-text">暂无申请</p>
+        </template>
+
         <!-- Volunteer -->
         <template v-if="activeSection === 'volunteer'">
           <h2>志愿审核</h2>
@@ -138,30 +206,76 @@
         </template>
       </div>
     </div>
+
+    <!-- Location Dialog -->
+    <el-dialog v-model="showLocationDialog" :title="editingLocation ? '编辑地点' : '新增地点'" width="500px">
+      <el-form :model="locationForm" label-width="80px">
+        <el-form-item label="名称"><el-input v-model="locationForm.name" placeholder="如：藏经阁A座" /></el-form-item>
+        <el-form-item label="楼栋"><el-input v-model="locationForm.building" placeholder="如：图书馆" /></el-form-item>
+        <el-form-item label="楼层"><el-input v-model="locationForm.floor" placeholder="如：3层" /></el-form-item>
+        <el-form-item label="开放时间"><el-input v-model="locationForm.openTime" placeholder="如：08:00" /></el-form-item>
+        <el-form-item label="关闭时间"><el-input v-model="locationForm.closeTime" placeholder="如：22:00" /></el-form-item>
+        <el-form-item label="描述"><el-input v-model="locationForm.description" type="textarea" :rows="2" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showLocationDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveLocation" :loading="saving">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Add Seats Dialog -->
+    <el-dialog v-model="showAddSeatsDialog" title="批量添加座位" width="400px">
+      <el-form :model="seatForm" label-width="80px">
+        <el-form-item label="行数"><el-input-number v-model="seatForm.rows" :min="1" :max="20" /></el-form-item>
+        <el-form-item label="列数"><el-input-number v-model="seatForm.cols" :min="1" :max="30" /></el-form-item>
+        <el-form-item label="座位前缀"><el-input v-model="seatForm.prefix" placeholder="如：A" style="width:100px" /></el-form-item>
+        <el-form-item label="有电源">
+          <el-select v-model="seatForm.powerDefault" style="width:120px">
+            <el-option label="全部有电源" :value="true" />
+            <el-option label="全部无电源" :value="false" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <p style="color:var(--color-text-secondary);font-size:0.85rem">
+        将生成 {{ seatForm.rows * seatForm.cols }} 个座位，编号如 {{ seatForm.prefix }}-01, {{ seatForm.prefix }}-02...
+      </p>
+      <template #footer>
+        <el-button @click="showAddSeatsDialog = false">取消</el-button>
+        <el-button type="primary" @click="batchAddSeats" :loading="saving">添加</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { adminAPI } from '@/api/user'
 import { communityAdminAPI } from '@/api/community'
-import { bookAPI, volunteerAPI } from '@/api/study'
+import { bookAPI, volunteerAPI, locationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const userStore = useUserStore()
 const activeSection = ref('posts')
+const saving = ref(false)
 
-const menuItems = [
-  { key: 'posts', icon: '📝', label: '帖子审核' },
-  { key: 'comments', icon: '💬', label: '评论审核' },
-  { key: 'books', icon: '📚', label: '书籍审核' },
-  { key: 'users', icon: '👥', label: '学子管理' },
-  { key: 'volunteer', icon: '🤝', label: '志愿审核' },
-  { key: 'logs', icon: '📋', label: '审核日志' },
-  { key: 'stats', icon: '📈', label: '系统统计' }
+const allMenuItems = [
+  { key: 'posts', icon: '📝', label: '帖子审核', roles: ['admin', 'super_admin'] },
+  { key: 'comments', icon: '💬', label: '评论审核', roles: ['admin', 'super_admin'] },
+  { key: 'books', icon: '📚', label: '书籍审核', roles: ['admin', 'super_admin'] },
+  { key: 'users', icon: '👥', label: '学子管理', roles: ['admin', 'super_admin'] },
+  { key: 'seats', icon: '🪑', label: '座位管理', roles: ['admin', 'super_admin'] },
+  { key: 'applications', icon: '📨', label: '管理员申请', roles: ['super_admin'] },
+  { key: 'volunteer', icon: '🤝', label: '志愿审核', roles: ['admin', 'super_admin'] },
+  { key: 'logs', icon: '📋', label: '审核日志', roles: ['admin', 'super_admin'] },
+  { key: 'stats', icon: '📈', label: '系统统计', roles: ['super_admin'] }
 ]
+
+const filteredMenu = computed(() => {
+  const role = userStore.user?.roleName
+  return allMenuItems.filter(item => item.roles.includes(role))
+})
 
 const pendingPosts = ref([])
 const pendingComments = ref([])
@@ -170,6 +284,17 @@ const users = ref([])
 const volunteerPending = ref([])
 const reviewLogs = ref([])
 const sysStats = ref(null)
+const adminApplications = ref([])
+
+// Seat management state
+const locations = ref([])
+const selectedLocation = ref(null)
+const currentSeats = ref([])
+const showLocationDialog = ref(false)
+const showAddSeatsDialog = ref(false)
+const editingLocation = ref(null)
+const locationForm = reactive({ name: '', building: '', floor: '', openTime: '', closeTime: '', description: '' })
+const seatForm = reactive({ rows: 5, cols: 8, prefix: 'A', powerDefault: false })
 
 async function fetchPendingPosts() {
   try { const res = await communityAdminAPI.getPendingPosts({ pageSize: 50 }); pendingPosts.value = res.data || [] } catch { /* */ }
@@ -191,6 +316,130 @@ async function fetchLogs() {
 }
 async function fetchStats() {
   try { const res = await adminAPI.getStats(); sysStats.value = res.data } catch { /* */ }
+}
+async function fetchApplications() {
+  try { const res = await adminAPI.getApplications({ pageSize: 50 }); adminApplications.value = res.data || [] } catch { /* */ }
+}
+async function fetchLocations() {
+  try { const res = await locationAPI.getList(); locations.value = res.data || [] } catch { /* */ }
+}
+
+function openSeatManager(loc) {
+  selectedLocation.value = loc
+  fetchSeats(loc.id)
+}
+
+async function fetchSeats(locationId) {
+  try {
+    const res = await locationAPI.getSeats(locationId)
+    currentSeats.value = res.data || []
+  } catch { /* */ }
+}
+
+function seatClass(seat) {
+  const status = seat.reservation_status
+  if (seat.status === 'maintenance') return 'seat-maintenance'
+  if (status === 'occupied' || status === 'reserved') return 'seat-occupied'
+  return 'seat-available'
+}
+
+function resetLocationForm() {
+  locationForm.name = ''
+  locationForm.building = ''
+  locationForm.floor = ''
+  locationForm.openTime = ''
+  locationForm.closeTime = ''
+  locationForm.description = ''
+  editingLocation.value = null
+}
+
+function editLocation(loc) {
+  editingLocation.value = loc
+  locationForm.name = loc.name || ''
+  locationForm.building = loc.building || ''
+  locationForm.floor = loc.floor || ''
+  locationForm.openTime = loc.open_time || ''
+  locationForm.closeTime = loc.close_time || ''
+  locationForm.description = loc.description || ''
+  showLocationDialog.value = true
+}
+
+async function saveLocation() {
+  saving.value = true
+  try {
+    const data = {
+      name: locationForm.name,
+      building: locationForm.building,
+      floor: locationForm.floor,
+      openTime: locationForm.openTime,
+      closeTime: locationForm.closeTime,
+      description: locationForm.description,
+      totalSeats: 0
+    }
+    if (editingLocation.value) {
+      await locationAPI.update(editingLocation.value.id, data)
+      ElMessage.success('地点已更新')
+    } else {
+      await locationAPI.create(data)
+      ElMessage.success('地点已创建')
+    }
+    showLocationDialog.value = false
+    resetLocationForm()
+    fetchLocations()
+  } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
+}
+
+async function deleteLocation(id) {
+  try {
+    await ElMessageBox.confirm('确认删除该地点？相关座位也将清除。', '删除确认', { type: 'warning' })
+    await locationAPI.delete(id)
+    ElMessage.success('已删除')
+    fetchLocations()
+    if (selectedLocation.value?.id === id) selectedLocation.value = null
+  } catch { /* cancelled */ }
+}
+
+async function batchAddSeats() {
+  if (!selectedLocation.value) return
+  saving.value = true
+  try {
+    const seats = []
+    for (let r = 0; r < seatForm.rows; r++) {
+      for (let c = 0; c < seatForm.cols; c++) {
+        const num = r * seatForm.cols + c + 1
+        seats.push({
+          seat_code: `${seatForm.prefix}-${String(num).padStart(2, '0')}`,
+          row_num: r + 1,
+          col_num: c + 1,
+          has_power: seatForm.powerDefault ? 1 : 0
+        })
+      }
+    }
+    await locationAPI.batchCreateSeats(selectedLocation.value.id, seats)
+    ElMessage.success(`已添加 ${seats.length} 个座位`)
+    showAddSeatsDialog.value = false
+    fetchSeats(selectedLocation.value.id)
+    fetchLocations()
+  } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
+}
+
+async function clearSeats(locationId) {
+  try {
+    await ElMessageBox.confirm('确认清空该地点所有座位？', '清空确认', { type: 'warning' })
+    // Reuse delete + recreate approach: delete location data then refresh
+    ElMessage.info('请删除并重建该地点以清空座位')
+  } catch { /* cancelled */ }
+}
+
+async function reviewAdminApp(id, action) {
+  try {
+    await adminAPI.reviewApplication(id, action)
+    ElMessage.success(action === 'approve' ? '已通过' : '已拒绝')
+    fetchApplications()
+    fetchUsers()
+  } catch (err) { ElMessage.error(err.message) }
 }
 
 async function reviewPost(id, action) {
@@ -255,9 +504,15 @@ async function rejectVolunteer(id) {
 }
 
 watch(activeSection, (val) => {
-  const fetchers = { posts: fetchPendingPosts, comments: fetchPendingComments, books: fetchPendingBooks, users: fetchUsers, volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats }
+  const fetchers = {
+    posts: fetchPendingPosts, comments: fetchPendingComments, books: fetchPendingBooks,
+    users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
+    volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
+  }
   fetchers[val]?.()
 })
+
+watch(showLocationDialog, (val) => { if (!val) resetLocationForm() })
 
 onMounted(() => { fetchPendingPosts(); fetchStats() })
 </script>
@@ -285,10 +540,19 @@ onMounted(() => { fetchPendingPosts(); fetchStats() })
 .review-excerpt { font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; }
 .reward { font-size: 0.8rem; color: var(--color-green); margin-left: 8px; }
 .review-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+.app-time { font-size: 0.75rem; color: var(--color-text-secondary); }
 .empty-text { text-align: center; color: var(--color-text-secondary); padding: 40px; }
 
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .stat-card { padding: 20px; text-align: center; }
 .stat-val { display: block; font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: var(--color-accent); margin-bottom: 4px; }
 .stat-lbl { display: block; font-size: 0.85rem; color: var(--color-text-secondary); }
+
+/* Seat grid */
+.seat-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px; background: var(--glass-bg-card); border-radius: 8px; }
+.seat-cell { width: 48px; height: 36px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.7rem; font-family: var(--font-mono); font-weight: 600; }
+.seat-available { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.seat-occupied { background: #f5c6cb; color: #721c24; border: 1px solid #f1b0b7; }
+.seat-maintenance { background: #e2e3e5; color: #6c757d; border: 1px solid #d6d8db; }
+.power-icon { font-size: 0.55rem; }
 </style>

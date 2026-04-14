@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="350" viewBox="0 0 1400 350">
+  <!-- Mid mountains — moderate height, with pine tree silhouettes -->
+  <defs>
+    <linearGradient id="mid-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C2C2C" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#2C2C2C" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Main mountain range -->
+  <path d="M0,300 Q80,220 180,270 Q260,180 380,240 Q480,150 600,210 Q700,160 820,220 Q920,140 1040,200 Q1140,170 1260,220 Q1340,200 1400,240 L1400,350 L0,350Z"
+        fill="#2C2C2C" opacity="0.07"/>
+  <!-- Pine tree silhouettes on ridge -->
+  <g fill="#2C2C2C" opacity="0.06">
+    <polygon points="380,238 383,210 386,238"/>
+    <polygon points="390,235 393,200 396,235"/>
+    <polygon points="600,208 604,175 608,208"/>
+    <polygon points="612,205 616,168 620,205"/>
+    <polygon points="1040,198 1044,165 1048,198"/>
+    <polygon points="1050,196 1054,158 1058,196"/>
+  </g>
+  <!-- Mist between peaks -->
+  <ellipse cx="250" cy="270" rx="120" ry="10" fill="#F5F0E8" opacity="0.4"/>
+  <ellipse cx="700" cy="250" rx="100" ry="8" fill="#F5F0E8" opacity="0.35"/>
+  <ellipse cx="1100" cy="260" rx="130" ry="10" fill="#F5F0E8" opacity="0.3"/>
+</svg>
