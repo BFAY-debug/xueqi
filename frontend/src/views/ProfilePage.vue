@@ -6,9 +6,23 @@
       <div class="profile-layout" v-if="userStore.user">
         <!-- Left Sidebar - User Info -->
         <div class="profile-sidebar">
+          <!-- Progress Ring + Avatar -->
           <div class="profile-avatar-lg">
-            <img v-if="userStore.user.avatar_url" :src="userStore.user.avatar_url" alt="avatar" />
-            <div v-else class="avatar-placeholder-lg">{{ userStore.user.nickname?.[0] || '学' }}</div>
+            <div class="progress-ring-wrapper">
+              <svg class="progress-ring" width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="62" stroke="var(--color-border-light)" stroke-width="4" fill="none" />
+                <circle cx="70" cy="70" r="62" :stroke="levelColor" stroke-width="4" fill="none"
+                  stroke-linecap="round"
+                  :stroke-dasharray="ringCircumference"
+                  :stroke-dashoffset="ringOffset"
+                  transform="rotate(-90 70 70)"
+                  class="progress-ring__circle" />
+              </svg>
+              <div class="avatar-inside-ring">
+                <img v-if="userStore.user.avatar_url" :src="userStore.user.avatar_url" alt="avatar" />
+                <div v-else class="avatar-placeholder-lg">{{ userStore.user.nickname?.[0] || '学' }}</div>
+              </div>
+            </div>
             <el-button size="small" @click="triggerUpload" class="avatar-upload-btn">更换头像</el-button>
             <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="uploadAvatar" />
           </div>
@@ -23,6 +37,19 @@
             <span class="profile-points">{{ stats.total_points || 0 }} 积分</span>
           </div>
 
+          <!-- Streak Bar -->
+          <div class="streak-section">
+            <div class="streak-header">
+              <span class="streak-flame" :class="streakClass">{{ streakIcon }}</span>
+              <span class="streak-count">{{ stats.checkin_streak || 0 }} 天连续</span>
+            </div>
+            <div class="streak-week">
+              <span v-for="(d, i) in weekDays" :key="i" class="streak-day" :class="{ done: checkedDays.includes(i) }">
+                {{ d }}
+              </span>
+            </div>
+          </div>
+
           <div class="profile-stats-row">
             <div class="profile-stat">
               <span class="ps-val">{{ Math.floor((stats.total_study_minutes || 0) / 60) }}</span>
@@ -33,8 +60,8 @@
               <span class="ps-lbl">番茄钟</span>
             </div>
             <div class="profile-stat">
-              <span class="ps-val">{{ stats.checkin_streak || 0 }}</span>
-              <span class="ps-lbl">连续签到</span>
+              <span class="ps-val">{{ stats.total_points || 0 }}</span>
+              <span class="ps-lbl">总积分</span>
             </div>
           </div>
 
@@ -69,6 +96,32 @@
 
           <!-- Overview -->
           <div v-if="activeTab === 'overview'" class="tab-content">
+            <!-- Badge Grid -->
+            <div class="section-block">
+              <h4 class="section-label">成就徽章</h4>
+              <div class="badge-grid">
+                <div v-for="badge in badges" :key="badge.id" class="badge-card card" :class="{ unlocked: badge.unlocked }">
+                  <span class="badge-icon">{{ badge.icon }}</span>
+                  <span class="badge-name">{{ badge.name }}</span>
+                  <span class="badge-rarity" :class="`rarity-${badge.rarity}`">{{ badge.rarityLabel }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Weekly Study Chart -->
+            <div class="section-block">
+              <h4 class="section-label">本周修习</h4>
+              <div class="mini-chart">
+                <div class="chart-bars">
+                  <div v-for="(val, i) in weeklyStudy" :key="i" class="chart-col">
+                    <span class="chart-bar-val" v-if="val > 0">{{ val }}m</span>
+                    <div class="chart-bar" :style="{ height: Math.max(val / maxWeekly * 100, 4) + '%' }"></div>
+                    <span class="chart-day-label">{{ weekDays[i] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Recent Activity -->
             <div class="section-block">
               <h4 class="section-label">最近动态</h4>
@@ -251,6 +304,92 @@ const fileInput = ref(null)
 
 const editForm = reactive({ nickname: '', email: '', bio: '' })
 
+// Gamification computed
+const weekDays = ['一', '二', '三', '四', '五', '六', '日']
+
+// Level progress ring
+const levelThresholds = [0, 100, 300, 600, 1000, 2000, 5000]
+const levelProgress = computed(() => {
+  const lvl = userStore.user?.level_id || 1
+  const pts = stats.value.total_points || 0
+  const low = levelThresholds[Math.min(lvl - 1, levelThresholds.length - 1)] || 0
+  const high = levelThresholds[Math.min(lvl, levelThresholds.length - 1)] || (low + 1000)
+  if (high <= low) return 1
+  return Math.min(1, Math.max(0, (pts - low) / (high - low)))
+})
+const ringCircumference = 2 * Math.PI * 62
+const ringOffset = computed(() => ringCircumference * (1 - levelProgress.value))
+const levelColor = computed(() => {
+  const lvl = userStore.user?.level_id || 1
+  const colors = ['#4CAF50', '#2196F3', '#FF5722', '#E91E63', '#9C27B0', '#8B2500']
+  return colors[Math.min(lvl - 1, colors.length - 1)]
+})
+
+// Streak
+const checkedDays = computed(() => {
+  // Simple: if streak > 0, mark recent days. For now, mark today and previous based on streak.
+  const streak = stats.value.checkin_streak || 0
+  const today = (new Date().getDay() + 6) % 7 // Monday=0
+  const days = []
+  for (let i = 0; i < Math.min(streak, 7); i++) {
+    days.push((today - i + 7) % 7)
+  }
+  return days
+})
+
+const streakClass = computed(() => {
+  const s = stats.value.checkin_streak || 0
+  if (s >= 365) return 'streak-legendary'
+  if (s >= 100) return 'streak-gold'
+  if (s >= 30) return 'streak-silver'
+  if (s >= 7) return 'streak-bronze'
+  return ''
+})
+
+const streakIcon = computed(() => {
+  const s = stats.value.checkin_streak || 0
+  if (s >= 365) return '🔥'
+  if (s >= 100) return '🔥'
+  if (s >= 30) return '🔥'
+  if (s >= 7) return '🔥'
+  return '🕯'
+})
+
+// Badges (computed from stats)
+const badges = computed(() => {
+  const streak = stats.value.checkin_streak || 0
+  const studyMin = stats.value.total_study_minutes || 0
+  const pomodoros = stats.value.total_pomodoros || 0
+  const pts = stats.value.total_points || 0
+  const postCount = myPosts.value.length
+  return [
+    { id: 'streak-7', name: '七日如一', icon: '🔥', unlocked: streak >= 7, rarity: 'common', rarityLabel: '凡' },
+    { id: 'streak-30', name: '月常不懈', icon: '🌙', unlocked: streak >= 30, rarity: 'rare', rarityLabel: '珍' },
+    { id: 'streak-100', name: '百日成钢', icon: '⚔️', unlocked: streak >= 100, rarity: 'epic', rarityLabel: '极' },
+    { id: 'study-10h', name: '初窥门径', icon: '📖', unlocked: studyMin >= 600, rarity: 'common', rarityLabel: '凡' },
+    { id: 'study-50h', name: '小有所成', icon: '📚', unlocked: studyMin >= 3000, rarity: 'rare', rarityLabel: '珍' },
+    { id: 'study-200h', name: '博览群书', icon: '🏛️', unlocked: studyMin >= 12000, rarity: 'epic', rarityLabel: '极' },
+    { id: 'post-1', name: '初出茅庐', icon: '✍️', unlocked: postCount >= 1, rarity: 'common', rarityLabel: '凡' },
+    { id: 'post-10', name: '文思泉涌', icon: '📝', unlocked: postCount >= 10, rarity: 'rare', rarityLabel: '珍' },
+    { id: 'pomodoro-10', name: '番茄十枚', icon: '🍅', unlocked: pomodoros >= 10, rarity: 'common', rarityLabel: '凡' },
+    { id: 'pomodoro-50', name: '番茄丰收', icon: '🍅', unlocked: pomodoros >= 50, rarity: 'rare', rarityLabel: '珍' },
+    { id: 'points-1000', name: '学富五车', icon: '💎', unlocked: pts >= 1000, rarity: 'epic', rarityLabel: '极' },
+    { id: 'points-5000', name: '一代宗师', icon: '👑', unlocked: pts >= 5000, rarity: 'legendary', rarityLabel: '传' },
+  ]
+})
+
+// Weekly study chart (simulated from total — evenly distributed for demo)
+const weeklyStudy = computed(() => {
+  const total = stats.value.total_study_minutes || 0
+  const avg = Math.round(total / 30) // rough daily average
+  // Generate slight variation
+  return [0,1,2,3,4,5,6].map(i => {
+    const dayOfWeek = (new Date().getDay() + 6) % 7
+    return i <= dayOfWeek ? Math.round(avg * (0.6 + Math.random() * 0.8)) : 0
+  })
+})
+const maxWeekly = computed(() => Math.max(...weeklyStudy.value, 1))
+
 // Watch route query for tab
 watch(() => route.query.tab, (tab) => {
   if (tab) activeTab.value = tab
@@ -354,15 +493,88 @@ onMounted(() => {
 
 /* Left Sidebar */
 .profile-sidebar { width: 280px; flex-shrink: 0; }
+
+/* Progress Ring */
 .profile-avatar-lg { text-align: center; margin-bottom: 12px; }
-.profile-avatar-lg img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-border); }
-.avatar-placeholder-lg { width: 120px; height: 120px; border-radius: 50%; background: var(--color-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-family: var(--font-title); margin: 0 auto; }
+.progress-ring-wrapper {
+  position: relative;
+  width: 140px; height: 140px;
+  margin: 0 auto;
+}
+.progress-ring {
+  position: absolute;
+  top: 0; left: 0;
+  transform: rotate(-90deg);
+}
+.progress-ring__circle {
+  transition: stroke-dashoffset 1.5s ease;
+}
+.avatar-inside-ring {
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 124px; height: 124px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.avatar-inside-ring img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-placeholder-lg {
+  width: 124px; height: 124px; border-radius: 50%;
+  background: var(--color-accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; font-family: var(--font-title);
+}
 .avatar-upload-btn { margin-top: 8px; }
 .profile-name { font-family: var(--font-title); font-size: 1.4rem; text-align: center; margin-bottom: 2px; }
 .profile-username { text-align: center; font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px; }
 .profile-bio { font-size: 0.9rem; color: var(--color-text-secondary); text-align: center; margin-bottom: 12px; padding: 0 12px; }
 .profile-level { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
 .profile-points { font-size: 0.85rem; color: var(--color-gold); font-weight: 600; }
+
+/* Streak Section */
+.streak-section {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--border-radius-sm);
+}
+.streak-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.streak-flame { font-size: 1.2rem; }
+.streak-flame.streak-bronze { filter: brightness(1.2); }
+.streak-flame.streak-silver { filter: brightness(1.3); }
+.streak-flame.streak-gold { filter: brightness(1.4); }
+.streak-flame.streak-legendary { filter: brightness(1.5); }
+.streak-count {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.streak-week {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.streak-day {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem;
+  background: var(--glass-bg-card);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+.streak-day.done {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
 
 .profile-stats-row { display: flex; justify-content: center; gap: 20px; margin-bottom: 16px; padding: 12px 0; border-top: 1px solid var(--color-border-light); border-bottom: 1px solid var(--color-border-light); }
 .profile-stat { text-align: center; }
@@ -387,6 +599,84 @@ onMounted(() => {
 /* Section Blocks */
 .section-block { margin-bottom: 24px; }
 .section-label { font-family: var(--font-title); font-size: 1rem; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
+
+/* Badge Grid */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  text-align: center;
+  opacity: 0.4;
+  transition: all 0.3s;
+}
+.badge-card.unlocked {
+  opacity: 1;
+}
+.badge-card.unlocked:hover {
+  transform: translateY(-4px);
+}
+.badge-icon { font-size: 1.8rem; }
+.badge-name {
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+}
+.badge-rarity {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.rarity-common { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+.rarity-rare { background: rgba(33, 150, 243, 0.15); color: var(--color-blue); }
+.rarity-epic { background: rgba(156, 39, 176, 0.15); color: var(--level-5, #9C27B0); }
+.rarity-legendary { background: rgba(184, 134, 11, 0.15); color: var(--color-gold); }
+
+/* Weekly Study Chart */
+.mini-chart {
+  padding: 16px;
+  background: var(--glass-bg-card);
+  border: var(--glass-border);
+  border-radius: var(--border-radius);
+}
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 120px;
+}
+.chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.chart-bar-val {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.chart-bar {
+  width: 100%;
+  max-width: 32px;
+  background: linear-gradient(to top, var(--color-green), rgba(46, 92, 76, 0.5));
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  transition: height 0.6s ease;
+}
+.chart-day-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+}
 
 /* Activity */
 .activity-list { display: flex; flex-direction: column; gap: 4px; }

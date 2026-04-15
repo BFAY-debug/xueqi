@@ -1,7 +1,9 @@
 <template>
   <div class="page-wrapper theme-study">
     <AppNavbar />
-    <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
+
+    <!-- Normal Mode: Room Selection -->
+    <div class="page-content container" v-if="!immersiveMode" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton />
       <div class="page-header-decorated">
         <h2 class="page-title">🏮 书院</h2>
@@ -67,13 +69,16 @@
                 </el-radio-group>
               </div>
               <div class="timer-actions">
-                <el-button v-if="!isStudying" type="primary" @click="startStudy" :loading="actionLoading">
-                  开始修习
-                </el-button>
+                <button v-if="!isStudying" class="btn-primary" @click="startStudy" :disabled="actionLoading">
+                  {{ actionLoading ? '...' : '开始修习' }}
+                </button>
                 <template v-else>
-                  <el-button type="danger" @click="endStudy" :loading="actionLoading">
-                    结束修习
-                  </el-button>
+                  <button class="btn-primary" style="background: var(--color-accent-bright);" @click="enterImmersive">
+                    沉浸模式
+                  </button>
+                  <button class="btn-outline" style="border-color: var(--color-accent-bright); color: var(--color-accent-bright);" @click="endStudy" :disabled="actionLoading">
+                    {{ actionLoading ? '...' : '结束修习' }}
+                  </button>
                 </template>
               </div>
             </div>
@@ -81,13 +86,69 @@
 
           <!-- Actions -->
           <div class="detail-actions">
-            <el-button v-if="!hasJoined" type="primary" @click="joinRoom" :loading="actionLoading">入斋</el-button>
-            <el-button v-else @click="leaveRoom" :loading="actionLoading">离开书院</el-button>
+            <button v-if="!hasJoined" class="btn-primary" @click="joinRoom" :disabled="actionLoading">
+              {{ actionLoading ? '...' : '入斋' }}
+            </button>
+            <button v-else class="btn-outline" @click="leaveRoom" :disabled="actionLoading">
+              {{ actionLoading ? '...' : '离开书院' }}
+            </button>
           </div>
         </div>
       </div>
     </div>
-    <AppFooter />
+
+    <!-- Immersive Mode: Full-screen Study Environment -->
+    <Transition name="immersive-fade">
+      <div v-if="immersiveMode" class="immersive-overlay" :class="timeOfDayClass">
+        <!-- Ink Wash Background Layers -->
+        <div class="immersive-bg">
+          <img
+            v-for="layer in currentScene"
+            :key="layer.src"
+            :src="layer.src"
+            class="immersive-layer"
+            :class="layer.cls"
+            alt=""
+          />
+        </div>
+        <div class="immersive-dim"></div>
+
+        <!-- Glass Panel: Timer (top-left) -->
+        <div class="panel panel-timer glass-card">
+          <div class="immersive-timer">{{ timerDisplay }}</div>
+          <div class="immersive-room-name">{{ selectedRoom?.name }}</div>
+          <div class="panel-timer-controls">
+            <button class="btn-outline btn-sm" @click="exitImmersive">退出沉浸</button>
+            <button class="btn-outline btn-sm" style="border-color: var(--color-accent-bright); color: var(--color-accent-bright);" @click="endStudy">结束修习</button>
+          </div>
+        </div>
+
+        <!-- Glass Panel: Participants (right) -->
+        <div class="panel panel-participants glass-card">
+          <div class="panel-label">同窗 {{ participants.length }} 人</div>
+          <div class="immersive-avatars">
+            <div class="immersive-avatar" v-for="p in participants.slice(0, 8)" :key="p.user_id"
+              :title="p.nickname || p.username">
+              {{ (p.nickname || p.username || '?')[0] }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Glass Panel: Ambient Sound (bottom-left) -->
+        <div class="panel panel-sound glass-card">
+          <AmbientSoundMixer :compact="isMobile" />
+        </div>
+
+        <!-- Bottom controls -->
+        <div class="panel panel-bottom glass-card">
+          <button class="btn-outline btn-sm" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+            {{ isFullscreen ? '退出全屏' : '全屏' }}
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <AppFooter v-if="!immersiveMode" />
   </div>
 </template>
 
@@ -96,12 +157,46 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
+
+// Scene definitions — each room gets a scene based on room.id % 4
+const scenes = [
+  // Scene 0: Mountains
+  [
+    { src: new URL('@/assets/textures/ink-mountains-far.svg', import.meta.url).href, cls: 'layer-far' },
+    { src: new URL('@/assets/textures/ink-mist.svg', import.meta.url).href, cls: 'layer-mist' },
+    { src: new URL('@/assets/textures/ink-mountains-mid.svg', import.meta.url).href, cls: 'layer-mid' },
+    { src: new URL('@/assets/textures/ink-clouds.svg', import.meta.url).href, cls: 'layer-cloud' },
+    { src: new URL('@/assets/textures/ink-mountains-near.svg', import.meta.url).href, cls: 'layer-near' },
+  ],
+  // Scene 1: Bamboo + Moon
+  [
+    { src: new URL('@/assets/textures/ink-moon.svg', import.meta.url).href, cls: 'layer-moon' },
+    { src: new URL('@/assets/textures/bamboo.svg', import.meta.url).href, cls: 'layer-bamboo' },
+    { src: new URL('@/assets/textures/ink-mist.svg', import.meta.url).href, cls: 'layer-mist' },
+    { src: new URL('@/assets/textures/ink-clouds.svg', import.meta.url).href, cls: 'layer-cloud' },
+  ],
+  // Scene 2: Water + Moon
+  [
+    { src: new URL('@/assets/textures/ink-moon.svg', import.meta.url).href, cls: 'layer-moon' },
+    { src: new URL('@/assets/textures/ink-mountains-far.svg', import.meta.url).href, cls: 'layer-far' },
+    { src: new URL('@/assets/textures/ink-clouds.svg', import.meta.url).href, cls: 'layer-cloud' },
+    { src: new URL('@/assets/textures/ink-water.svg', import.meta.url).href, cls: 'layer-water' },
+  ],
+  // Scene 3: Pine + Mountains
+  [
+    { src: new URL('@/assets/textures/ink-mountains-far.svg', import.meta.url).href, cls: 'layer-far' },
+    { src: new URL('@/assets/textures/pine-branch.svg', import.meta.url).href, cls: 'layer-pine' },
+    { src: new URL('@/assets/textures/ink-mist.svg', import.meta.url).href, cls: 'layer-mist' },
+    { src: new URL('@/assets/textures/ink-mountains-near.svg', import.meta.url).href, cls: 'layer-near' },
+  ],
+]
 
 const rooms = ref([])
 const selectedRoom = ref(null)
@@ -111,7 +206,24 @@ const isStudying = ref(false)
 const activeSessionId = ref(null)
 const actionLoading = ref(false)
 const timerSeconds = ref(0)
+const immersiveMode = ref(false)
+const isFullscreen = ref(false)
+const isMobile = ref(window.innerWidth < 768)
 let timerInterval = null
+
+const currentScene = computed(() => {
+  if (!selectedRoom.value) return scenes[0]
+  return scenes[selectedRoom.value.id % 4]
+})
+
+const timeOfDayClass = computed(() => {
+  const h = new Date().getHours()
+  if (h < 6) return 'time-night'
+  if (h < 11) return 'time-morning'
+  if (h < 17) return 'time-afternoon'
+  if (h < 20) return 'time-evening'
+  return 'time-night'
+})
 
 const timerDisplay = computed(() => {
   const m = Math.floor(timerSeconds.value / 60).toString().padStart(2, '0')
@@ -193,13 +305,42 @@ async function endStudy() {
     clearInterval(timerInterval)
     isStudying.value = false
     activeSessionId.value = null
+    if (immersiveMode.value) exitImmersive()
     ElMessage.success(`修习结束，共 ${res.data.durationMinutes} 分钟`)
   } catch (err) { ElMessage.error(err.message) }
   finally { actionLoading.value = false }
 }
 
-onMounted(fetchRooms)
-onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
+function enterImmersive() {
+  immersiveMode.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+function exitImmersive() {
+  immersiveMode.value = false
+  document.body.style.overflow = ''
+  if (isFullscreen.value) toggleFullscreen()
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => { isFullscreen.value = true }).catch(() => {})
+  } else {
+    document.exitFullscreen().then(() => { isFullscreen.value = false }).catch(() => {})
+  }
+}
+
+function onResize() { isMobile.value = window.innerWidth < 768 }
+
+onMounted(() => {
+  fetchRooms()
+  window.addEventListener('resize', onResize)
+})
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval)
+  window.removeEventListener('resize', onResize)
+  document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>
@@ -245,9 +386,202 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 .timer-actions { display: flex; justify-content: center; gap: 12px; }
 .detail-actions { text-align: center; margin-top: 16px; }
 
+/* ═══════════════════ Immersive Mode ═══════════════════ */
+.immersive-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+
+.immersive-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.immersive-layer {
+  position: absolute;
+  pointer-events: none;
+}
+
+.layer-far {
+  bottom: 0; width: 140%; left: -20%;
+  filter: brightness(1.5);
+}
+.layer-mid {
+  bottom: 0; width: 130%; left: -10%;
+  filter: brightness(1.3);
+}
+.layer-near {
+  bottom: 0; width: 120%; left: -5%;
+  filter: brightness(1.2);
+}
+.layer-mist {
+  bottom: 15%; width: 110%; left: -5%;
+  opacity: 0.7;
+  animation: mist-drift 30s ease-in-out infinite alternate;
+}
+.layer-cloud {
+  bottom: 25%; width: 50%; left: 10%;
+  opacity: 0.6;
+  animation: cloud-drift 40s ease-in-out infinite alternate;
+}
+.layer-moon {
+  top: 8%; right: 12%; width: 150px;
+  opacity: 0.8;
+  animation: moon-float 12s ease-in-out infinite alternate;
+}
+.layer-bamboo {
+  left: -5%; bottom: 0; width: 200px;
+  filter: brightness(1.4);
+}
+.layer-pine {
+  top: -10%; right: -20px; width: 250px;
+  opacity: 0.15;
+  filter: brightness(1.4);
+}
+.layer-water {
+  bottom: 0; width: 140%; left: -20%;
+  opacity: 0.5;
+  animation: water-float 6s ease-in-out infinite alternate;
+}
+
+@keyframes mist-drift {
+  from { transform: translateX(-3%); }
+  to { transform: translateX(3%); }
+}
+@keyframes cloud-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(15%); }
+}
+@keyframes moon-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+@keyframes water-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+/* Dim overlay */
+.immersive-dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+}
+
+/* Time-of-day filters */
+.time-morning .immersive-bg { filter: brightness(0.9) saturate(0.7) sepia(0.05); }
+.time-afternoon .immersive-bg { filter: brightness(0.85) saturate(0.8); }
+.time-evening .immersive-bg { filter: brightness(0.6) saturate(0.5) sepia(0.15); }
+.time-night .immersive-bg { filter: brightness(0.35) saturate(0.3); }
+.time-night .immersive-dim { background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.6) 100%); }
+
+/* Glass Panels */
+.panel {
+  position: absolute;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--border-radius);
+  padding: 16px;
+}
+
+.panel-timer {
+  top: 24px; left: 24px;
+}
+.immersive-timer {
+  font-family: var(--font-mono);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #f5f0e8;
+  letter-spacing: 4px;
+}
+.immersive-room-name {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  color: rgba(245, 240, 232, 0.6);
+  margin-top: 4px;
+}
+.panel-timer-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.panel-timer-controls .btn-outline {
+  border-color: rgba(245, 240, 232, 0.3);
+  color: rgba(245, 240, 232, 0.7);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+.panel-timer-controls .btn-outline:hover {
+  background: rgba(245, 240, 232, 0.1);
+}
+
+.panel-participants {
+  top: 24px; right: 24px;
+}
+.panel-label {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  color: rgba(245, 240, 232, 0.6);
+  margin-bottom: 8px;
+}
+.immersive-avatars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.immersive-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--color-green); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-title); font-size: 0.8rem;
+}
+
+.panel-sound {
+  bottom: 24px; left: 24px;
+}
+
+.panel-bottom {
+  bottom: 24px; right: 24px;
+}
+.panel-bottom .btn-outline {
+  border-color: rgba(245, 240, 232, 0.3);
+  color: rgba(245, 240, 232, 0.7);
+  padding: 6px 12px;
+}
+.panel-bottom .btn-outline:hover {
+  background: rgba(245, 240, 232, 0.1);
+}
+
+/* Immersive Transition */
+.immersive-fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+.immersive-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.immersive-fade-enter-from,
+.immersive-fade-leave-to {
+  opacity: 0;
+}
+
+/* ═══════════════════ Responsive ═══════════════════ */
 @media (max-width: 768px) {
   .rooms-layout { flex-direction: column; }
   .room-list { flex: none; flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
   .room-item { min-width: 200px; }
+
+  .panel-timer { top: 16px; left: 16px; padding: 12px; }
+  .immersive-timer { font-size: 2.5rem; }
+  .panel-participants { top: 16px; right: 16px; }
+  .immersive-avatars { flex-direction: row; flex-wrap: wrap; }
+  .panel-sound { bottom: 16px; left: 16px; }
+  .panel-bottom { bottom: 16px; right: 16px; }
 }
 </style>

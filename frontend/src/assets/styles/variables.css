@@ -25,7 +25,7 @@
   --glass-shadow: 0 4px 24px rgba(44, 44, 44, 0.06);
 
   /* Fonts */
-  --font-title: "楷体", "STKaiti", "KaiTi", serif;
+  --font-title: "LXGW WenKai", "楷体", "STKaiti", "KaiTi", serif;
   --font-body: "思源宋体", "Noto Serif SC", "宋体", serif;
   --font-mono: "Fira Code", monospace;
 
@@ -42,6 +42,21 @@
   --level-4: #E91E63;
   --level-5: #9C27B0;
   --level-6: #8B2500;
+
+  /* Ink wash "five colors" system (墨分五色) */
+  --ink-heavy: #1a1a1a;
+  --ink-dark: #2C2C2C;
+  --ink-medium: #555555;
+  --ink-light: #8B8B8B;
+  --ink-faint: #B8B8B8;
+
+  /* Accent expansion */
+  --color-accent-bright: #e84a3a;
+  --color-accent-muted: #a67c52;
+
+  /* Glass effect improvements */
+  --glass-bg-hover: rgba(245, 240, 232, 0.92);
+  --glass-border-accent: 1px solid rgba(139, 37, 0, 0.15);
 }
 
 /* ═══════════════════ Dark Theme ═══════════════════ */
@@ -71,4 +86,19 @@
   --level-4: #EC407A;
   --level-5: #AB47BC;
   --level-6: #c44a3a;
+
+  /* Ink wash "five colors" system — dark mode */
+  --ink-heavy: #f0e8d8;
+  --ink-dark: #e8e0d0;
+  --ink-medium: #a0a0a0;
+  --ink-light: #6a6a6a;
+  --ink-faint: #4a4a4a;
+
+  /* Accent expansion — dark mode */
+  --color-accent-bright: #e84a3a;
+  --color-accent-muted: #b88a5a;
+
+  /* Glass effect improvements — dark mode */
+  --glass-bg-hover: rgba(45, 45, 45, 0.92);
+  --glass-border-accent: 1px solid rgba(196, 74, 58, 0.2);
 }

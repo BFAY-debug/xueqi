@@ -58,21 +58,23 @@ defineProps({
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--color-bg-secondary);
+  background: linear-gradient(90deg, var(--color-bg-secondary) 0%, rgba(139, 37, 0, 0.06) 50%, var(--color-bg-secondary) 100%);
+  background-size: 200% 100%;
   margin: 0 auto 12px;
-  animation: shimmer 1.5s ease-in-out infinite;
+  animation: ink-shimmer 2s ease-in-out infinite;
 }
 
 .sk-line {
   height: 14px;
   border-radius: 7px;
-  background: var(--color-bg-secondary);
+  background: linear-gradient(90deg, var(--color-bg-secondary) 0%, rgba(139, 37, 0, 0.06) 50%, var(--color-bg-secondary) 100%);
+  background-size: 200% 100%;
   margin: 8px 0;
-  animation: shimmer 1.5s ease-in-out infinite;
+  animation: ink-shimmer 2s ease-in-out infinite;
 }
 
-@keyframes shimmer {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+@keyframes ink-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

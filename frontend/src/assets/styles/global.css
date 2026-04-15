@@ -194,6 +194,91 @@ h3 { font-size: 1.5rem; }
 .text-muted { color: var(--color-text-secondary); }
 .text-title { font-family: var(--font-title); }
 
+/* ── Element Plus Theme Overrides ────────────────────── */
+
+:root {
+  --el-color-primary: #8B2500;
+  --el-color-primary-light-3: #a84d33;
+  --el-color-primary-light-5: #c47a66;
+  --el-color-primary-light-7: #d9a08f;
+  --el-color-primary-light-9: #f0cfc6;
+  --el-color-primary-dark-2: #6f1e00;
+  --el-color-success: #2E5C4C;
+  --el-color-warning: #B8860B;
+  --el-color-danger: #c23a2b;
+  --el-color-info: #4A6B8A;
+  --el-border-radius-base: 8px;
+  --el-font-family: var(--font-body);
+  --el-bg-color: var(--glass-bg-card);
+  --el-fill-color-blank: var(--glass-bg-card);
+}
+
+.el-dialog {
+  background: var(--glass-bg-card) !important;
+  border: var(--glass-border) !important;
+  border-radius: var(--border-radius) !important;
+  box-shadow: 0 12px 48px rgba(44, 44, 44, 0.12) !important;
+}
+
+.el-dialog__header {
+  font-family: var(--font-title);
+}
+
+.el-input__wrapper {
+  background: var(--glass-bg-card) !important;
+  border-color: var(--color-border) !important;
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--color-accent);
+  --el-button-border-color: var(--color-accent);
+  --el-button-hover-bg-color: var(--color-accent-hover);
+  --el-button-hover-border-color: var(--color-accent-hover);
+}
+
+.el-tag {
+  border-radius: 4px;
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-header-bg-color: var(--color-bg-secondary);
+  --el-table-row-hover-bg-color: var(--color-accent-light);
+  font-family: var(--font-body);
+}
+
+.el-pagination {
+  --el-pagination-button-bg-color: transparent;
+  font-family: var(--font-body);
+}
+
+/* ── Card Ink Texture Hover ──────────────────────────── */
+
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 120px;
+  height: 80px;
+  background-image: url('../textures/ink-dots.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.card:hover::after {
+  opacity: 0.06;
+}
+
 .vertical-text {
   writing-mode: vertical-rl;
   text-orientation: mixed;
@@ -348,15 +433,46 @@ h3 { font-size: 1.5rem; }
 
 /* ── Page Transition ─────────────────────────────── */
 
-.page-fade-enter-active,
-.page-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+.page-fade-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.page-fade-enter-from,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
 .page-fade-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+}
+
+/* ── Ink Ripple Effect ────────────────────────────── */
+
+.btn-primary,
+.btn-outline {
+  position: relative;
+  overflow: hidden;
+}
+
+.ink-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%);
+  transform: scale(0);
+  animation: ink-ripple-expand 0.6s ease-out forwards;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes ink-ripple-expand {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 /* ── Reduced Motion ──────────────────────────────── */
