@@ -35,8 +35,27 @@ const routes = [
     component: () => import('@/views/CommunityPage.vue')
   },
   {
+    path: '/community/create',
+    component: () => import('@/views/KnowledgeEditPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/community/posts/:id/edit',
+    component: () => import('@/views/KnowledgeEditPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/community/posts/:id',
     component: () => import('@/views/PostDetailPage.vue')
+  },
+  {
+    path: '/community/proposals/create/:postId',
+    component: () => import('@/views/ProposalPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/community/proposals/:id',
+    component: () => import('@/views/ProposalPage.vue')
   },
   {
     path: '/leaderboard',
@@ -51,6 +70,10 @@ const routes = [
     path: '/admin',
     component: () => import('@/views/AdminPage.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: () => import('@/views/NotFoundPage.vue')
   }
 ]
 

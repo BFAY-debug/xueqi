@@ -1,10 +1,11 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-books">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <router-link to="/books" class="back-link">← 返回书海</router-link>
+      <BackButton fallback="/books">返回书海</BackButton>
 
-      <div class="book-detail glass-card" v-if="book">
+      <AppLoading v-if="loading" type="detail" :count="1" />
+      <div class="book-detail glass-card" v-else-if="book">
         <div class="detail-layout">
           <div class="detail-cover">
             <img v-if="book.cover_url" :src="book.cover_url" :alt="book.title" />
@@ -49,7 +50,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AppLoading from '@/components/AppLoading.vue'
 import { bookAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
@@ -59,16 +62,19 @@ const userStore = useUserStore()
 const bookId = parseInt(route.params.id, 10)
 
 const book = ref(null)
+const loading = ref(true)
 const collected = ref(false)
 const myRating = ref(0)
 const myReview = ref('')
 const ratingLoading = ref(false)
 
 async function fetchBook() {
+  loading.value = true
   try {
     const res = await bookAPI.getById(bookId)
     book.value = res.data
   } catch (err) { ElMessage.error(err.message) }
+  finally { loading.value = false }
 }
 
 async function toggleCollect() {
@@ -95,7 +101,6 @@ onMounted(fetchBook)
 
 <style scoped>
 .page-wrapper { min-height: 100vh; background: var(--color-bg-primary); }
-.back-link { color: var(--color-accent); text-decoration: none; display: inline-block; margin-bottom: 16px; }
 
 .book-detail { padding: 32px; margin-bottom: 32px; }
 .detail-layout { display: flex; gap: 32px; }

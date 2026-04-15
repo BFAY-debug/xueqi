@@ -1,8 +1,12 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-leaderboard">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <h2 class="page-title">金榜题名</h2>
+      <BackButton />
+      <div class="page-header-decorated">
+        <h2 class="page-title">🏆 金榜题名</h2>
+        <p class="page-subtitle">学而优则仕</p>
+      </div>
 
       <!-- Tabs -->
       <div class="lb-tabs">
@@ -10,38 +14,41 @@
       </div>
 
       <!-- Podium -->
-      <div class="podium glass-card" v-if="top3.length >= 3">
-        <div class="podium-item second">
-          <div class="podium-avatar">{{ top3[1]?.nickname?.[0] || '?' }}</div>
-          <div class="podium-name">{{ top3[1]?.nickname || '-' }}</div>
-          <div class="podium-score">{{ scoreField(top3[1]) }}</div>
-          <div class="podium-medal">🥈</div>
+      <AppLoading v-if="loading" type="card" :count="3" />
+      <template v-else>
+        <div class="podium glass-card" v-if="top3.length >= 3">
+          <div class="podium-item second">
+            <div class="podium-avatar">{{ top3[1]?.nickname?.[0] || '?' }}</div>
+            <div class="podium-name">{{ top3[1]?.nickname || '-' }}</div>
+            <div class="podium-score">{{ scoreField(top3[1]) }}</div>
+            <div class="podium-medal">🥈</div>
+          </div>
+          <div class="podium-item first">
+            <div class="podium-avatar">{{ top3[0]?.nickname?.[0] || '?' }}</div>
+            <div class="podium-name">{{ top3[0]?.nickname || '-' }}</div>
+            <div class="podium-score">{{ scoreField(top3[0]) }}</div>
+            <div class="podium-medal">🥇</div>
+          </div>
+          <div class="podium-item third">
+            <div class="podium-avatar">{{ top3[2]?.nickname?.[0] || '?' }}</div>
+            <div class="podium-name">{{ top3[2]?.nickname || '-' }}</div>
+            <div class="podium-score">{{ scoreField(top3[2]) }}</div>
+            <div class="podium-medal">🥉</div>
+          </div>
         </div>
-        <div class="podium-item first">
-          <div class="podium-avatar">{{ top3[0]?.nickname?.[0] || '?' }}</div>
-          <div class="podium-name">{{ top3[0]?.nickname || '-' }}</div>
-          <div class="podium-score">{{ scoreField(top3[0]) }}</div>
-          <div class="podium-medal">🥇</div>
-        </div>
-        <div class="podium-item third">
-          <div class="podium-avatar">{{ top3[2]?.nickname?.[0] || '?' }}</div>
-          <div class="podium-name">{{ top3[2]?.nickname || '-' }}</div>
-          <div class="podium-score">{{ scoreField(top3[2]) }}</div>
-          <div class="podium-medal">🥉</div>
-        </div>
-      </div>
 
-      <!-- Rank List -->
-      <div class="rank-list card">
-        <div v-for="(u, i) in list" :key="u.id" class="rank-item">
-          <span class="rank-num">{{ i + 4 }}</span>
-          <span class="rank-avatar">{{ u.nickname?.[0] || '?' }}</span>
-          <span class="rank-name">{{ u.nickname || u.username }}</span>
-          <span class="rank-level">{{ u.level_badge }} {{ u.level_name }}</span>
-          <span class="rank-score">{{ scoreField(u) }}</span>
+        <!-- Rank List -->
+        <div class="rank-list card" v-if="list.length">
+          <div v-for="(u, i) in list" :key="u.id" class="rank-item">
+            <span class="rank-num">{{ i + 4 }}</span>
+            <span class="rank-avatar">{{ u.nickname?.[0] || '?' }}</span>
+            <span class="rank-name">{{ u.nickname || u.username }}</span>
+            <span class="rank-level">{{ u.level_badge }} {{ u.level_name }}</span>
+            <span class="rank-score">{{ scoreField(u) }}</span>
+          </div>
         </div>
-        <p v-if="!list.length" class="empty-text">暂无数据</p>
-      </div>
+        <AppEmpty v-else-if="!top3.length" text="暂无金榜数据" />
+      </template>
 
       <!-- My Rank -->
       <div v-if="myRank && userStore.isLoggedIn" class="my-rank card">
@@ -56,7 +63,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AppLoading from '@/components/AppLoading.vue'
+import AppEmpty from '@/components/AppEmpty.vue'
 import { leaderboardAPI } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
@@ -72,6 +82,7 @@ const tabs = [
 const activeTab = ref('total')
 const allData = ref([])
 const myRank = ref(null)
+const loading = ref(false)
 
 const top3 = computed(() => allData.value.slice(0, 3))
 const list = computed(() => allData.value.slice(3))
@@ -94,6 +105,7 @@ async function switchTab(tab) {
 }
 
 async function fetchData() {
+  loading.value = true
   try {
     const apis = {
       total: leaderboardAPI.getPoints,
@@ -105,6 +117,7 @@ async function fetchData() {
     const res = await apis[activeTab.value]({ pageSize: 50 })
     allData.value = res.data || []
   } catch { /* ignore */ }
+  finally { loading.value = false }
 
   if (userStore.isLoggedIn) {
     try {

@@ -87,6 +87,8 @@ async function toggleFeature(postId, featured) {
 // ── Comment Review ────────────────────────────────────
 
 async function getPendingComments(page = 1, pageSize = 20) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
@@ -96,8 +98,8 @@ async function getPendingComments(page = 1, pageSize = 20) {
      JOIN posts p ON p.id = c.post_id
      WHERE c.status = 'pending'
      ORDER BY c.created_at ASC
-     LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    []
   );
 
   const [countRows] = await db.execute("SELECT COUNT(*) AS total FROM comments WHERE status = 'pending'");
@@ -106,9 +108,9 @@ async function getPendingComments(page = 1, pageSize = 20) {
 }
 
 async function reviewComment(commentId, adminId, { action, reason }) {
-  const [rows] = await db.execute("SELECT * FROM comments WHERE id = ? AND status = 'pending'", [commentId]);
+  const [rows] = await db.execute("SELECT * FROM comments WHERE id = ? AND status != 'rejected'", [commentId]);
   if (rows.length === 0) {
-    const error = new Error('评论不存在或已审核');
+    const error = new Error('评论不存在或已处理');
     error.status = 404;
     throw error;
   }
@@ -127,8 +129,16 @@ async function reviewComment(commentId, adminId, { action, reason }) {
     [adminId, commentId, action, reason || null]
   );
 
-  // If approved, update post comment count and award points
-  if (action === 'approve') {
+  // If rejecting a published comment, decrease count
+  if (action === 'reject' && comment.status === 'published') {
+    await db.execute(
+      'UPDATE posts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = ?',
+      [comment.post_id]
+    );
+  }
+
+  // If approving a pending comment (edge case after migration), increase count
+  if (action === 'approve' && comment.status === 'pending') {
     await db.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?', [comment.post_id]);
 
     try {
@@ -144,10 +154,10 @@ async function reviewComment(commentId, adminId, { action, reason }) {
   }
 
   // Notify author
-  const title = action === 'approve' ? '评论审核通过' : '评论未通过审核';
+  const title = action === 'approve' ? '评论审核通过' : '评论已被删除';
   const content = action === 'approve'
-    ? '你的评论已通过审核并发布。'
-    : `你的评论未通过审核。${reason ? '原因：' + reason : ''}`;
+    ? '你的评论已通过审核。'
+    : `你的评论已被管理员删除。${reason ? '原因：' + reason : ''}`;
 
   await db.execute(
     `INSERT INTO notifications (user_id, type, title, content, related_id, related_type)
@@ -156,6 +166,100 @@ async function reviewComment(commentId, adminId, { action, reason }) {
   );
 
   return { commentId, status: newStatus };
+}
+
+// ── Admin: All Posts & Delete ──────────────────────────
+
+async function getAllPosts({ page = 1, pageSize = 20, status = '' }) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
+  const offset = (page - 1) * pageSize;
+  const conditions = [];
+  const params = [];
+
+  if (status) {
+    conditions.push('p.status = ?');
+    params.push(status);
+  }
+
+  const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
+
+  const [rows] = await db.execute(
+    `SELECT p.id, p.title, p.category, p.status, p.is_pinned, p.is_featured,
+            p.view_count, p.like_count, p.comment_count, p.created_at,
+            u.nickname AS author_name
+     FROM posts p
+     JOIN users u ON u.id = p.user_id
+     WHERE ${where}
+     ORDER BY p.created_at DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
+  );
+
+  const [countRows] = await db.execute(`SELECT COUNT(*) AS total FROM posts p WHERE ${where}`, params);
+  return { data: rows, total: countRows[0].total };
+}
+
+async function deletePost(postId) {
+  const [rows] = await db.execute('SELECT id FROM posts WHERE id = ?', [postId]);
+  if (rows.length === 0) {
+    const error = new Error('文章不存在');
+    error.status = 404;
+    throw error;
+  }
+  // CASCADE will delete post_versions, edit_proposals, post_tags, post_bookmarks, post_likes, comments
+  await db.execute('DELETE FROM posts WHERE id = ?', [postId]);
+  return { deleted: true };
+}
+
+// ── Admin: All Comments & Delete ──────────────────────
+
+async function getAllComments({ page = 1, pageSize = 20, postId = '' }) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
+  const offset = (page - 1) * pageSize;
+  const conditions = ["c.status = 'published'"];
+  const params = [];
+
+  if (postId) {
+    conditions.push('c.post_id = ?');
+    params.push(parseInt(postId, 10));
+  }
+
+  const where = conditions.join(' AND ');
+
+  const [rows] = await db.execute(
+    `SELECT c.id, c.post_id, c.content, c.is_anonymous, c.like_count, c.created_at,
+            u.nickname AS author_name, p.title AS post_title
+     FROM comments c
+     JOIN users u ON u.id = c.user_id
+     JOIN posts p ON p.id = c.post_id
+     WHERE ${where}
+     ORDER BY c.created_at DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
+  );
+
+  const [countRows] = await db.execute(`SELECT COUNT(*) AS total FROM comments c WHERE ${where}`, params);
+  return { data: rows, total: countRows[0].total };
+}
+
+async function deleteComment(commentId) {
+  const [rows] = await db.execute('SELECT * FROM comments WHERE id = ?', [commentId]);
+  if (rows.length === 0) {
+    const error = new Error('评论不存在');
+    error.status = 404;
+    throw error;
+  }
+  const comment = rows[0];
+  await db.execute('DELETE FROM comments WHERE id = ?', [commentId]);
+  if (comment.status === 'published') {
+    await db.execute(
+      'UPDATE posts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = ?',
+      [comment.post_id]
+    );
+  }
+  return { deleted: true };
 }
 
 // ── Review Logs ───────────────────────────────────────
@@ -195,5 +299,6 @@ function getServiceToken() {
 module.exports = {
   getPendingPosts, reviewPost, togglePin, toggleFeature,
   getPendingComments, reviewComment,
-  getReviewLogs
+  getReviewLogs,
+  getAllPosts, deletePost, getAllComments, deleteComment
 };

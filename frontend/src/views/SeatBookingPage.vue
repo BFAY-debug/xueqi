@@ -1,8 +1,12 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-seat">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <h2 class="page-title">占座</h2>
+      <BackButton />
+      <div class="page-header-decorated">
+        <h2 class="page-title">🪑 占座</h2>
+        <p class="page-subtitle">占得先机，安心修习</p>
+      </div>
 
       <!-- Ban warning -->
       <div v-if="penalty.isActive" class="ban-warning card">
@@ -94,6 +98,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { locationAPI, reservationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'

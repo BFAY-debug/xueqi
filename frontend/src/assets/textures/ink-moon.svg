@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Ink wash moon — "烘云托月" technique -->
+  <defs>
+    <radialGradient id="moon-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2C2C2C" stop-opacity="0"/>
+      <stop offset="60%" stop-color="#2C2C2C" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#2C2C2C" stop-opacity="0.04"/>
+    </radialGradient>
+    <filter id="moon-blur">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+  <!-- Outer glow halo -->
+  <circle cx="100" cy="100" r="95" fill="url(#moon-glow)"/>
+  <!-- Moon body — slightly imperfect circle via bezier -->
+  <path d="M100,30 C118,28 135,38 145,55 C155,72 158,92 155,110 C152,128 142,142 128,150 C114,158 96,160 82,155 C68,150 56,138 48,122 C40,106 38,88 42,72 C46,56 56,42 70,35 C80,30 90,29 100,30Z"
+        fill="#F5F0E8" stroke="#2C2C2C" stroke-width="0.5" stroke-opacity="0.06" filter="url(#moon-blur)"/>
+  <!-- Faint tree silhouette inside moon (吴刚伐桂) -->
+  <g opacity="0.04" fill="none" stroke="#2C2C2C" stroke-width="1.5" stroke-linecap="round">
+    <path d="M95,145 C95,130 93,115 90,100 C88,90 92,82 98,75"/>
+    <path d="M90,100 C82,95 75,98 68,105"/>
+    <path d="M95,110 C88,108 80,110 73,115"/>
+    <path d="M98,88 C106,82 112,78 118,80"/>
+    <path d="M96,95 C104,92 110,94 116,90"/>
+  </g>
+</svg>

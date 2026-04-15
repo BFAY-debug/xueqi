@@ -17,38 +17,99 @@
 
       <!-- Main -->
       <div class="admin-main">
-        <!-- Pending Posts -->
+        <!-- Pending Posts Review -->
         <template v-if="activeSection === 'posts'">
-          <h2>待审核帖子</h2>
+          <h2>文章审核 <el-tag size="small" type="warning">{{ pendingPosts.length }}</el-tag></h2>
           <div v-for="p in pendingPosts" :key="p.id" class="review-item card">
             <div class="review-content">
-              <span class="review-badge">[帖子]</span>
-              <strong>{{ p.username }}</strong>: {{ p.title }}
-              <p class="review-excerpt">{{ p.content?.slice(0, 100) }}...</p>
+              <span class="review-badge">[{{ p.category }}]</span>
+              <strong>{{ p.nickname || p.username }}</strong>: {{ p.title }}
+              <p class="review-excerpt">{{ p.content?.slice(0, 150) }}...</p>
             </div>
             <div class="review-actions">
               <el-button type="success" size="small" @click="reviewPost(p.id, 'approve')">通过</el-button>
               <el-button type="danger" size="small" @click="reviewPost(p.id, 'reject')">拒绝</el-button>
             </div>
           </div>
-          <p v-if="!pendingPosts.length" class="empty-text">暂无待审核帖子</p>
+          <p v-if="!pendingPosts.length" class="empty-text">暂无待审核文章</p>
         </template>
 
-        <!-- Pending Comments -->
+        <!-- Post Management -->
+        <template v-if="activeSection === 'postManage'">
+          <h2>文章管理</h2>
+          <el-table :data="allPosts" stripe>
+            <el-table-column prop="id" label="ID" width="50" />
+            <el-table-column prop="title" label="标题" min-width="200">
+              <template #default="{ row }">
+                <span>{{ row.title }}</span>
+                <el-tag v-if="row.is_pinned" size="small" type="warning" style="margin-left:4px">置顶</el-tag>
+                <el-tag v-if="row.is_featured" size="small" type="danger" style="margin-left:4px">精选</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="author_name" label="作者" width="100" />
+            <el-table-column prop="category" label="分类" width="80" />
+            <el-table-column prop="status" label="状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'published' ? 'success' : row.status === 'pending' ? 'warning' : 'danger'" size="small">
+                  {{ row.status === 'published' ? '已发布' : row.status === 'pending' ? '待审核' : '已拒绝' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="数据" width="130">
+              <template #default="{ row }">
+                <span style="font-size:0.8rem">👀{{ row.view_count }} ❤️{{ row.like_count }} 💬{{ row.comment_count }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button size="small" :type="row.is_pinned ? 'warning' : ''" @click="togglePinPost(row.id, row.is_pinned)">{{ row.is_pinned ? '取消置顶' : '置顶' }}</el-button>
+                <el-button size="small" :type="row.is_featured ? 'warning' : ''" @click="toggleFeaturePost(row.id, row.is_featured)">{{ row.is_featured ? '取消精选' : '精选' }}</el-button>
+                <el-button size="small" type="danger" @click="adminDeletePost(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p v-if="!allPosts.length" class="empty-text">暂无文章</p>
+        </template>
+
+        <!-- Comment Management -->
         <template v-if="activeSection === 'comments'">
-          <h2>待审核评论</h2>
-          <div v-for="c in pendingComments" :key="c.id" class="review-item card">
-            <div class="review-content">
-              <span class="review-badge">[评论]</span>
-              <strong>{{ c.username }}</strong> 评论「{{ c.post_title }}」:
-              <p class="review-excerpt">{{ c.content }}</p>
-            </div>
-            <div class="review-actions">
-              <el-button type="success" size="small" @click="reviewComment(c.id, 'approve')">通过</el-button>
-              <el-button type="danger" size="small" @click="reviewComment(c.id, 'reject')">拒绝</el-button>
+          <h2>评论管理</h2>
+          <div v-if="pendingComments.length" style="margin-bottom:16px">
+            <h3 style="font-size:0.95rem;color:var(--color-accent);margin-bottom:8px">待审核评论 ({{ pendingComments.length }})</h3>
+            <div v-for="c in pendingComments" :key="'p'+c.id" class="review-item card" style="border-left:3px solid var(--color-gold)">
+              <div class="review-content">
+                <el-tag type="warning" size="small">待审核</el-tag>
+                <strong style="margin-left:4px">{{ c.nickname || c.username }}</strong> 评论「{{ c.post_title }}」:
+                <p class="review-excerpt">{{ c.content }}</p>
+              </div>
+              <div class="review-actions">
+                <el-button type="success" size="small" @click="reviewComment(c.id, 'approve')">通过</el-button>
+                <el-button type="danger" size="small" @click="reviewComment(c.id, 'reject')">拒绝</el-button>
+              </div>
             </div>
           </div>
-          <p v-if="!pendingComments.length" class="empty-text">暂无待审核评论</p>
+          <h3 style="font-size:0.95rem;margin-bottom:8px">已发布评论</h3>
+          <el-table :data="allComments" stripe>
+            <el-table-column prop="id" label="ID" width="50" />
+            <el-table-column prop="content" label="内容" min-width="250">
+              <template #default="{ row }">
+                <span>{{ row.content?.length > 80 ? row.content.slice(0, 80) + '...' : row.content }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="author_name" label="评论者" width="100" />
+            <el-table-column prop="post_title" label="所属文章" width="140">
+              <template #default="{ row }">
+                <span style="font-size:0.8rem">{{ row.post_title?.length > 12 ? row.post_title.slice(0, 12) + '...' : row.post_title }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="like_count" label="赞" width="50" />
+            <el-table-column label="操作" width="80">
+              <template #default="{ row }">
+                <el-button size="small" type="danger" @click="adminDeleteComment(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p v-if="!allComments.length && !pendingComments.length" class="empty-text">暂无评论</p>
         </template>
 
         <!-- Pending Books -->
@@ -261,8 +322,9 @@ const activeSection = ref('posts')
 const saving = ref(false)
 
 const allMenuItems = [
-  { key: 'posts', icon: '📝', label: '帖子审核', roles: ['admin', 'super_admin'] },
-  { key: 'comments', icon: '💬', label: '评论审核', roles: ['admin', 'super_admin'] },
+  { key: 'posts', icon: '📝', label: '文章审核', roles: ['admin', 'super_admin'] },
+  { key: 'postManage', icon: '📄', label: '文章管理', roles: ['admin', 'super_admin'] },
+  { key: 'comments', icon: '💬', label: '评论管理', roles: ['admin', 'super_admin'] },
   { key: 'books', icon: '📚', label: '书籍审核', roles: ['admin', 'super_admin'] },
   { key: 'users', icon: '👥', label: '学子管理', roles: ['admin', 'super_admin'] },
   { key: 'seats', icon: '🪑', label: '座位管理', roles: ['admin', 'super_admin'] },
@@ -278,6 +340,8 @@ const filteredMenu = computed(() => {
 })
 
 const pendingPosts = ref([])
+const allPosts = ref([])
+const allComments = ref([])
 const pendingComments = ref([])
 const pendingBooks = ref([])
 const users = ref([])
@@ -301,6 +365,12 @@ async function fetchPendingPosts() {
 }
 async function fetchPendingComments() {
   try { const res = await communityAdminAPI.getPendingComments({ pageSize: 50 }); pendingComments.value = res.data || [] } catch { /* */ }
+}
+async function fetchAllPosts() {
+  try { const res = await communityAdminAPI.getAllPosts({ pageSize: 100 }); allPosts.value = res.data || [] } catch { /* */ }
+}
+async function fetchAllComments() {
+  try { const res = await communityAdminAPI.getAllComments({ pageSize: 100 }); allComments.value = res.data || [] } catch { /* */ }
 }
 async function fetchPendingBooks() {
   try { const res = await bookAPI.getPending({ pageSize: 50 }); pendingBooks.value = res.data || [] } catch { /* */ }
@@ -459,6 +529,42 @@ async function reviewComment(id, action) {
     await communityAdminAPI.reviewComment(id, { action, reason })
     ElMessage.success(action === 'approve' ? '已通过' : '已拒绝')
     fetchPendingComments()
+    fetchAllComments()
+  } catch (err) { ElMessage.error(err.message) }
+}
+
+async function adminDeletePost(id) {
+  try {
+    await ElMessageBox.confirm('确认删除该文章？此操作不可恢复。', '删除确认', { type: 'warning' })
+    await communityAdminAPI.deletePost(id)
+    ElMessage.success('文章已删除')
+    fetchAllPosts()
+    fetchPendingPosts()
+  } catch { /* cancelled */ }
+}
+
+async function adminDeleteComment(id) {
+  try {
+    await ElMessageBox.confirm('确认删除该评论？此操作不可恢复。', '删除确认', { type: 'warning' })
+    await communityAdminAPI.deleteComment(id)
+    ElMessage.success('评论已删除')
+    fetchAllComments()
+  } catch { /* cancelled */ }
+}
+
+async function togglePinPost(id, pinned) {
+  try {
+    await communityAdminAPI.pinPost(id, !pinned)
+    ElMessage.success(!pinned ? '已置顶' : '已取消置顶')
+    fetchAllPosts()
+  } catch (err) { ElMessage.error(err.message) }
+}
+
+async function toggleFeaturePost(id, featured) {
+  try {
+    await communityAdminAPI.featurePost(id, !featured)
+    ElMessage.success(!featured ? '已精选' : '已取消精选')
+    fetchAllPosts()
   } catch (err) { ElMessage.error(err.message) }
 }
 
@@ -505,7 +611,8 @@ async function rejectVolunteer(id) {
 
 watch(activeSection, (val) => {
   const fetchers = {
-    posts: fetchPendingPosts, comments: fetchPendingComments, books: fetchPendingBooks,
+    posts: fetchPendingPosts, postManage: fetchAllPosts,
+    comments: fetchAllComments, books: fetchPendingBooks,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
     volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
   }

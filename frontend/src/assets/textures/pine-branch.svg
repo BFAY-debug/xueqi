@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <!-- Pine branch from corner — traditional Chinese painting "画角" composition -->
+  <g fill="none" stroke="#2C2C2C" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main branch (diagonal from top-left) -->
+    <path d="M0,10 C30,25 60,45 90,70 C110,88 125,105 140,125 C148,138 155,155 160,175"
+          stroke-width="3" stroke-opacity="0.07"/>
+    <!-- Branch taper overlay -->
+    <path d="M0,10 C30,25 60,45 90,70 C110,88 125,105 140,125"
+          stroke-width="1.5" stroke-opacity="0.04"/>
+    <!-- Sub-branch 1 -->
+    <path d="M60,45 C75,35 95,30 115,35"
+          stroke-width="1.8" stroke-opacity="0.06"/>
+    <!-- Sub-branch 2 -->
+    <path d="M90,70 C105,60 125,55 145,58"
+          stroke-width="1.5" stroke-opacity="0.05"/>
+    <!-- Sub-branch 3 -->
+    <path d="M120,105 C140,95 160,92 180,98"
+          stroke-width="1.2" stroke-opacity="0.05"/>
+    <!-- Sub-branch 4 (small) -->
+    <path d="M50,38 C55,28 65,22 78,25"
+          stroke-width="1" stroke-opacity="0.04"/>
+
+    <!-- Pine needle cluster 1 (near sub-branch 1) -->
+    <g stroke-width="0.8" stroke-opacity="0.06">
+      <path d="M105,32 C108,26 112,24 114,28"/>
+      <path d="M107,33 C112,28 116,27 115,31"/>
+      <path d="M103,34 C105,28 108,25 110,29"/>
+      <path d="M109,31 C114,25 118,25 116,30"/>
+      <path d="M101,33 C102,27 105,24 107,28"/>
+      <path d="M108,35 C113,30 117,30 115,34"/>
+    </g>
+    <!-- Pine needle cluster 2 (near sub-branch 2) -->
+    <g stroke-width="0.8" stroke-opacity="0.055">
+      <path d="M135,56 C138,50 142,48 143,52"/>
+      <path d="M137,57 C142,52 146,51 144,55"/>
+      <path d="M133,58 C135,52 138,49 140,53"/>
+      <path d="M139,55 C144,49 148,49 146,54"/>
+      <path d="M131,57 C132,51 135,48 137,52"/>
+    </g>
+    <!-- Pine needle cluster 3 (near sub-branch 3) -->
+    <g stroke-width="0.7" stroke-opacity="0.05">
+      <path d="M170,96 C173,90 177,88 178,92"/>
+      <path d="M172,97 C177,92 181,91 179,95"/>
+      <path d="M168,98 C170,92 173,89 175,93"/>
+      <path d="M174,95 C179,89 183,89 181,94"/>
+      <path d="M166,97 C167,91 170,88 172,92"/>
+    </g>
+    <!-- Pine needle cluster 4 (near main branch top) -->
+    <g stroke-width="0.7" stroke-opacity="0.05">
+      <path d="M72,24 C74,18 78,16 79,20"/>
+      <path d="M74,25 C78,20 82,19 80,23"/>
+      <path d="M70,26 C72,20 74,17 76,21"/>
+    </g>
+    <!-- Pine needle cluster 5 (bottom of branch) -->
+    <g stroke-width="0.6" stroke-opacity="0.04">
+      <path d="M150,122 C153,116 157,114 158,118"/>
+      <path d="M152,123 C157,118 161,117 159,121"/>
+      <path d="M148,124 C150,118 153,115 155,119"/>
+      <path d="M154,121 C159,115 163,115 161,120"/>
+    </g>
+  </g>
+</svg>

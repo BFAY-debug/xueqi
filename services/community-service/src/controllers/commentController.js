@@ -15,11 +15,14 @@ async function createComment(req, res, next) {
     if (!content) {
       return res.error('评论内容不能为空', 400);
     }
+    if (content.length > 500) {
+      return res.error('评论内容不能超过500字', 400);
+    }
     const result = await commentService.createComment(
       parseInt(req.params.postId, 10), req.user.userId,
       { content, parentId, isAnonymous }
     );
-    res.success(result, '评论已提交，等待审核', 201);
+    res.success(result, '评论发表成功', 201);
   } catch (err) { next(err); }
 }
 

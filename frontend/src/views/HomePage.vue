@@ -4,13 +4,26 @@
 
     <!-- Section 1: Hero -->
     <section class="hero-section">
-      <!-- Three distinct mountain layers -->
+      <!-- Eight-layer ink wash composition -->
       <div class="hero-bg">
+        <!-- L0: Moon -->
+        <img src="@/assets/textures/ink-moon.svg" class="hero-moon" alt="" />
+        <!-- L1: Far mountains -->
         <img src="@/assets/textures/ink-mountains-far.svg" class="mountain-layer far" alt="" />
+        <!-- L2: Mist between far and mid -->
+        <img src="@/assets/textures/ink-mist.svg" class="mist-layer mist-far" alt="" />
+        <!-- L3: Clouds + Cranes -->
         <div class="cloud-layer cloud-1"><img src="@/assets/textures/ink-clouds.svg" alt="" /></div>
+        <img src="@/assets/textures/ink-crane.svg" class="crane crane-1" alt="" />
+        <img src="@/assets/textures/ink-crane.svg" class="crane crane-2" alt="" />
+        <!-- L4: Mid mountains -->
         <img src="@/assets/textures/ink-mountains-mid.svg" class="mountain-layer mid" alt="" />
+        <!-- L5: Clouds -->
         <div class="cloud-layer cloud-2"><img src="@/assets/textures/ink-clouds.svg" alt="" /></div>
+        <!-- L6: Near mountains -->
         <img src="@/assets/textures/ink-mountains-near.svg" class="mountain-layer near" alt="" />
+        <!-- L7: Water foreground -->
+        <img src="@/assets/textures/ink-water.svg" class="water-layer" alt="" />
       </div>
       <!-- Floating ink dots -->
       <div class="ink-particles">
@@ -60,6 +73,10 @@
       </div>
     </section>
 
+    <div class="section-transition">
+      <img src="@/assets/textures/ink-wave-border.svg" class="wave-divider" alt="" />
+    </div>
+
     <!-- Section 3: Hot Rooms -->
     <section class="rooms-section" ref="roomsSection">
       <div class="section-inner">
@@ -91,6 +108,10 @@
         <router-link to="/study-rooms" class="section-link">游历全部书院 →</router-link>
       </div>
     </section>
+
+    <div class="section-transition">
+      <img src="@/assets/textures/ink-wave-border.svg" class="wave-divider" alt="" />
+    </div>
 
     <!-- Section 4: Community -->
     <section class="community-section" ref="communitySection">
@@ -127,6 +148,10 @@
       </div>
     </section>
 
+    <div class="section-transition">
+      <img src="@/assets/textures/ink-wave-border.svg" class="wave-divider" alt="" />
+    </div>
+
     <!-- Section 5: Leaderboard -->
     <section class="leaderboard-section" ref="leaderboardSection">
       <div class="section-inner leaderboard-bg">
@@ -161,6 +186,10 @@
       </div>
     </section>
 
+    <div class="section-transition">
+      <img src="@/assets/textures/ink-wave-border.svg" class="wave-divider" alt="" />
+    </div>
+
     <!-- Section 6: Closing -->
     <section class="closing-section">
       <div class="section-inner">
@@ -179,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import AppNavbar from '@/components/AppNavbar.vue'
@@ -188,10 +217,12 @@ import { roomAPI } from '@/api/study'
 import { postAPI } from '@/api/community'
 import { leaderboardAPI } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import { useTimeAgo } from '@/composables/useTimeAgo'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const userStore = useUserStore()
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
 const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
 
@@ -210,44 +241,76 @@ const stats = ref([
 const heroTitle = ref(null)
 const heroSubtitle = ref(null)
 const heroActions = ref(null)
+const { timeAgo } = useTimeAgo()
 
 function roomProgress(room) {
   return Math.min(100, Math.round(((room.current_count || 0) / room.capacity) * 100))
 }
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / 3600000)
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}时辰前`
-  const days = Math.floor(hours / 24)
-  return `${days}日前`
-}
-
 onMounted(async () => {
-  // Hero animations
+  // Hero animations (skip continuous animations if reduced motion preferred)
   const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
   tl.from(heroTitle.value, { y: 60, opacity: 0, duration: 1.2 })
     .from(heroSubtitle.value, { y: 30, opacity: 0, duration: 0.8 }, '-=0.6')
     .from(heroActions.value, { y: 20, opacity: 0, duration: 0.6 }, '-=0.4')
 
-  // Floating ink dots animation
-  gsap.utils.toArray('.ink-dot').forEach((dot, i) => {
-    gsap.to(dot, {
-      y: `random(-30, 30)`,
-      x: `random(-20, 20)`,
-      duration: `random(4, 8)`,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut',
-      delay: i * 0.3
+  // Floating ink dots animation (skip if reduced motion)
+  if (!prefersReducedMotion) {
+    gsap.utils.toArray('.ink-dot').forEach((dot, i) => {
+      gsap.to(dot, {
+        y: `random(-30, 30)`,
+        x: `random(-20, 20)`,
+        duration: `random(4, 8)`,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+        delay: i * 0.3
+      })
     })
-  })
 
-  // Cloud drift animation
-  gsap.to('.cloud-1', { xPercent: 15, duration: 40, repeat: -1, yoyo: true, ease: 'sine.inOut' })
-  gsap.to('.cloud-2', { xPercent: -10, duration: 50, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+    // Cloud drift animation
+    gsap.to('.cloud-1', { xPercent: 15, duration: 40, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+    gsap.to('.cloud-2', { xPercent: -10, duration: 50, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+
+    // Moon gentle float
+    gsap.to('.hero-moon', {
+      y: -8, duration: 12, repeat: -1, yoyo: true, ease: 'sine.inOut'
+    })
+
+    // Crane fly-in
+    gsap.to('.crane-1', { opacity: 0.08, x: -100, duration: 3, delay: 1.5, ease: 'power2.out' })
+    gsap.to('.crane-2', { opacity: 0.06, x: -80, duration: 3.5, delay: 2, ease: 'power2.out' })
+    // Crane continuous drift
+    gsap.to('.crane-1', { y: 'random(-10,10)', x: 'random(-5,5)', duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 5 })
+    gsap.to('.crane-2', { y: 'random(-8,8)', x: 'random(-4,4)', duration: 10, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 6 })
+
+    // Mist drift
+    gsap.to('.mist-far', { xPercent: 5, duration: 25, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+
+    // Water ripple float
+    gsap.to('.water-layer', { y: -5, duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+
+    // Mountain parallax on scroll
+    gsap.to('.mountain-layer.far', {
+      scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 1.5 },
+      y: 50, ease: 'none'
+    })
+    gsap.to('.mountain-layer.mid', {
+      scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 1 },
+      y: 100, ease: 'none'
+    })
+    gsap.to('.mountain-layer.near', {
+      scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 0.8 },
+      y: 160, ease: 'none'
+    })
+    gsap.to('.hero-moon', {
+      scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 2 },
+      y: 30, ease: 'none'
+    })
+  }
+
+  // Seal stamp entrance (one-time, always run)
+  gsap.from('.hero-seal', { rotation: -30, opacity: 0, scale: 0.5, duration: 1.2, delay: 2, ease: 'back.out(1.4)' })
 
   // Fetch data
   try {
@@ -296,6 +359,14 @@ onMounted(async () => {
     loading.leaders = false
   }
 
+  // Section transition fade-in
+  gsap.utils.toArray('.section-transition').forEach((el) => {
+    gsap.from(el, {
+      scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none reverse' },
+      opacity: 0, duration: 0.6, ease: 'power2.out'
+    })
+  })
+
   // Scroll animations for sections
   gsap.utils.toArray('.section-inner').forEach((section) => {
     gsap.from(section, {
@@ -310,6 +381,11 @@ onMounted(async () => {
       ease: 'power2.out'
     })
   })
+})
+
+// Cleanup ScrollTrigger instances on unmount
+onUnmounted(() => {
+  ScrollTrigger.getAll().forEach(t => t.kill())
 })
 </script>
 
@@ -382,6 +458,65 @@ onMounted(async () => {
   height: auto;
 }
 
+/* Moon */
+.hero-moon {
+  position: absolute;
+  top: 5%;
+  right: 12%;
+  width: 180px;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+
+/* Mist */
+.mist-layer {
+  position: absolute;
+  width: 110%;
+  left: -5%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.mist-far {
+  bottom: 18%;
+  opacity: 0.6;
+}
+
+/* Cranes */
+.crane {
+  position: absolute;
+  width: 60px;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+
+.crane-1 {
+  top: 22%;
+  right: 28%;
+  transform: scaleX(-1);
+}
+
+.crane-2 {
+  top: 18%;
+  right: 20%;
+  width: 45px;
+  transform: rotate(-10deg);
+}
+
+/* Water */
+.water-layer {
+  position: absolute;
+  bottom: 0;
+  width: 130%;
+  left: -15%;
+  pointer-events: none;
+  opacity: 0.4;
+  will-change: transform;
+}
+
 /* Floating ink particles */
 .ink-particles {
   position: absolute;
@@ -420,10 +555,10 @@ onMounted(async () => {
 /* Decorative seal stamp */
 .hero-seal {
   position: absolute;
-  bottom: 140px;
+  bottom: 160px;
   right: 8%;
-  width: 60px;
-  height: 60px;
+  width: 72px;
+  height: 72px;
   border: 3px solid var(--color-accent);
   border-radius: 6px;
   display: flex;
@@ -433,9 +568,12 @@ onMounted(async () => {
   font-size: 1.6rem;
   color: var(--color-accent);
   transform: rotate(-8deg);
-  opacity: 0.25;
+  opacity: 0.18;
   z-index: 1;
   pointer-events: none;
+  box-shadow:
+    3px 3px 0 0 var(--color-accent),
+    0 0 20px rgba(139, 37, 0, 0.06);
 }
 
 .hero-content {
@@ -446,11 +584,26 @@ onMounted(async () => {
 
 .hero-title {
   font-family: var(--font-title);
-  font-size: 5rem;
+  font-size: 5.5rem;
   color: var(--color-text-primary);
-  letter-spacing: 2rem;
+  letter-spacing: 2.5rem;
   margin-bottom: 16px;
-  text-shadow: 0 2px 20px rgba(139, 37, 0, 0.08);
+  text-shadow:
+    0 2px 20px rgba(139, 37, 0, 0.08),
+    0 0 60px rgba(44, 44, 44, 0.04);
+  position: relative;
+}
+
+.hero-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  opacity: 0.3;
 }
 
 .hero-greeting {
@@ -465,7 +618,9 @@ onMounted(async () => {
   font-size: 1.2rem;
   color: var(--color-text-secondary);
   margin-bottom: 40px;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
+  font-family: var(--font-body);
+  opacity: 0.8;
 }
 
 .hero-actions {
@@ -533,12 +688,46 @@ section {
   opacity: 0.8;
 }
 
+/* Section transitions */
+.section-transition {
+  position: relative;
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wave-divider {
+  width: min(80%, 800px);
+  opacity: 0.35;
+}
+
 /* ═══════════════════ Stats ═══════════════════ */
 .stats-section {
+  position: relative;
   background-image: url('@/assets/textures/bamboo.svg');
   background-repeat: no-repeat;
   background-position: left -20px center;
   background-size: 80px auto;
+}
+
+/* Right bamboo mirror */
+.stats-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -20px;
+  width: 80px;
+  height: 100%;
+  background-image: url('@/assets/textures/bamboo.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 80px auto;
+  transform: scaleX(-1);
+  opacity: 0.08;
+  pointer-events: none;
 }
 
 .stats-scroll {
@@ -590,6 +779,41 @@ section {
 }
 
 /* ═══════════════════ Rooms ═══════════════════ */
+.rooms-section {
+  position: relative;
+}
+
+/* Pine branch corner decoration */
+.rooms-section::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -40px;
+  width: 250px;
+  height: 180px;
+  background-image: url('@/assets/textures/pine-branch.svg');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: contain;
+  opacity: 0.06;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+
+/* Meander border accent */
+.rooms-section::after {
+  content: '';
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 100px;
+  height: 100px;
+  border: 1px solid var(--color-border);
+  border-right: none;
+  border-bottom: none;
+  opacity: 0.15;
+  pointer-events: none;
+}
 .room-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -682,8 +906,21 @@ section {
   inset: -40px;
   background-image: url('@/assets/textures/cloud-pattern.svg');
   background-repeat: repeat;
-  background-size: 200px auto;
-  opacity: 0.15;
+  background-size: 160px auto;
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Ink wash blob */
+.community-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -80px;
+  width: 300px;
+  height: 200px;
+  background: radial-gradient(ellipse at center, rgba(44,44,44,0.03) 0%, transparent 70%);
   pointer-events: none;
   z-index: -1;
 }
@@ -775,11 +1012,29 @@ section {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(184, 134, 11, 0.06) 0%, transparent 70%);
+  width: 600px;
+  height: 600px;
+  background:
+    radial-gradient(circle, rgba(184, 134, 11, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse at 20% 80%, rgba(139, 37, 0, 0.03) 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
+}
+
+/* Pine corner for leaderboard */
+.leaderboard-bg::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -20px;
+  width: 200px;
+  height: 150px;
+  background-image: url('@/assets/textures/pine-branch.svg');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: contain;
+  opacity: 0.04;
+  pointer-events: none;
 }
 
 .podium {
@@ -854,11 +1109,43 @@ section {
 .closing-section {
   min-height: auto;
   padding: 100px 0;
+  position: relative;
+  background-image: radial-gradient(ellipse at 50% 100%, rgba(237, 230, 214, 0.6) 0%, transparent 60%);
+}
+
+/* Pine branch for closing */
+.closing-section::before {
+  content: '';
+  position: absolute;
+  top: 40px;
+  left: -30px;
+  width: 220px;
+  height: 160px;
+  background-image: url('@/assets/textures/pine-branch.svg');
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: contain;
+  opacity: 0.05;
+  pointer-events: none;
 }
 
 .closing-quote {
   text-align: center;
   margin-bottom: 32px;
+  position: relative;
+  padding: 20px 0;
+}
+
+.closing-quote::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--color-accent), transparent);
+  opacity: 0.3;
 }
 
 .quote-text {
@@ -942,6 +1229,46 @@ section {
     display: none;
   }
 
+  .hero-moon {
+    width: 100px;
+    right: 5%;
+    top: 8%;
+    opacity: 0.5;
+  }
+
+  .crane {
+    display: none;
+  }
+
+  .mist-layer {
+    display: none;
+  }
+
+  .water-layer {
+    width: 160%;
+    left: -30%;
+    opacity: 0.25;
+  }
+
+  .section-transition {
+    height: 40px;
+  }
+
+  .wave-divider {
+    width: 90%;
+  }
+
+  .rooms-section::before,
+  .rooms-section::after,
+  .leaderboard-bg::after,
+  .closing-section::before {
+    display: none;
+  }
+
+  .stats-section::after {
+    display: none;
+  }
+
   .stats-scroll {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -961,6 +1288,16 @@ section {
 
   .podium-item.first {
     order: -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-moon {
+    width: 70px;
+  }
+
+  .water-layer {
+    display: none;
   }
 }
 </style>

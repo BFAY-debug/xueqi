@@ -300,13 +300,18 @@ CREATE TABLE posts (
     user_id       INT NOT NULL,
     title         VARCHAR(200) NOT NULL,
     content       TEXT NOT NULL,
+    summary       VARCHAR(500) DEFAULT NULL COMMENT '文章摘要',
     category      ENUM('experience', 'question', 'resource', 'general') DEFAULT 'general',
     is_anonymous  TINYINT DEFAULT 0,
     is_pinned     TINYINT DEFAULT 0,
     is_featured   TINYINT DEFAULT 0,
+    permission    ENUM('public', 'private') DEFAULT 'public' COMMENT '访问权限',
+    content_type  ENUM('markdown', 'plain') DEFAULT 'markdown' COMMENT '内容格式',
+    version       INT DEFAULT 1 COMMENT '当前版本号',
     view_count    INT DEFAULT 0,
     like_count    INT DEFAULT 0,
     comment_count INT DEFAULT 0,
+    bookmark_count INT DEFAULT 0,
     status        ENUM('pending', 'published', 'rejected', 'hidden') DEFAULT 'pending',
     reviewed_by   INT,
     reviewed_at   TIMESTAMP NULL,
@@ -407,4 +412,54 @@ CREATE TABLE admin_applications (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (reviewer_id) REFERENCES users(id),
     INDEX idx_status (status)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 文章版本历史
+-- ----------------------------------------------------------
+CREATE TABLE post_versions (
+    id           INT PRIMARY KEY AUTO_INCREMENT,
+    post_id      INT NOT NULL,
+    version      INT NOT NULL,
+    title        VARCHAR(200),
+    content      TEXT NOT NULL,
+    edit_summary VARCHAR(200) COMMENT '版本说明',
+    created_by   INT NOT NULL,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    INDEX idx_post_version (post_id, version DESC)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 编辑提案（类似 Pull Request）
+-- ----------------------------------------------------------
+CREATE TABLE edit_proposals (
+    id             INT PRIMARY KEY AUTO_INCREMENT,
+    post_id        INT NOT NULL,
+    proposer_id    INT NOT NULL,
+    title          VARCHAR(200) NOT NULL COMMENT '提案标题',
+    description    TEXT COMMENT '修改说明',
+    content        TEXT NOT NULL COMMENT '修改后的完整内容',
+    base_version   INT NOT NULL COMMENT '基于哪个版本',
+    status         ENUM('open', 'merged', 'rejected', 'closed') DEFAULT 'open',
+    reviewed_by    INT DEFAULT NULL,
+    reviewed_at    TIMESTAMP NULL,
+    review_comment VARCHAR(500),
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (proposer_id) REFERENCES users(id),
+    INDEX idx_post_status (post_id, status),
+    INDEX idx_proposer (proposer_id)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 文章收藏
+-- ----------------------------------------------------------
+CREATE TABLE post_bookmarks (
+    user_id    INT NOT NULL,
+    post_id    INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, post_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

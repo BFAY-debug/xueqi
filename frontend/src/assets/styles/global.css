@@ -224,3 +224,148 @@ h3 { font-size: 1.5rem; }
   background: rgba(139, 37, 0, 0.2);
   color: var(--color-text-primary);
 }
+
+/* ── Page Header Themes ──────────────────────────────── */
+
+.page-header-decorated {
+  position: relative;
+  padding: 28px 0 20px;
+  margin-bottom: 24px;
+}
+
+.page-header-decorated::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20px;
+  right: -20px;
+  height: 3px;
+  border-radius: 0 0 2px 2px;
+}
+
+.page-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+/* Community - 朱砂红 */
+.theme-community .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-accent), var(--color-gold), transparent);
+}
+.theme-community .page-title { color: var(--color-accent); }
+
+/* Study - 松绿 */
+.theme-study .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-green), rgba(46,92,76,0.3), transparent);
+}
+.theme-study .page-title { color: var(--color-green); }
+
+/* Books - 靛蓝 */
+.theme-books .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-blue), rgba(74,107,138,0.3), transparent);
+}
+.theme-books .page-title { color: var(--color-blue); }
+
+/* Leaderboard - 赭金 */
+.theme-leaderboard .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-gold), rgba(184,134,11,0.3), transparent);
+}
+.theme-leaderboard .page-title { color: var(--color-gold); }
+
+/* Profile - 松绿→朱砂红 */
+.theme-profile .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-green), var(--color-accent), transparent);
+}
+.theme-profile .page-title { color: var(--color-green); }
+
+/* Seat - 朱砂红→松绿 */
+.theme-seat .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-accent), var(--color-green), transparent);
+}
+.theme-seat .page-title { color: var(--color-accent); }
+
+/* Post Detail - 右上角淡红背景 */
+.theme-post-detail .page-content {
+  background-image: radial-gradient(circle at 95% 5%, rgba(139,37,0,0.03) 0%, transparent 50%);
+}
+
+/* Edit - 朱砂红 */
+.theme-edit .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-accent), rgba(139,37,0,0.2), transparent);
+}
+.theme-edit .page-title { color: var(--color-accent); }
+
+/* Proposal - 靛蓝→朱砂红 */
+.theme-proposal .page-header-decorated::before {
+  background: linear-gradient(90deg, transparent, var(--color-blue), var(--color-accent), transparent);
+}
+.theme-proposal .page-title { color: var(--color-blue); }
+
+/* ═══════════════════ Ink Wash Shared Decorations ═══════════════════ */
+
+/* Section transition wrapper */
+.section-transition {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding: 10px 0;
+}
+
+/* Ink wash corner decoration — top-right */
+.ink-corner-tr {
+  position: absolute;
+  top: -20px;
+  right: -40px;
+  width: 250px;
+  height: 180px;
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: contain;
+  opacity: 0.06;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+
+/* Ink wash corner decoration — top-left */
+.ink-corner-tl {
+  position: absolute;
+  top: -20px;
+  left: -40px;
+  width: 250px;
+  height: 180px;
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: contain;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* ── Page Transition ─────────────────────────────── */
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* ── Reduced Motion ──────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

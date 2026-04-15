@@ -66,5 +66,36 @@ async function getReviewLogs(req, res, next) {
 
 module.exports = {
   getPendingPosts, reviewPost, togglePin, toggleFeature,
-  getPendingComments, reviewComment, getReviewLogs
+  getPendingComments, reviewComment, getReviewLogs,
+  getAllPosts, deletePost, getAllComments, deleteComment
 };
+
+async function getAllPosts(req, res, next) {
+  try {
+    const { page, pageSize, status } = req.query;
+    const result = await adminService.getAllPosts({ page, pageSize, status });
+    res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
+  } catch (err) { next(err); }
+}
+
+async function deletePost(req, res, next) {
+  try {
+    await adminService.deletePost(parseInt(req.params.id, 10));
+    res.success(null, '文章已删除');
+  } catch (err) { next(err); }
+}
+
+async function getAllComments(req, res, next) {
+  try {
+    const { page, pageSize, postId } = req.query;
+    const result = await adminService.getAllComments({ page, pageSize, postId });
+    res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
+  } catch (err) { next(err); }
+}
+
+async function deleteComment(req, res, next) {
+  try {
+    await adminService.deleteComment(parseInt(req.params.id, 10));
+    res.success(null, '评论已删除');
+  } catch (err) { next(err); }
+}

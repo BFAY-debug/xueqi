@@ -10,6 +10,8 @@ const postRoutes = require('./routes/posts');
 const commentRoutes = require('./routes/comments');
 const tagRoutes = require('./routes/tags');
 const adminRoutes = require('./routes/admin');
+const proposalRoutes = require('./routes/proposals');
+const bookmarkRoutes = require('./routes/bookmarks');
 
 const app = express();
 const PORT = process.env.COMMUNITY_SERVICE_PORT || 3003;
@@ -27,6 +29,8 @@ app.use('/api/community', postRoutes);
 app.use('/api/community', commentRoutes);
 app.use('/api/community', tagRoutes);
 app.use('/api/community/admin', adminRoutes);
+app.use('/api/community/proposals', proposalRoutes);
+app.use('/api/community', bookmarkRoutes);
 
 app.use(errorHandler);
 

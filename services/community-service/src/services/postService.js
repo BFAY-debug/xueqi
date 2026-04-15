@@ -6,7 +6,9 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001'
 /**
  * List published posts (public)
  */
-async function getPosts({ page = 1, pageSize = 20, category = '', tag = '' }) {
+async function getPosts({ page = 1, pageSize = 20, category = '', tag = '', keyword = '', sort = 'latest' }) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
   const offset = (page - 1) * pageSize;
   const conditions = ["p.status = 'published'"];
   const params = [];
@@ -19,12 +21,21 @@ async function getPosts({ page = 1, pageSize = 20, category = '', tag = '' }) {
     conditions.push(`p.id IN (SELECT pt.post_id FROM post_tags pt JOIN tags t ON t.id = pt.tag_id WHERE t.name = ?)`);
     params.push(tag);
   }
+  if (keyword) {
+    conditions.push('(p.title LIKE ? OR p.content LIKE ?)');
+    params.push(`%${keyword}%`, `%${keyword}%`);
+  }
 
   const where = conditions.join(' AND ');
 
+  let orderBy = 'p.is_pinned DESC, p.created_at DESC';
+  if (sort === 'hot') orderBy = 'p.is_pinned DESC, p.view_count DESC, p.like_count DESC';
+  if (sort === 'bookmarks') orderBy = 'p.is_pinned DESC, p.bookmark_count DESC, p.created_at DESC';
+
   const [rows] = await db.execute(
-    `SELECT p.id, p.title, p.content, p.category, p.is_anonymous, p.is_pinned, p.is_featured,
-            p.view_count, p.like_count, p.comment_count, p.created_at,
+    `SELECT p.id, p.title, p.summary, p.content_type, p.version, p.category, p.is_anonymous,
+            p.is_pinned, p.is_featured, p.view_count, p.like_count, p.comment_count,
+            p.bookmark_count, p.created_at,
             CASE WHEN p.is_anonymous = 1 THEN '匿名学子' ELSE u.nickname END AS author_name,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE u.avatar_url END AS author_avatar,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE l.badge END AS author_badge,
@@ -34,9 +45,9 @@ async function getPosts({ page = 1, pageSize = 20, category = '', tag = '' }) {
      LEFT JOIN user_stats us ON us.user_id = p.user_id
      LEFT JOIN levels l ON l.id = us.level_id
      WHERE ${where}
-     ORDER BY p.is_pinned DESC, p.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+     ORDER BY ${orderBy}
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   );
 
   const [countRows] = await db.execute(
@@ -93,14 +104,22 @@ async function getPostById(postId) {
 /**
  * Create post (user, status=pending)
  */
-async function createPost(userId, { title, content, category, isAnonymous, tags }) {
+async function createPost(userId, { title, content, summary, category, isAnonymous, tags, permission, contentType }) {
   const [result] = await db.execute(
-    `INSERT INTO posts (user_id, title, content, category, is_anonymous, status)
-     VALUES (?, ?, ?, ?, ?, 'pending')`,
-    [userId, title, content, category || 'general', isAnonymous ? 1 : 0]
+    `INSERT INTO posts (user_id, title, content, summary, category, is_anonymous, permission, content_type, version, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')`,
+    [userId, title, content, summary || null, category || 'general', isAnonymous ? 1 : 0,
+     permission || 'public', contentType || 'markdown']
   );
 
   const postId = result.insertId;
+
+  // Record initial version
+  await db.execute(
+    `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
+     VALUES (?, 1, ?, ?, '创建文章', ?)`,
+    [postId, title, content, userId]
+  );
 
   // Attach tags
   if (tags && tags.length > 0) {
@@ -148,12 +167,27 @@ async function updatePost(postId, userId, data) {
 
   if (updates.length === 0) return getPostById(postId);
 
+  // Increment version
+  updates.push('version = version + 1');
+
   // Re-submit for review if content changed
   updates.push("status = 'pending'");
   params.push(postId);
   await db.execute(`UPDATE posts SET ${updates.join(', ')} WHERE id = ?`, params);
 
-  return { postId, status: 'pending' };
+  // Record version history
+  const newVersion = rows[0].version + 1;
+  await db.execute(
+    `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [postId, newVersion,
+     data.title !== undefined ? data.title : rows[0].title,
+     data.content !== undefined ? data.content : rows[0].content,
+     data.editSummary || '作者编辑',
+     userId]
+  );
+
+  return { postId, status: 'pending', version: newVersion };
 }
 
 /**
@@ -238,8 +272,8 @@ async function getMyPosts(userId, page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+    `SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(
@@ -255,6 +289,81 @@ function getServiceToken() {
   return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin' });
 }
 
+/**
+ * Get version history for a post
+ */
+async function getVersions(postId) {
+  const [rows] = await db.execute(
+    `SELECT pv.id, pv.version, pv.title, pv.edit_summary, pv.created_by, pv.created_at,
+            u.nickname AS editor_name
+     FROM post_versions pv
+     LEFT JOIN users u ON u.id = pv.created_by
+     WHERE pv.post_id = ?
+     ORDER BY pv.version DESC`,
+    [postId]
+  );
+  return rows;
+}
+
+/**
+ * Get a specific version of a post
+ */
+async function getVersion(postId, version) {
+  const [rows] = await db.execute(
+    `SELECT pv.*, u.nickname AS editor_name
+     FROM post_versions pv
+     LEFT JOIN users u ON u.id = pv.created_by
+     WHERE pv.post_id = ? AND pv.version = ?`,
+    [postId, version]
+  );
+  if (rows.length === 0) {
+    const error = new Error('版本不存在');
+    error.status = 404;
+    throw error;
+  }
+  return rows[0];
+}
+
+/**
+ * Rollback a post to a specific version
+ */
+async function rollbackVersion(postId, version, userId) {
+  const [postRows] = await db.execute('SELECT * FROM posts WHERE id = ?', [postId]);
+  if (postRows.length === 0) {
+    const error = new Error('帖子不存在');
+    error.status = 404;
+    throw error;
+  }
+
+  const [versionRows] = await db.execute(
+    'SELECT * FROM post_versions WHERE post_id = ? AND version = ?',
+    [postId, version]
+  );
+  if (versionRows.length === 0) {
+    const error = new Error('版本不存在');
+    error.status = 404;
+    throw error;
+  }
+
+  const v = versionRows[0];
+
+  // Update post content to this version
+  await db.execute(
+    'UPDATE posts SET title = ?, content = ?, version = version + 1 WHERE id = ?',
+    [v.title, v.content, postId]
+  );
+
+  // Record rollback as a new version
+  const newVersion = postRows[0].version + 1;
+  await db.execute(
+    `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [postId, newVersion, v.title, v.content, `回滚至 v${version}`, userId]
+  );
+
+  return { postId, version: newVersion, rollbackFrom: version };
+}
+
 module.exports = {
   getPosts,
   getPostById,
@@ -262,5 +371,8 @@ module.exports = {
   updatePost,
   deletePost,
   toggleLikePost,
-  getMyPosts
+  getMyPosts,
+  getVersions,
+  getVersion,
+  rollbackVersion
 };

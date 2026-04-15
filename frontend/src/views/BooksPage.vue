@@ -1,10 +1,16 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-books">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <div class="books-header">
-        <h2 class="page-title">书海</h2>
-        <el-button v-if="userStore.isLoggedIn" type="primary" @click="showSubmit = true">+ 推荐书籍</el-button>
+      <BackButton />
+      <div class="page-header-decorated">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 class="page-title">📚 书海</h2>
+            <p class="page-subtitle">读万卷书，行万里路</p>
+          </div>
+          <el-button v-if="userStore.isLoggedIn" type="primary" @click="showSubmit = true">+ 推荐书籍</el-button>
+        </div>
       </div>
 
       <!-- Search -->
@@ -32,7 +38,8 @@
 
         <!-- Book Grid -->
         <div class="books-main">
-          <div class="book-grid" v-if="books.length">
+          <AppLoading v-if="loading" type="card" :count="6" />
+          <div class="book-grid" v-else-if="books.length">
             <div v-for="book in books" :key="book.id" class="book-card card" @click="$router.push(`/books/${book.id}`)">
               <div class="book-cover">
                 <img v-if="book.cover_url" :src="book.cover_url" :alt="book.title" />
@@ -48,7 +55,7 @@
               </div>
             </div>
           </div>
-          <p v-else class="empty-text">暂无书籍</p>
+          <AppEmpty v-else text="暂无书籍" />
           <el-pagination v-if="total > pageSize" layout="prev, pager, next" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="fetchBooks" class="pagination" />
         </div>
       </div>
@@ -76,7 +83,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AppLoading from '@/components/AppLoading.vue'
+import AppEmpty from '@/components/AppEmpty.vue'
 import { bookAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
@@ -89,6 +99,7 @@ const pageSize = 12
 const search = ref('')
 const category = ref('')
 const sort = ref('newest')
+const loading = ref(false)
 const categories = ['计算机科学', '数学', '文学', '历史', '哲学']
 
 const showSubmit = ref(false)
@@ -96,11 +107,13 @@ const submitting = ref(false)
 const submitForm = ref({ title: '', author: '', isbn: '', category: '', description: '' })
 
 async function fetchBooks() {
+  loading.value = true
   try {
     const res = await bookAPI.getList({ page: page.value, pageSize, search: search.value, category: category.value, sort: sort.value })
     books.value = res.data || []
     total.value = res.pagination?.total || 0
   } catch { /* ignore */ }
+  finally { loading.value = false }
 }
 
 async function submitBook() {

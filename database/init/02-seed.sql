@@ -210,26 +210,31 @@ INSERT INTO tags (id, name) VALUES
 -- ----------------------------------------------------------
 -- 示例帖子（已发布）
 -- ----------------------------------------------------------
-INSERT INTO posts (id, user_id, title, content, category, is_anonymous, is_pinned, is_featured, view_count, like_count, comment_count, status, created_at) VALUES
+INSERT INTO posts (id, user_id, title, content, summary, category, is_anonymous, is_pinned, is_featured, permission, content_type, version, view_count, like_count, comment_count, bookmark_count, status, created_at) VALUES
 (1, 3, '考研数学修习心得分享',
- '距离考研还有八个月，分享一下我的数学复习计划。\n\n第一阶段（现在-6月）：打基础，主攻高等数学，做同济版课后习题。\n\n第二阶段（7-8月）：强化训练，刷真题，整理错题本。\n\n第三阶段（9-10月）：模拟考试，查漏补缺。\n\n第四阶段（11-12月）：冲刺，回归基础，保持手感。\n\n希望能和大家一起交流经验！',
- 'experience', 0, 1, 1, 234, 45, 12, 'published', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+ '## 考研数学复习四阶段规划\n\n距离考研还有八个月，分享一下我的数学复习计划。\n\n### 第一阶段（现在-6月）：打基础\n\n主攻**高等数学**，做同济版课后习题。\n\n> 基础不牢，地动山摇。这一阶段最关键！\n\n### 第二阶段（7-8月）：强化训练\n\n- 刷真题（至少近10年）\n- 整理错题本\n- 每天保持3小时以上\n\n### 第三阶段（9-10月）：模拟考试\n\n每周做2套模拟卷，严格计时，查漏补缺。\n\n### 第四阶段（11-12月）：冲刺\n\n回归基础，保持手感。重点复习高频考点。\n\n---\n\n*希望能和大家一起交流经验！有问题可以在评论区留言。*',
+ '考研数学四阶段复习计划，从基础到冲刺的完整路线图。',
+ 'experience', 0, 1, 1, 'public', 'markdown', 1, 234, 45, 12, 18, 'published', DATE_SUB(NOW(), INTERVAL 3 DAY)),
 
 (2, 4, '推荐几个好用的学习网站',
- '整理了一些我常用的学习网站，分享给大家：\n\n1. 中国大学MOOC - 免费大学课程\n2. LeetCode - 算法刷题必备\n3. Coursera - 国际名校课程\n4. B站 - 各种免费教程\n5. GitHub - 开源项目学习\n\n大家有好的资源也可以补充！',
- 'resource', 0, 0, 0, 156, 28, 8, 'published', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+ '## 学习网站推荐合集\n\n整理了一些我常用的学习网站，分享给大家：\n\n### 在线课程\n\n| 网站 | 特点 | 费用 |\n|------|------|------|\n| 中国大学MOOC | 国内大学课程 | 免费 |\n| Coursera | 国际名校课程 | 部分免费 |\n\n### 编程学习\n\n1. **LeetCode** - 算法刷题必备\n2. **GitHub** - 开源项目学习\n3. **MDN Web Docs** - Web开发文档\n\n### 通用工具\n\n- B站 - 各种免费教程\n- W3Schools - Web开发入门\n\n---\n\n大家有好的资源也可以在评论区补充！',
+ '精选学习网站推荐，涵盖课程、编程和通用工具。',
+ 'resource', 0, 0, 0, 'public', 'markdown', 1, 156, 28, 8, 12, 'published', DATE_SUB(NOW(), INTERVAL 1 DAY)),
 
 (3, 5, '四级冲刺计划（30天）',
- '距离四级考试还有一个月，制定了一个冲刺计划：\n\n每天安排：\n- 早：背单词100个（30分钟）\n- 午：听力练习（30分钟）\n- 晚：阅读理解+翻译（45分钟）\n\n周末：\n- 做一套完整真题\n- 整理错题\n\n需要的同学可以一起打卡！',
- 'experience', 0, 0, 1, 189, 36, 15, 'published', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+ '## 30天四级冲刺计划\n\n距离四级考试还有一个月，制定了一个冲刺计划：\n\n### 每日安排\n\n| 时段 | 内容 | 时长 |\n|------|------|------|\n| 早上 | 背单词100个 | 30分钟 |\n| 中午 | 听力练习 | 30分钟 |\n| 晚上 | 阅读理解+翻译 | 45分钟 |\n\n### 周末加练\n\n- 做一套完整真题（严格计时）\n- 整理错题\n- 复习本周生词\n\n### 推荐资料\n\n1. 星火英语真题卷\n2. 百词斩/墨墨背单词\n3. BBC Learning English\n\n---\n\n需要的同学可以一起打卡！在评论区留言「加入」。',
+ '30天英语四级冲刺计划，含每日安排和推荐资料。',
+ 'experience', 0, 0, 1, 'public', 'markdown', 1, 189, 36, 15, 22, 'published', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 
 (4, 5, '如何高效背诵知识点',
- '背书是很多同学的痛点，分享几个方法：\n\n1. 费曼学习法 - 用自己的话解释\n2. 间隔重复 - 利用艾宾浩斯遗忘曲线\n3. 思维导图 - 先框架后细节\n4. 联想记忆 - 把知识点和生活联系\n5. 番茄钟 - 25分钟专注+5分钟休息\n\n试试看效果如何？',
- 'experience', 1, 0, 0, 98, 18, 6, 'published', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+ '## 五大高效背诵方法\n\n背书是很多同学的痛点，分享几个亲测有效的方法：\n\n### 1. 费曼学习法\n\n> 用自己的话解释给不懂的人听，如果你能解释清楚，说明你真的理解了。\n\n### 2. 间隔重复\n\n利用**艾宾浩斯遗忘曲线**，在关键时间节点复习：\n- 学完后 20 分钟\n- 1 天后\n- 3 天后\n- 7 天后\n\n### 3. 思维导图\n\n先搭框架，再填细节。推荐工具：XMind、幕布。\n\n### 4. 联想记忆\n\n把知识点和生活联系，编故事、造口诀。\n\n### 5. 番茄钟\n\n25分钟专注 + 5分钟休息，保持大脑新鲜。\n\n---\n\n试试看效果如何？欢迎分享你的背诵技巧！',
+ '五种高效背诵方法：费曼学习法、间隔重复、思维导图等。',
+ 'experience', 1, 0, 0, 'public', 'markdown', 1, 98, 18, 6, 8, 'published', DATE_SUB(NOW(), INTERVAL 5 DAY)),
 
 (5, 3, '数据结构学习路线求助',
- '最近在学数据结构，感觉有些吃力。\n\n目前学了线性表和链表，接下来是树和图。\n\n请问各位学长学姐：\n1. 有什么好的教材推荐吗？\n2. 刷题应该从简单开始还是按章节来？\n3. 期末考试重点一般在哪些章节？\n\n谢谢大家！',
- 'question', 0, 0, 0, 67, 12, 4, 'published', DATE_SUB(NOW(), INTERVAL 4 DAY));
+ '## 数据结构学习求助\n\n最近在学数据结构，感觉有些吃力。\n\n### 目前进度\n\n- [x] 线性表\n- [x] 链表\n- [ ] 树与二叉树\n- [ ] 图\n- [ ] 排序算法\n\n### 想请教大家\n\n1. 有什么好的教材推荐吗？\n2. 刷题应该从简单开始还是按章节来？\n3. 期末考试重点一般在哪些章节？\n\n### 我目前的困惑\n\n链表操作总是写不对指针，特别是双向链表的插入删除。有没有什么好的练习方法？\n\n---\n\n谢谢大家！',
+ '数据结构学习遇到困难，求助教材推荐和学习方法。',
+ 'question', 0, 0, 0, 'public', 'markdown', 1, 67, 12, 4, 5, 'published', DATE_SUB(NOW(), INTERVAL 4 DAY));
 
 -- ----------------------------------------------------------
 -- 帖子-标签关联
@@ -261,3 +266,22 @@ INSERT INTO notifications (user_id, type, title, content, is_read, related_id, r
 (3, 'level_up',    '恭喜升级！',           '恭喜你升级为举人(Lv.3)，继续加油！', 1, NULL, NULL),
 (4, 'review_result', '帖子审核通过',       '你的帖子「推荐几个好用的学习网站」已通过审核并发布', 1, 2, 'post'),
 (5, 'like',        '你的帖子收到了新的赞', '匿名用户 对你的帖子「四级冲刺计划（30天）」点了赞', 0, 3, 'post');
+
+-- ----------------------------------------------------------
+-- 文章版本历史（每个初始版本）
+-- ----------------------------------------------------------
+INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by, created_at) VALUES
+(1, 1, '考研数学修习心得分享', (SELECT content FROM posts WHERE id=1), '创建文章', 3, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(2, 1, '推荐几个好用的学习网站', (SELECT content FROM posts WHERE id=2), '创建文章', 4, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(3, 1, '四级冲刺计划（30天）',  (SELECT content FROM posts WHERE id=3), '创建文章', 5, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(4, 1, '如何高效背诵知识点',    (SELECT content FROM posts WHERE id=4), '创建文章', 5, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(5, 1, '数据结构学习路线求助',  (SELECT content FROM posts WHERE id=5), '创建文章', 3, DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+-- ----------------------------------------------------------
+-- 示例编辑提案（open 状态，演示协作功能）
+-- ----------------------------------------------------------
+INSERT INTO edit_proposals (id, post_id, proposer_id, title, description, content, base_version, status, created_at) VALUES
+(1, 2, 3, '补充在线编程练习平台',
+ '楼主推荐的学习网站很好，我补充几个在线编程练习平台。',
+ '## 学习网站推荐合集\n\n整理了一些我常用的学习网站，分享给大家：\n\n### 在线课程\n\n| 网站 | 特点 | 费用 |\n|------|------|------|\n| 中国大学MOOC | 国内大学课程 | 免费 |\n| Coursera | 国际名校课程 | 部分免费 |\n\n### 编程学习\n\n1. **LeetCode** - 算法刷题必备\n2. **GitHub** - 开源项目学习\n3. **MDN Web Docs** - Web开发文档\n4. **牛客网** - 国内笔试面试刷题\n5. **Codeforces** - 竞赛算法训练\n\n### 通用工具\n\n- B站 - 各种免费教程\n- W3Schools - Web开发入门\n\n---\n\n大家有好的资源也可以在评论区补充！',
+ 1, 'open', DATE_SUB(NOW(), INTERVAL 12 HOUR));

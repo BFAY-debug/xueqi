@@ -1,177 +1,453 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-post-detail">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <router-link to="/community" class="back-link">← 返回论道场</router-link>
+      <BackButton fallback="/community">返回知识广场</BackButton>
 
-      <div class="post-detail glass-card" v-if="post">
-        <h1>{{ post.title }}</h1>
-        <div class="post-meta">
-          <span>📂 {{ categoryMap[post.category] }}</span>
-          <span>👤 {{ post.author_name }}</span>
-          <span v-if="post.author_badge" class="seal" :class="`seal--level-${Math.min(post.author_badge ? 3 : 1, 6)}`">{{ post.author_level }}</span>
-          <span>{{ timeAgo(post.created_at) }}</span>
-        </div>
-        <div class="post-body">{{ post.content }}</div>
-        <div class="post-actions">
-          <el-button @click="toggleLike" :type="liked ? 'primary' : 'default'">
-            👍 {{ post.like_count }}
-          </el-button>
-          <span>💬 {{ post.comment_count }}</span>
-          <span>👁 {{ post.view_count }}</span>
-        </div>
-      </div>
-
-      <!-- Comments -->
-      <div class="section-block">
-        <h3 class="section-title">高论 ({{ post?.comment_count || 0 }})</h3>
-
-        <!-- Comment form -->
-        <div v-if="userStore.isLoggedIn" class="comment-form card">
-          <el-input v-model="commentContent" type="textarea" :rows="2" placeholder="说些什么..." />
-          <div class="comment-form-footer">
-            <el-checkbox v-model="commentAnonymous">🎭 匿名</el-checkbox>
-            <el-button type="primary" size="small" @click="submitComment" :loading="commentLoading">发表</el-button>
+      <AppLoading v-if="postLoading" type="detail" :count="1" />
+      <div v-else-if="post" class="detail-layout">
+        <!-- Main Content -->
+        <div class="detail-main">
+          <div class="detail-header">
+            <div class="header-badges">
+              <span class="category-tag">{{ categoryMap[post.category] }}</span>
+              <span v-if="post.is_featured" class="feature-badge">⭐ 精华</span>
+              <span class="version-badge">v{{ post.version }}</span>
+            </div>
+            <h1 class="detail-title">{{ post.title }}</h1>
+            <div class="detail-meta">
+              <span>{{ post.author_name }}</span>
+              <span>{{ timeAgo(post.created_at) }}</span>
+              <span>👀 {{ post.view_count }}</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Comment list -->
-        <div class="comment-list">
-          <div v-for="c in comments" :key="c.id" class="comment-item">
-            <div class="comment-main">
-              <div class="comment-header">
-                <strong>{{ c.author_name }}</strong>
-                <span v-if="c.author_badge" class="seal seal--level-2" style="font-size:0.65rem; padding:1px 4px;">{{ c.author_level }}</span>
-                <span class="comment-time">{{ timeAgo(c.created_at) }}</span>
-              </div>
-              <p class="comment-text">{{ c.content }}</p>
-              <div class="comment-actions">
-                <span @click="likeComment(c.id)">👍 {{ c.like_count }}</span>
-                <span @click="replyTo(c)">回复</span>
+          <!-- Markdown Content -->
+          <div class="detail-body">
+            <MarkdownViewer :content="post.content" />
+          </div>
+
+          <!-- Action Bar -->
+          <div class="action-bar">
+            <button class="action-btn" :class="{ active: liked }" @click="toggleLike">
+              ❤️ {{ post.like_count }}
+            </button>
+            <button class="action-btn" :class="{ active: bookmarked }" @click="toggleBookmark">
+              ⭐ {{ bookmarked ? '已收藏' : '收藏' }}
+            </button>
+            <span class="action-btn">💬 {{ post.comment_count }}</span>
+            <router-link v-if="userStore.isLoggedIn && userStore.user?.userId !== post.user_id"
+              :to="'/community/proposals/create/' + post.id" class="action-btn proposal-btn">
+              ✏️ 提出修改
+            </router-link>
+            <router-link v-if="userStore.user?.userId === post.user_id"
+              :to="'/community/posts/' + post.id + '/edit'" class="action-btn">
+              📝 编辑
+            </router-link>
+          </div>
+
+          <!-- Comments -->
+          <div class="comments-section">
+            <h3 class="section-title">高论 ({{ post.comment_count }})</h3>
+            <div v-if="userStore.isLoggedIn" class="comment-form">
+              <el-input v-model="commentContent" type="textarea" :rows="2" :maxlength="500" show-word-limit :placeholder="replyTo ? `回复 @${replyTo}...` : '写下你的高论...'" />
+              <div class="comment-form-actions">
+                <el-checkbox v-model="commentAnonymous">匿名</el-checkbox>
+                <el-button size="small" @click="replyTo = null" v-if="replyTo">取消回复</el-button>
+                <el-button size="small" type="primary" @click="submitComment" :loading="commentLoading">发表</el-button>
               </div>
             </div>
-            <!-- Nested replies could be added here -->
+            <div class="comment-list">
+              <div v-for="c in topLevelComments" :key="c.id" class="comment-item">
+                <div class="comment-body">
+                  <span class="comment-author">{{ c.is_anonymous ? '匿名学子' : (c.author_name || '学子') }}</span>
+                  <span class="comment-text">{{ c.content }}</span>
+                  <span class="comment-time">{{ timeAgo(c.created_at) }}</span>
+                  <button class="comment-action" @click="likeComment(c)">❤️ {{ c.like_count }}</button>
+                  <button v-if="userStore.isLoggedIn" class="comment-action" @click="replyTo = c.author_name; replyParentId = c.id">回复</button>
+                </div>
+                <!-- Nested replies -->
+                <div v-for="r in getReplies(c.id)" :key="r.id" class="comment-reply">
+                  <span class="comment-author">{{ r.is_anonymous ? '匿名学子' : (r.author_name || '学子') }}</span>
+                  <span class="comment-text">{{ r.content }}</span>
+                  <span class="comment-time">{{ timeAgo(r.created_at) }}</span>
+                </div>
+              </div>
+              <p v-if="!comments.length" class="empty-text">暂无评论</p>
+            </div>
           </div>
-          <p v-if="!comments.length" class="empty-text">暂无评论</p>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="detail-sidebar">
+          <!-- Proposals -->
+          <div class="sidebar-block card" v-if="proposals.length">
+            <h4 class="sb-title">编辑提案</h4>
+            <div v-for="p in proposals" :key="p.id" class="proposal-item" @click="$router.push('/community/proposals/' + p.id)">
+              <el-tag :type="p.status === 'open' ? 'warning' : 'success'" size="small">
+                {{ p.status === 'open' ? '待审核' : p.status === 'merged' ? '已合并' : p.status }}
+              </el-tag>
+              <span class="proposal-name">{{ p.title }}</span>
+              <span class="proposal-meta">{{ p.proposer_name }}</span>
+            </div>
+          </div>
+
+          <!-- Version History -->
+          <div class="sidebar-block card" v-if="versions.length">
+            <h4 class="sb-title">版本历史</h4>
+            <div v-for="v in versions" :key="v.version" class="version-item" @click="viewVersion(v)">
+              <div class="ver-row">
+                <span class="ver-badge" :class="{ 'ver-current': v.version === post.version }">v{{ v.version }}</span>
+                <span class="ver-summary">{{ v.edit_summary }}</span>
+              </div>
+              <span class="ver-meta">{{ v.editor_name }} · {{ timeAgo(v.created_at) }}</span>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="sidebar-block card" v-if="post.tags && post.tags.length">
+            <h4 class="sb-title">标签</h4>
+            <div class="tag-list">
+              <span v-for="t in post.tags" :key="t.id" class="sidebar-tag">{{ t.name }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
     <AppFooter />
+
+    <!-- Version View Dialog -->
+    <el-dialog v-model="showVersionDialog" :title="`v${viewingVersion?.version} — ${viewingVersion?.edit_summary || ''}`" width="700px" top="5vh">
+      <div v-if="viewingVersion" class="version-dialog-content">
+        <div class="vd-header">
+          <span class="vd-title">{{ viewingVersion.title }}</span>
+          <span class="vd-meta">{{ viewingVersion.editor_name }} · {{ formatDate(viewingVersion.created_at) }}</span>
+        </div>
+        <div class="vd-body">
+          <MarkdownViewer :content="viewingVersion.content" />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showVersionDialog = false">关闭</el-button>
+        <el-button v-if="diffTarget" @click="openDiff">对比差异</el-button>
+        <el-button v-if="canRollback" type="primary" @click="doRollback" :loading="rollbackLoading">
+          回滚到此版本
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Diff Dialog -->
+    <el-dialog v-model="showDiffDialog" title="版本对比" width="900px" top="5vh">
+      <div v-if="diffData" class="diff-container">
+        <div class="diff-headers">
+          <span class="diff-h left">v{{ diffData.leftVer }}</span>
+          <span class="diff-h right">v{{ diffData.rightVer }} (当前)</span>
+        </div>
+        <div class="diff-body">
+          <div v-for="(line, i) in diffData.lines" :key="i" class="diff-line" :class="line.type">
+            <span class="dl-marker">{{ line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' ' }}</span>
+            <span class="dl-text">{{ line.text }}</span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showDiffDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
-import { postAPI, commentAPI } from '@/api/community'
+import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import BackButton from '@/components/BackButton.vue'
+import AppLoading from '@/components/AppLoading.vue'
+import { postAPI, commentAPI, proposalAPI, bookmarkAPI } from '@/api/community'
 import { useUserStore } from '@/stores/user'
-import { ElMessage } from 'element-plus'
+import { useTimeAgo } from '@/composables/useTimeAgo'
 
 const route = useRoute()
 const userStore = useUserStore()
-const postId = parseInt(route.params.id, 10)
-const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
+const postId = route.params.id
 
 const post = ref(null)
+const postLoading = ref(true)
 const comments = ref([])
+const proposals = ref([])
+const versions = ref([])
 const liked = ref(false)
+const bookmarked = ref(false)
 const commentContent = ref('')
 const commentAnonymous = ref(false)
 const commentLoading = ref(false)
-const replyParent = ref(null)
+const replyTo = ref(null)
+const replyParentId = ref(null)
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / 3600000)
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}时辰前`
-  return `${Math.floor(hours / 24)}日前`
-}
+// Version control
+const showVersionDialog = ref(false)
+const viewingVersion = ref(null)
+const diffTarget = ref(null)
+const showDiffDialog = ref(false)
+const diffData = ref(null)
+const rollbackLoading = ref(false)
+
+const canRollback = computed(() => {
+  if (!post.value || !viewingVersion.value) return false
+  return viewingVersion.value.version !== post.value.version &&
+    userStore.user?.userId === post.value.user_id
+})
+
+const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
+
+const topLevelComments = computed(() => comments.value.filter(c => !c.parent_id))
+
+function getReplies(parentId) { return comments.value.filter(c => c.parent_id === parentId) }
+
+const { timeAgo } = useTimeAgo()
 
 async function fetchPost() {
+  postLoading.value = true
   try {
     const res = await postAPI.getById(postId)
     post.value = res.data
-  } catch (err) { ElMessage.error(err.message) }
+  } catch (err) { ElMessage.error('文章不存在') }
+  finally { postLoading.value = false }
 }
 
 async function fetchComments() {
   try {
-    const res = await commentAPI.getList(postId, { pageSize: 100 })
+    const res = await commentAPI.getList(postId, { pageSize: 50 })
     comments.value = res.data || []
   } catch { /* ignore */ }
+}
+
+async function fetchProposals() {
+  try {
+    const res = await proposalAPI.getList({ postId, status: 'open', pageSize: 10 })
+    proposals.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+async function fetchVersions() {
+  try {
+    const res = await postAPI.getVersions(postId)
+    versions.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
+async function viewVersion(v) {
+  try {
+    const res = await postAPI.getVersion(postId, v.version)
+    viewingVersion.value = res.data
+    diffTarget.value = v.version !== post.value.version ? v.version : null
+    showVersionDialog.value = true
+  } catch { ElMessage.error('无法加载版本') }
+}
+
+async function openDiff() {
+  if (!diffTarget.value) return
+  try {
+    const [oldRes, curRes] = await Promise.all([
+      postAPI.getVersion(postId, diffTarget.value),
+      postAPI.getVersion(postId, post.value.version)
+    ])
+    const oldLines = (oldRes.data.content || '').split('\n')
+    const curLines = (curRes.data.content || '').split('\n')
+    diffData.value = {
+      leftVer: diffTarget.value,
+      rightVer: post.value.version,
+      lines: computeDiff(oldLines, curLines)
+    }
+    showDiffDialog.value = true
+  } catch { ElMessage.error('无法加载对比数据') }
+}
+
+function computeDiff(oldLines, newLines) {
+  const result = []
+  const maxLen = Math.max(oldLines.length, newLines.length)
+  for (let i = 0; i < maxLen; i++) {
+    const o = oldLines[i]
+    const n = newLines[i]
+    if (o === undefined) {
+      result.push({ type: 'add', text: n })
+    } else if (n === undefined) {
+      result.push({ type: 'remove', text: o })
+    } else if (o === n) {
+      result.push({ type: 'same', text: n })
+    } else {
+      result.push({ type: 'remove', text: o })
+      result.push({ type: 'add', text: n })
+    }
+  }
+  return result
+}
+
+async function doRollback() {
+  try {
+    await ElMessageBox.confirm(
+      `确认将文章回滚至 v${viewingVersion.value.version}？这将创建一个新版本。`,
+      '回滚确认',
+      { type: 'warning' }
+    )
+  } catch { return }
+  rollbackLoading.value = true
+  try {
+    await postAPI.rollbackVersion(postId, viewingVersion.value.version)
+    ElMessage.success('已回滚')
+    showVersionDialog.value = false
+    fetchPost()
+    fetchVersions()
+  } catch (err) { ElMessage.error(err.message) }
+  finally { rollbackLoading.value = false }
 }
 
 async function toggleLike() {
   if (!userStore.isLoggedIn) return ElMessage.warning('请先登录')
   try {
     const res = await postAPI.like(postId)
-    liked.value = res.data?.liked ?? !liked.value
-    post.value.like_count += liked.value ? 1 : -1
+    liked.value = res.data.liked
+    post.value.like_count += res.data.liked ? 1 : -1
   } catch (err) { ElMessage.error(err.message) }
 }
 
-async function likeComment(id) {
+async function toggleBookmark() {
   if (!userStore.isLoggedIn) return ElMessage.warning('请先登录')
   try {
-    await commentAPI.like(id)
-    const c = comments.value.find(c => c.id === id)
-    if (c) c.like_count += 1
-  } catch { /* ignore */ }
-}
-
-function replyTo(comment) {
-  replyParent.value = comment.id
-  commentContent.value = `@${comment.author_name} `
+    const res = await bookmarkAPI.toggle(postId)
+    bookmarked.value = res.data.bookmarked
+    ElMessage.success(res.data.bookmarked ? '已收藏' : '已取消收藏')
+  } catch (err) { ElMessage.error(err.message) }
 }
 
 async function submitComment() {
-  if (!commentContent.value.trim()) return ElMessage.warning('请输入评论内容')
+  if (!commentContent.value.trim()) return
   commentLoading.value = true
   try {
     await commentAPI.create(postId, {
       content: commentContent.value,
-      parentId: replyParent.value,
-      isAnonymous: commentAnonymous.value
+      isAnonymous: commentAnonymous.value,
+      parentId: replyParentId.value
     })
-    ElMessage.success('评论已提交，等待审核')
+    ElMessage.success('评论发表成功')
     commentContent.value = ''
-    replyParent.value = null
+    replyTo.value = null
+    replyParentId.value = null
     fetchComments()
+    fetchPost()
   } catch (err) { ElMessage.error(err.message) }
   finally { commentLoading.value = false }
 }
 
-onMounted(() => { fetchPost(); fetchComments() })
+async function likeComment(c) {
+  if (!userStore.isLoggedIn) return
+  try {
+    await commentAPI.like(c.id)
+    c.liked = !c.liked
+    c.like_count += c.liked ? 1 : -1
+  } catch { /* ignore */ }
+}
+
+onMounted(async () => {
+  await fetchPost()
+  fetchComments()
+  fetchProposals()
+  fetchVersions()
+})
 </script>
 
 <style scoped>
 .page-wrapper { min-height: 100vh; background: var(--color-bg-primary); }
-.back-link { color: var(--color-accent); text-decoration: none; display: inline-block; margin-bottom: 16px; }
 
-.post-detail { padding: 32px; margin-bottom: 32px; }
-.post-detail h1 { font-family: var(--font-title); font-size: 1.6rem; margin-bottom: 12px; }
-.post-meta { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 20px; }
-.post-body { font-size: 1rem; line-height: 1.8; white-space: pre-wrap; margin-bottom: 20px; }
-.post-actions { display: flex; align-items: center; gap: 16px; padding-top: 16px; border-top: 1px solid var(--color-border-light); font-size: 0.9rem; color: var(--color-text-secondary); }
+.detail-layout { display: flex; gap: 24px; }
+.detail-main { flex: 1; min-width: 0; }
+.detail-sidebar { width: 280px; flex-shrink: 0; }
 
-.section-block { margin-bottom: 32px; }
-.section-title { font-family: var(--font-title); font-size: 1.1rem; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
+.detail-header { margin-bottom: 24px; }
+.header-badges { display: flex; gap: 8px; margin-bottom: 8px; }
+.category-tag { font-size: 0.75rem; color: var(--color-green); background: rgba(46,92,76,0.1); padding: 2px 8px; border-radius: 4px; }
+.feature-badge { font-size: 0.75rem; }
+.version-badge { font-size: 0.75rem; color: var(--color-blue); background: rgba(74,107,138,0.1); padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); }
+.detail-title { font-family: var(--font-title); font-size: 2rem; margin-bottom: 12px; }
+.detail-meta { font-size: 0.85rem; color: var(--color-text-secondary); display: flex; gap: 16px; }
 
-.comment-form { padding: 16px; margin-bottom: 16px; }
-.comment-form-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.detail-body { margin-bottom: 24px; }
 
-.comment-list { display: flex; flex-direction: column; gap: 12px; }
-.comment-item { padding: 14px 0; border-bottom: 1px solid var(--color-border-light); }
-.comment-header { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 6px; }
-.comment-header strong { font-size: 0.9rem; }
-.comment-time { color: var(--color-text-secondary); font-size: 0.8rem; }
-.comment-text { font-size: 0.95rem; line-height: 1.6; margin-bottom: 6px; }
-.comment-actions { display: flex; gap: 16px; font-size: 0.8rem; color: var(--color-text-secondary); }
-.comment-actions span { cursor: pointer; }
-.comment-actions span:hover { color: var(--color-accent); }
-.empty-text { text-align: center; color: var(--color-text-secondary); padding: 20px; }
+.action-bar { display: flex; gap: 16px; padding: 16px 0; border-top: 1px solid var(--color-border-light); border-bottom: 1px solid var(--color-border-light); margin-bottom: 24px; }
+.action-btn { background: none; border: 1px solid var(--color-border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; color: var(--color-text-secondary); transition: all 0.2s; text-decoration: none; }
+.action-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.action-btn.active { background: var(--color-accent-light); color: var(--color-accent); border-color: var(--color-accent); }
+.proposal-btn { background: var(--color-accent); color: #fff !important; border-color: var(--color-accent); }
+.proposal-btn:hover { opacity: 0.9; }
+
+.section-title { font-family: var(--font-title); font-size: 1.1rem; margin-bottom: 16px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
+
+.comment-form { margin-bottom: 20px; }
+.comment-form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; }
+
+.comment-list { display: flex; flex-direction: column; gap: 4px; }
+.comment-item { padding: 12px; border-radius: 6px; }
+.comment-item:nth-child(odd) { background: var(--glass-bg-card); }
+.comment-body { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.comment-author { font-weight: 600; font-size: 0.85rem; }
+.comment-text { flex: 1; font-size: 0.9rem; }
+.comment-time { font-size: 0.75rem; color: var(--color-text-secondary); }
+.comment-action { background: none; border: none; cursor: pointer; font-size: 0.8rem; color: var(--color-text-secondary); }
+.comment-action:hover { color: var(--color-accent); }
+.comment-reply { margin-left: 32px; padding: 8px 12px; font-size: 0.85rem; display: flex; gap: 8px; border-left: 2px solid var(--color-border); }
+
+.sidebar-block { padding: 16px; margin-bottom: 16px; }
+.sb-title { font-family: var(--font-title); font-size: 0.95rem; margin-bottom: 12px; }
+
+.proposal-item { padding: 8px 0; border-bottom: 1px solid var(--color-border-light); cursor: pointer; }
+.proposal-item:hover { background: var(--color-accent-light); }
+.proposal-item:last-child { border-bottom: none; }
+.proposal-name { display: block; font-size: 0.85rem; font-weight: 500; margin: 4px 0 2px; }
+.proposal-meta { font-size: 0.75rem; color: var(--color-text-secondary); }
+
+.version-item { padding: 6px 0; border-bottom: 1px solid var(--color-border-light); cursor: pointer; transition: background 0.15s; border-radius: 4px; }
+.version-item:hover { background: var(--color-bg-secondary); }
+.version-item:last-child { border-bottom: none; }
+.ver-row { display: flex; align-items: center; gap: 6px; }
+.ver-badge { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-blue); background: rgba(74,107,138,0.1); padding: 1px 6px; border-radius: 3px; }
+.ver-badge.ver-current { color: var(--color-green); background: rgba(46,92,76,0.12); }
+.ver-summary { font-size: 0.85rem; }
+.ver-meta { display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 2px; }
+
+/* Version Dialog */
+.version-dialog-content { max-height: 60vh; overflow-y: auto; }
+.vd-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border-light); }
+.vd-title { display: block; font-family: var(--font-title); font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
+.vd-meta { font-size: 0.8rem; color: var(--color-text-secondary); }
+.vd-body { line-height: 1.8; }
+
+/* Diff */
+.diff-container { max-height: 60vh; overflow-y: auto; }
+.diff-headers { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 8px; }
+.diff-h { flex: 1; padding: 8px 12px; font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; }
+.diff-h.left { color: var(--color-accent); }
+.diff-h.right { color: var(--color-green); }
+.diff-body { font-family: var(--font-mono); font-size: 0.82rem; }
+.diff-line { display: flex; min-height: 22px; line-height: 22px; }
+.diff-line.add { background: rgba(46,92,76,0.08); }
+.diff-line.remove { background: rgba(139,37,0,0.06); }
+.dl-marker { width: 20px; text-align: center; flex-shrink: 0; color: var(--color-text-secondary); }
+.diff-line.add .dl-marker { color: var(--color-green); }
+.diff-line.remove .dl-marker { color: var(--color-accent); }
+.dl-text { flex: 1; white-space: pre-wrap; word-break: break-all; }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.sidebar-tag { font-size: 0.8rem; padding: 3px 10px; background: var(--color-bg-secondary); border-radius: 12px; }
+
+.empty-text { text-align: center; color: var(--color-text-secondary); padding: 20px; font-size: 0.9rem; }
+
+@media (max-width: 768px) {
+  .detail-layout { flex-direction: column; }
+  .detail-sidebar { width: 100%; }
+}
 </style>

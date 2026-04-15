@@ -1,77 +1,75 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-community">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <div class="community-header">
-        <h2 class="page-title">论道场</h2>
-        <el-button v-if="userStore.isLoggedIn" type="primary" @click="showCreate = true">+ 发起论题</el-button>
+      <BackButton fallback="/">返回首页</BackButton>
+      <div class="page-header-decorated">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 class="page-title">📜 知识广场</h2>
+            <p class="page-subtitle">以文会友，以友辅仁</p>
+          </div>
+          <router-link v-if="userStore.isLoggedIn" to="/community/create" class="btn-primary">撰写文章</router-link>
+        </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="category-tabs">
-        <span v-for="cat in categoryList" :key="cat.value" class="tab" :class="{ active: category === cat.value }" @click="category = cat.value; fetchPosts()">
-          {{ cat.label }}
-        </span>
+      <!-- Search & Filters -->
+      <div class="filters glass-card">
+        <el-input v-model="keyword" placeholder="搜索知识文章..." clearable @keyup.enter="search" class="search-input">
+          <template #prefix>🔍</template>
+        </el-input>
+        <div class="filter-bar">
+          <div class="category-tabs">
+            <span v-for="cat in categories" :key="cat.value" :class="{ active: category === cat.value }" @click="category = cat.value; fetchPosts()">
+              {{ cat.label }}
+            </span>
+          </div>
+          <div class="sort-select">
+            <span :class="{ active: sort === 'latest' }" @click="sort = 'latest'; fetchPosts()">最新</span>
+            <span :class="{ active: sort === 'hot' }" @click="sort = 'hot'; fetchPosts()">最热</span>
+            <span :class="{ active: sort === 'bookmarks' }" @click="sort = 'bookmarks'; fetchPosts()">最多收藏</span>
+          </div>
+        </div>
       </div>
 
-      <div class="community-layout">
-        <!-- Post List -->
-        <div class="post-list">
-          <div v-for="post in posts" :key="post.id" class="post-card card" @click="$router.push(`/community/posts/${post.id}`)">
+      <!-- Post List -->
+      <AppLoading v-if="loading" type="card" :count="4" />
+      <div class="post-list" v-else-if="posts.length">
+        <div v-for="post in posts" :key="post.id" class="post-item card" @click="$router.push('/community/posts/' + post.id)">
+          <div class="post-left">
             <div class="post-badges">
-              <span v-if="post.is_pinned" class="badge pin">📌 置顶</span>
-              <span v-if="post.is_featured" class="badge feature">⭐ 精选</span>
-              <span class="badge cat">{{ categoryMap[post.category] }}</span>
+              <span v-if="post.is_pinned" class="pin-badge">📌 置顶</span>
+              <span v-if="post.is_featured" class="feature-badge">⭐ 精华</span>
+              <span class="category-tag">{{ categoryMap[post.category] }}</span>
             </div>
             <h3 class="post-title">{{ post.title }}</h3>
-            <div class="post-footer">
-              <span class="post-author">{{ post.author_name }} · {{ timeAgo(post.created_at) }}</span>
-              <span class="post-stats">💬{{ post.comment_count }} 👍{{ post.like_count }} 👁{{ post.view_count }}</span>
+            <p v-if="post.summary" class="post-summary">{{ post.summary }}</p>
+            <div class="post-meta">
+              <span>{{ post.author_name }}</span>
+              <span>{{ timeAgo(post.created_at) }}</span>
             </div>
           </div>
-          <p v-if="!posts.length" class="empty-text">暂无论题</p>
-          <el-pagination v-if="total > pageSize" layout="prev, pager, next" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="fetchPosts" class="pagination" />
+          <div class="post-stats">
+            <span>👀 {{ post.view_count }}</span>
+            <span>❤️ {{ post.like_count }}</span>
+            <span>💬 {{ post.comment_count }}</span>
+            <span>⭐ {{ post.bookmark_count || 0 }}</span>
+          </div>
         </div>
+      </div>
+      <AppEmpty v-else text="暂无文章，快来撰写第一篇吧！" />
 
-        <!-- Sidebar -->
-        <div class="community-sidebar">
-          <div class="sidebar-block card">
-            <h4>热门标签</h4>
-            <div class="tag-cloud">
-              <span v-for="tag in tags" :key="tag.id" class="sidebar-tag" @click="filterByTag(tag.name)">{{ tag.name }}</span>
-            </div>
-          </div>
-          <div class="sidebar-block card">
-            <h4>论道须知</h4>
-            <ul class="rules-list">
-              <li>以文会友，友善交流</li>
-              <li>不传不实之词</li>
-              <li>鼓励分享求学经验</li>
-            </ul>
-          </div>
+      <!-- Tags -->
+      <div class="sidebar" v-if="tags.length">
+        <h3 class="sidebar-title">热门标签</h3>
+        <div class="tag-cloud">
+          <span v-for="tag in tags" :key="tag.id" class="tag-item" :class="{ active: selectedTag === tag.name }"
+            @click="selectedTag = selectedTag === tag.name ? '' : tag.name; fetchPosts()">
+            {{ tag.name }} ({{ tag.post_count }})
+          </span>
         </div>
       </div>
     </div>
-
-    <!-- Create Dialog -->
-    <el-dialog v-model="showCreate" title="发起论题" width="600px">
-      <el-form :model="createForm" label-width="80px">
-        <el-form-item label="标题"><el-input v-model="createForm.title" placeholder="论题标题" /></el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="createForm.category">
-            <el-option v-for="cat in categoryList.slice(1)" :key="cat.value" :label="cat.label" :value="cat.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="内容"><el-input v-model="createForm.content" type="textarea" :rows="6" placeholder="写下你的见解..." /></el-form-item>
-        <el-form-item label="标签"><el-input v-model="tagsInput" placeholder="用逗号分隔标签" /></el-form-item>
-        <el-form-item><el-checkbox v-model="createForm.isAnonymous">🎭 匿名发表</el-checkbox></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" @click="createPost" :loading="creating">发起论题</el-button>
-      </template>
-    </el-dialog>
-
     <AppFooter />
   </div>
 </template>
@@ -79,48 +77,48 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AppLoading from '@/components/AppLoading.vue'
+import AppEmpty from '@/components/AppEmpty.vue'
 import { postAPI, tagAPI } from '@/api/community'
 import { useUserStore } from '@/stores/user'
-import { ElMessage } from 'element-plus'
+import { useTimeAgo } from '@/composables/useTimeAgo'
 
 const userStore = useUserStore()
-const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
-const categoryList = [
-  { value: '', label: '全部' },
-  { value: 'experience', label: '修习心得' },
-  { value: 'question', label: '求学问路' },
-  { value: 'resource', label: '典籍推荐' },
-  { value: 'general', label: '杂谈' }
-]
-
 const posts = ref([])
 const tags = ref([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = 20
+const loading = ref(false)
+const keyword = ref('')
 const category = ref('')
+const sort = ref('latest')
+const selectedTag = ref('')
 
-const showCreate = ref(false)
-const creating = ref(false)
-const tagsInput = ref('')
-const createForm = ref({ title: '', content: '', category: 'general', isAnonymous: false })
+const categories = [
+  { label: '全部', value: '' },
+  { label: '修习心得', value: 'experience' },
+  { label: '求学问路', value: 'question' },
+  { label: '典籍推荐', value: 'resource' },
+  { label: '杂谈', value: 'general' }
+]
+const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / 3600000)
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}时辰前`
-  return `${Math.floor(hours / 24)}日前`
-}
+const { timeAgo } = useTimeAgo()
+
+function search() { fetchPosts() }
 
 async function fetchPosts() {
+  loading.value = true
   try {
-    const res = await postAPI.getList({ page: page.value, pageSize, category: category.value })
+    const params = { pageSize: 20 }
+    if (category.value) params.category = category.value
+    if (keyword.value) params.keyword = keyword.value
+    if (sort.value) params.sort = sort.value
+    if (selectedTag.value) params.tag = selectedTag.value
+    const res = await postAPI.getList(params)
     posts.value = res.data || []
-    total.value = res.pagination?.total || 0
-  } catch { /* ignore */ }
+  } catch { posts.value = [] }
+  finally { loading.value = false }
 }
 
 async function fetchTags() {
@@ -130,66 +128,40 @@ async function fetchTags() {
   } catch { /* ignore */ }
 }
 
-function filterByTag(name) {
-  // Simple: just search by tag
-  category.value = ''
-  fetchPosts()
-}
-
-async function createPost() {
-  if (!createForm.value.title || !createForm.value.content) return ElMessage.warning('请填写标题和内容')
-  creating.value = true
-  try {
-    const tags = tagsInput.value ? tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean) : []
-    await postAPI.create({ ...createForm.value, tags })
-    ElMessage.success('论题已提交，等待审核')
-    showCreate.value = false
-    createForm.value = { title: '', content: '', category: 'general', isAnonymous: false }
-    tagsInput.value = ''
-    fetchPosts()
-  } catch (err) { ElMessage.error(err.message) }
-  finally { creating.value = false }
-}
-
 onMounted(() => { fetchPosts(); fetchTags() })
 </script>
 
 <style scoped>
 .page-wrapper { min-height: 100vh; background: var(--color-bg-primary); }
-.page-title { font-family: var(--font-title); font-size: 1.8rem; }
-.community-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
-.category-tabs { display: flex; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid var(--color-border-light); padding-bottom: 8px; }
-.tab { padding: 4px 12px; font-size: 0.9rem; cursor: pointer; border-radius: 4px 4px 0 0; color: var(--color-text-secondary); transition: all 0.2s; }
-.tab:hover { color: var(--color-accent); }
-.tab.active { color: var(--color-accent); border-bottom: 2px solid var(--color-accent); font-weight: 600; }
+.filters { padding: 16px 20px; margin-bottom: 20px; }
+.search-input { margin-bottom: 12px; }
+.filter-bar { display: flex; justify-content: space-between; align-items: center; }
+.category-tabs { display: flex; gap: 16px; }
+.category-tabs span { font-size: 0.9rem; cursor: pointer; color: var(--color-text-secondary); padding: 4px 0; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.category-tabs span:hover { color: var(--color-text-primary); }
+.category-tabs span.active { color: var(--color-accent); border-color: var(--color-accent); font-weight: 600; }
+.sort-select { display: flex; gap: 12px; font-size: 0.85rem; }
+.sort-select span { cursor: pointer; color: var(--color-text-secondary); }
+.sort-select span.active { color: var(--color-accent); font-weight: 600; }
 
-.community-layout { display: flex; gap: 24px; }
-.post-list { flex: 1; }
+.post-list { display: flex; flex-direction: column; gap: 12px; }
+.post-item { display: flex; justify-content: space-between; padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.post-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.post-left { flex: 1; min-width: 0; }
+.post-badges { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.pin-badge, .feature-badge { font-size: 0.75rem; }
+.category-tag { font-size: 0.75rem; color: var(--color-green); background: rgba(46,92,76,0.1); padding: 2px 8px; border-radius: 4px; }
+.post-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-summary { font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.post-meta { font-size: 0.8rem; color: var(--color-text-secondary); display: flex; gap: 12px; }
+.post-stats { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--color-text-secondary); min-width: 60px; text-align: right; }
 
-.post-card { padding: 18px 20px; margin-bottom: 12px; cursor: pointer; transition: transform 0.2s; }
-.post-card:hover { transform: translateX(4px); }
-.post-badges { display: flex; gap: 6px; margin-bottom: 8px; }
-.badge { font-size: 0.75rem; padding: 1px 6px; border-radius: 3px; }
-.badge.pin { background: rgba(139,37,0,0.1); color: var(--color-accent); }
-.badge.feature { background: rgba(184,134,11,0.1); color: var(--color-gold); }
-.badge.cat { background: rgba(46,92,76,0.1); color: var(--color-green); }
-.post-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
-.post-footer { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--color-text-secondary); }
-.post-stats { display: flex; gap: 8px; }
+.sidebar { margin-top: 24px; padding: 20px; background: var(--glass-bg-card); border: var(--glass-border); border-radius: var(--border-radius); }
+.sidebar-title { font-family: var(--font-title); font-size: 1rem; margin-bottom: 12px; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-item { font-size: 0.8rem; padding: 4px 10px; background: var(--color-bg-secondary); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.tag-item:hover, .tag-item.active { background: var(--color-accent-light); color: var(--color-accent); }
+
 .empty-text { text-align: center; color: var(--color-text-secondary); padding: 40px; }
-.pagination { margin-top: 20px; display: flex; justify-content: center; }
-
-.community-sidebar { flex: 0 0 240px; display: flex; flex-direction: column; gap: 16px; }
-.sidebar-block { padding: 16px; }
-.sidebar-block h4 { font-family: var(--font-title); font-size: 0.95rem; margin-bottom: 10px; color: var(--color-text-secondary); }
-.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
-.sidebar-tag { padding: 3px 10px; font-size: 0.8rem; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
-.sidebar-tag:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.rules-list { font-size: 0.85rem; color: var(--color-text-secondary); padding-left: 16px; line-height: 2; }
-
-@media (max-width: 768px) {
-  .community-layout { flex-direction: column; }
-  .community-sidebar { flex: none; }
-}
 </style>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="100" viewBox="0 0 1400 100">
+  <!-- Ethereal mist layers with gaussian blur -->
+  <defs>
+    <filter id="mist-blur">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+  <!-- Mist band 1 (wide, lower) -->
+  <ellipse cx="400" cy="60" rx="350" ry="25" fill="#F5F0E8" opacity="0.45" filter="url(#mist-blur)"/>
+  <!-- Mist band 2 (narrow, upper) -->
+  <ellipse cx="900" cy="45" rx="280" ry="18" fill="#F5F0E8" opacity="0.35" filter="url(#mist-blur)"/>
+  <!-- Mist band 3 (wide, mid) -->
+  <ellipse cx="1200" cy="55" rx="320" ry="22" fill="#F5F0E8" opacity="0.4" filter="url(#mist-blur)"/>
+  <!-- Small mist wisps -->
+  <ellipse cx="150" cy="70" rx="120" ry="12" fill="#F5F0E8" opacity="0.3" filter="url(#mist-blur)"/>
+  <ellipse cx="700" cy="35" rx="100" ry="10" fill="#EDE6D6" opacity="0.25" filter="url(#mist-blur)"/>
+</svg>

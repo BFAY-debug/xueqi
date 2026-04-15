@@ -2,8 +2,8 @@ const postService = require('../services/postService');
 
 async function listPosts(req, res, next) {
   try {
-    const { page, pageSize, category, tag } = req.query;
-    const result = await postService.getPosts({ page, pageSize, category, tag });
+    const { page, pageSize, category, tag, keyword, sort } = req.query;
+    const result = await postService.getPosts({ page, pageSize, category, tag, keyword, sort });
     res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
   } catch (err) { next(err); }
 }
@@ -17,12 +17,13 @@ async function getPost(req, res, next) {
 
 async function createPost(req, res, next) {
   try {
-    const { title, content, category, isAnonymous, tags } = req.body;
+    const { title, content, summary, category, isAnonymous, tags, permission, contentType } = req.body;
     if (!title || !content) {
       return res.error('标题和内容不能为空', 400);
     }
-    const result = await postService.createPost(req.user.userId, { title, content, category, isAnonymous, tags });
-    res.success(result, '帖子已提交，等待审核', 201);
+    const result = await postService.createPost(req.user.userId,
+      { title, content, summary, category, isAnonymous, tags, permission, contentType });
+    res.success(result, '文章已提交，等待审核', 201);
   } catch (err) { next(err); }
 }
 
@@ -56,4 +57,29 @@ async function getMyPosts(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { listPosts, getPost, createPost, updatePost, deletePost, likePost, getMyPosts };
+async function getVersions(req, res, next) {
+  try {
+    const versions = await postService.getVersions(parseInt(req.params.id, 10));
+    res.success(versions);
+  } catch (err) { next(err); }
+}
+
+async function getVersion(req, res, next) {
+  try {
+    const version = await postService.getVersion(parseInt(req.params.id, 10), parseInt(req.params.version, 10));
+    res.success(version);
+  } catch (err) { next(err); }
+}
+
+async function rollbackVersion(req, res, next) {
+  try {
+    const result = await postService.rollbackVersion(
+      parseInt(req.params.id, 10),
+      parseInt(req.params.version, 10),
+      req.user.userId
+    );
+    res.success(result, `已回滚至 v${req.params.version}`);
+  } catch (err) { next(err); }
+}
+
+module.exports = { listPosts, getPost, createPost, updatePost, deletePost, likePost, getMyPosts, getVersions, getVersion, rollbackVersion };

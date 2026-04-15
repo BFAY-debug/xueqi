@@ -7,6 +7,8 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001'
  * Get comments for a post (tree structure)
  */
 async function getComments(postId, page = 1, pageSize = 50) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 50;
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
@@ -20,8 +22,8 @@ async function getComments(postId, page = 1, pageSize = 50) {
      LEFT JOIN levels l ON l.id = us.level_id
      WHERE c.post_id = ? AND c.status = 'published'
      ORDER BY c.created_at ASC
-     LIMIT ? OFFSET ?`,
-    [postId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [postId]
   );
 
   const [countRows] = await db.execute(
@@ -56,11 +58,29 @@ async function createComment(postId, userId, { content, parentId, isAnonymous })
 
   const [result] = await db.execute(
     `INSERT INTO comments (post_id, user_id, parent_id, content, is_anonymous, status)
-     VALUES (?, ?, ?, ?, ?, 'pending')`,
+     VALUES (?, ?, ?, ?, ?, 'published')`,
     [postId, userId, parentId || null, content, isAnonymous ? 1 : 0]
   );
 
-  return { commentId: result.insertId, status: 'pending' };
+  // Immediately increment comment count
+  await db.execute(
+    'UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?',
+    [postId]
+  );
+
+  // Award points immediately
+  try {
+    const token = getServiceToken();
+    await axios.post(`${USER_SERVICE_URL}/api/user/points/award`, {
+      userId,
+      action: 'comment',
+      description: '发表评论'
+    }, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (err) {
+    logger.warn(`Failed to award comment points: ${err.message}`);
+  }
+
+  return { commentId: result.insertId, status: 'published' };
 }
 
 /**
@@ -122,6 +142,8 @@ async function toggleLikeComment(commentId, userId) {
  * Get my comments
  */
 async function getMyComments(userId, page = 1, pageSize = 20) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
@@ -130,8 +152,8 @@ async function getMyComments(userId, page = 1, pageSize = 20) {
      JOIN posts p ON p.id = c.post_id
      WHERE c.user_id = ?
      ORDER BY c.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(
@@ -149,3 +171,8 @@ module.exports = {
   toggleLikeComment,
   getMyComments
 };
+
+function getServiceToken() {
+  const { jwt: { generateToken } } = require('xueqi-shared');
+  return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin' });
+}

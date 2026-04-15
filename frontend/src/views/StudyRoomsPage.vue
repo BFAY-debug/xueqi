@@ -1,8 +1,12 @@
 <template>
-  <div class="page-wrapper">
+  <div class="page-wrapper theme-study">
     <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
-      <h2 class="page-title">书院</h2>
+      <BackButton />
+      <div class="page-header-decorated">
+        <h2 class="page-title">🏮 书院</h2>
+        <p class="page-subtitle">独学而无友，则孤陋而寡闻</p>
+      </div>
 
       <div class="rooms-layout">
         <!-- Room List -->
@@ -90,6 +94,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
