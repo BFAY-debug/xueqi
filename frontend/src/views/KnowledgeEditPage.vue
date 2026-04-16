@@ -118,10 +118,10 @@ async function submit() {
   try {
     if (isEdit.value) {
       await postAPI.update(postId.value, data)
-      ElMessage.success('文章已更新，等待重新审核')
+      ElMessage.success('文章已更新')
     } else {
       await postAPI.create(data)
-      ElMessage.success('文章已提交，等待审核')
+      ElMessage.success('文章已发布')
     }
     router.push('/community')
   } catch (err) {

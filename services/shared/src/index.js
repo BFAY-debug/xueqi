@@ -4,7 +4,7 @@ const { generateToken, generateRefreshToken, verifyToken, JWT_SECRET } = require
 const logger = require('./logger');
 const responseHandler = require('./responseHandler');
 const errorHandler = require('./errorHandler');
-const { authMiddleware, optionalAuth, requireRole } = require('./auth');
+const { authMiddleware, optionalAuth, requireRole, serviceAuthMiddleware } = require('./auth');
 
 module.exports = {
   db: pool,
@@ -15,5 +15,6 @@ module.exports = {
   errorHandler,
   authMiddleware,
   optionalAuth,
-  requireRole
+  requireRole,
+  serviceAuthMiddleware
 };

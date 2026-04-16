@@ -94,7 +94,16 @@ async function reviewApplication(req, res, next) {
   }
 }
 
+async function getUserDetail(req, res, next) {
+  try {
+    const user = await adminService.getUserDetail(parseInt(req.params.id, 10));
+    res.success(user);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
-  getUsers, changeUserRole, changeUserStatus, getSystemStats,
+  getUsers, getUserDetail, changeUserRole, changeUserStatus, getSystemStats,
   applyForAdmin, getPendingApplications, reviewApplication
 };

@@ -1,5 +1,6 @@
 const { db, logger } = require('xueqi-shared');
 const axios = require('axios');
+const { broadcastSeatUpdate } = require('../socket');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
@@ -159,6 +160,13 @@ async function reserveSeat(seatId, userId, { reserveDate, startTime, endTime }) 
     [seatId]
   );
 
+  // Broadcast seat update
+  const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [seatId]);
+  if (seatInfo.length > 0) {
+    const seats = await getSeatsByLocation(seatInfo[0].location_id);
+    broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'reserve', seatId });
+  }
+
   return {
     reservationId: result.insertId,
     seatId,
@@ -206,6 +214,13 @@ async function checkinReservation(reservationId, userId) {
     logger.warn(`Failed to award seat checkin points: ${err.message}`);
   }
 
+  // Broadcast seat update
+  const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [reservation.seat_id]);
+  if (seatInfo.length > 0) {
+    const seats = await getSeatsByLocation(seatInfo[0].location_id);
+    broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'checkin', seatId: reservation.seat_id });
+  }
+
   return { reservationId, status: 'checked_in' };
 }
 
@@ -231,6 +246,13 @@ async function cancelReservation(reservationId, userId) {
     "UPDATE real_seats SET status = 'available' WHERE id = ?",
     [rows[0].seat_id]
   );
+
+  // Broadcast seat update
+  const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [rows[0].seat_id]);
+  if (seatInfo.length > 0) {
+    const seats = await getSeatsByLocation(seatInfo[0].location_id);
+    broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'cancel', seatId: rows[0].seat_id });
+  }
 
   return { reservationId, status: 'cancelled' };
 }
@@ -334,6 +356,14 @@ async function recordNoShow(reservationId) {
   );
 
   logger.info(`No-show recorded for reservation ${reservationId}, user ${reservation.user_id}, penalty count: ${newCount}`);
+
+  // Broadcast seat update
+  const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [reservation.seat_id]);
+  if (seatInfo.length > 0) {
+    const seats = await getSeatsByLocation(seatInfo[0].location_id);
+    broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'no_show', seatId: reservation.seat_id });
+  }
+
   return { reservationId, penaltyCount: newCount, banUntil };
 }
 
@@ -398,6 +428,35 @@ function getServiceToken() {
   });
 }
 
+/**
+ * Start periodic no-show checker — runs every 60 seconds.
+ * Finds reservations that are 'pending' and started >20 min ago, marks as no-show.
+ */
+function startNoShowChecker() {
+  setInterval(async () => {
+    try {
+      const [rows] = await db.execute(`
+        SELECT sr.id
+        FROM seat_reservations sr
+        WHERE sr.status = 'pending'
+          AND CONCAT(sr.reserve_date, ' ', sr.start_time) <= DATE_SUB(NOW(), INTERVAL 20 MINUTE)
+          AND CONCAT(sr.reserve_date, ' ', sr.start_time) >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+      `);
+      for (const row of rows) {
+        try {
+          await recordNoShow(row.id);
+          logger.info(`Auto no-show: reservation ${row.id}`);
+        } catch (err) {
+          logger.warn(`Failed to process no-show for reservation ${row.id}: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      logger.error(`No-show checker error: ${err.message}`);
+    }
+  }, 60 * 1000);
+  logger.info('No-show checker started (every 60s)');
+}
+
 module.exports = {
   getLocations,
   getLocationById,
@@ -412,5 +471,6 @@ module.exports = {
   getMyReservations,
   getMyPenalty,
   recordNoShow,
-  reducePenalty
+  reducePenalty,
+  startNoShowChecker
 };

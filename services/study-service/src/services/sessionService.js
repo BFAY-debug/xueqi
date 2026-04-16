@@ -7,16 +7,18 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001'
  * Start a study session
  */
 async function startSession(userId, { roomId, sessionType = 'free' }) {
-  // Check if user has an active session
+  // Check if user has an active session — auto-close stale ones
   const [active] = await db.execute(
     "SELECT id FROM study_sessions WHERE user_id = ? AND status = 'active'",
     [userId]
   );
 
   if (active.length > 0) {
-    const error = new Error('你已有一个进行中的学习会话');
-    error.status = 400;
-    throw error;
+    await db.execute(
+      "UPDATE study_sessions SET end_time = NOW(), status = 'abandoned' WHERE id = ?",
+      [active[0].id]
+    );
+    logger.info(`Auto-closed stale session ${active[0].id} for user ${userId}`);
   }
 
   const [result] = await db.execute(
@@ -28,9 +30,8 @@ async function startSession(userId, { roomId, sessionType = 'free' }) {
   // Update checkin streak via user service
   try {
     const token = getServiceToken();
-    await axios.post(`${USER_SERVICE_URL}/api/user/points/award`, {
-      userId,
-      action: 'checkin'
+    await axios.post(`${USER_SERVICE_URL}/api/user/points/checkin`, {
+      userId
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -138,4 +139,27 @@ function getServiceToken() {
   });
 }
 
-module.exports = { startSession, endSession, getMySessions };
+/**
+ * Get active session for a user (for timer recovery)
+ */
+async function getActiveSession(userId) {
+  const [rows] = await db.execute(
+    `SELECT id, room_id, start_time, session_type FROM study_sessions
+     WHERE user_id = ? AND status = 'active'
+     ORDER BY start_time DESC LIMIT 1`,
+    [userId]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Close a stale active session (called when session is too old to recover)
+ */
+async function abandonActiveSession(userId) {
+  await db.execute(
+    "UPDATE study_sessions SET end_time = NOW(), status = 'abandoned' WHERE user_id = ? AND status = 'active'",
+    [userId]
+  );
+}
+
+module.exports = { startSession, endSession, getMySessions, getActiveSession, abandonActiveSession };

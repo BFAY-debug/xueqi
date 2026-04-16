@@ -312,7 +312,7 @@ CREATE TABLE posts (
     like_count    INT DEFAULT 0,
     comment_count INT DEFAULT 0,
     bookmark_count INT DEFAULT 0,
-    status        ENUM('pending', 'published', 'rejected', 'hidden') DEFAULT 'pending',
+    status        ENUM('pending', 'published', 'rejected', 'hidden') DEFAULT 'published',
     reviewed_by   INT,
     reviewed_at   TIMESTAMP NULL,
     reject_reason VARCHAR(500),
@@ -462,4 +462,19 @@ CREATE TABLE post_bookmarks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, post_id),
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 书院聊天消息
+-- ----------------------------------------------------------
+CREATE TABLE room_messages (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    room_id    INT NOT NULL,
+    user_id    INT NOT NULL,
+    content    TEXT NOT NULL,
+    type       ENUM('user', 'system') DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_room_created (room_id, created_at DESC),
+    FOREIGN KEY (room_id) REFERENCES study_rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB;

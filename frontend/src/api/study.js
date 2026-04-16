@@ -13,7 +13,13 @@ export const roomAPI = {
 export const sessionAPI = {
   start: (data) => request.post('/study/sessions/start', data),
   end: (id) => request.put(`/study/sessions/${id}/end`),
-  getMy: (params) => request.get('/study/sessions/my', { params })
+  getMy: (params) => request.get('/study/sessions/my', { params }),
+  getActive: () => request.get('/study/sessions/active'),
+  abandonActive: () => request.delete('/study/sessions/active')
+}
+
+export const chatAPI = {
+  getMessages: (roomId, limit = 50) => request.get(`/study/rooms/${roomId}/messages`, { params: { limit } })
 }
 
 export const locationAPI = {

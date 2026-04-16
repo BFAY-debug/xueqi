@@ -43,13 +43,21 @@
             </div>
           </div>
 
-          <!-- Participants -->
+          <!-- Participants with status -->
           <div class="section-block">
             <h3 class="section-title">同窗学友</h3>
             <div class="participant-grid" v-if="participants.length">
               <div class="participant card" v-for="p in participants" :key="p.user_id">
-                <div class="p-avatar">{{ (p.nickname || p.username || '?')[0] }}</div>
-                <span class="p-name">{{ p.nickname || p.username }}</span>
+                <div class="p-avatar-wrap">
+                  <div class="p-avatar">{{ (p.nickname || p.username || '?')[0] }}</div>
+                  <span v-if="participantStatuses[p.user_id]" class="status-dot" :class="'status-' + participantStatuses[p.user_id]"></span>
+                </div>
+                <div class="p-info">
+                  <span class="p-name">{{ p.nickname || p.username }}</span>
+                  <span v-if="participantStatuses[p.user_id]" class="p-status" :class="'status-text-' + participantStatuses[p.user_id]">
+                    {{ statusLabel(participantStatuses[p.user_id]) }}
+                  </span>
+                </div>
               </div>
             </div>
             <p v-else class="empty-text">暂无学子修习</p>
@@ -82,6 +90,11 @@
                 </template>
               </div>
             </div>
+          </div>
+
+          <!-- Chat (only when joined) -->
+          <div class="section-block" v-if="hasJoined && selectedRoom">
+            <RoomChat :roomId="selectedRoom.id" @unread="onChatUnread" />
           </div>
 
           <!-- Actions -->
@@ -145,6 +158,23 @@
             {{ isFullscreen ? '退出全屏' : '全屏' }}
           </button>
         </div>
+
+        <!-- Chat bubble (collapsed) -->
+        <div v-if="!showImmersiveChat" class="chat-bubble" @click="showImmersiveChat = true">
+          <span>💬</span>
+          <span v-if="chatUnread > 0" class="chat-badge">{{ chatUnread }}</span>
+        </div>
+
+        <!-- Chat panel (expanded) -->
+        <Transition name="chat-slide">
+          <div v-if="showImmersiveChat" class="panel panel-chat glass-card">
+            <div class="panel-chat-header">
+              <span class="panel-label">学堂论谈</span>
+              <button class="chat-close-btn" @click="showImmersiveChat = false">✕</button>
+            </div>
+            <RoomChat v-if="selectedRoom" :roomId="selectedRoom.id" :compact="true" />
+          </div>
+        </Transition>
       </div>
     </Transition>
 
@@ -153,13 +183,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'
+import RoomChat from '@/components/RoomChat.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
+import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
@@ -209,7 +241,30 @@ const timerSeconds = ref(0)
 const immersiveMode = ref(false)
 const isFullscreen = ref(false)
 const isMobile = ref(window.innerWidth < 768)
+const showImmersiveChat = ref(false)
+const chatUnread = ref(0)
+const participantStatuses = ref({})
 let timerInterval = null
+
+// Socket.IO for real-time participant updates
+let currentSocketRoomId = null
+
+function joinSocketRoom(roomId) {
+  const sock = getSocket()
+  if (currentSocketRoomId) sock.emit('room:leave', currentSocketRoomId)
+  sock.emit('room:join', roomId)
+  currentSocketRoomId = roomId
+}
+
+function onSocketParticipants(data) {
+  if (selectedRoom.value) {
+    participants.value = data.participants || []
+  }
+}
+
+watch(selectedRoom, (room) => {
+  if (room) joinSocketRoom(room.id)
+})
 
 const currentScene = computed(() => {
   if (!selectedRoom.value) return scenes[0]
@@ -255,7 +310,10 @@ async function selectRoom(room) {
   try {
     const res = await roomAPI.getParticipants(room.id)
     participants.value = res.data || []
-  } catch { participants.value = [] }
+  } catch (err) {
+    console.error('Failed to fetch participants:', err)
+    participants.value = []
+  }
 }
 
 async function joinRoom() {
@@ -293,6 +351,13 @@ async function startStudy() {
     timerSeconds.value = 0
     timerInterval = setInterval(() => { timerSeconds.value++ }, 1000)
     ElMessage.success('开始修习')
+    // Broadcast status
+    const sock = getSocket()
+    sock.emit('status:update', {
+      roomId: selectedRoom.value.id,
+      status: sessionType.value === 'pomodoro' ? 'pomodoro' : 'studying',
+      elapsedSeconds: 0
+    })
   } catch (err) { ElMessage.error(err.message) }
   finally { actionLoading.value = false }
 }
@@ -307,6 +372,11 @@ async function endStudy() {
     activeSessionId.value = null
     if (immersiveMode.value) exitImmersive()
     ElMessage.success(`修习结束，共 ${res.data.durationMinutes} 分钟`)
+    // Broadcast idle status
+    if (selectedRoom.value) {
+      const sock = getSocket()
+      sock.emit('status:update', { roomId: selectedRoom.value.id, status: 'idle' })
+    }
   } catch (err) { ElMessage.error(err.message) }
   finally { actionLoading.value = false }
 }
@@ -332,14 +402,61 @@ function toggleFullscreen() {
 
 function onResize() { isMobile.value = window.innerWidth < 768 }
 
+function statusLabel(status) {
+  return { studying: '学习中', pomodoro: '番茄钟', idle: '小憩', away: '离开' }[status] || ''
+}
+
+function onChatUnread() {
+  chatUnread.value++
+}
+
+// Recover active session timer from server
+async function recoverActiveSession() {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await sessionAPI.getActive()
+    const session = res.data
+    if (session && session.start_time) {
+      const start = new Date(session.start_time)
+      const elapsed = Math.floor((Date.now() - start.getTime()) / 1000)
+      if (elapsed > 0 && elapsed < 8 * 3600) {
+        activeSessionId.value = session.id
+        isStudying.value = true
+        sessionType.value = session.session_type || 'free'
+        timerSeconds.value = elapsed
+        timerInterval = setInterval(() => { timerSeconds.value++ }, 1000)
+      } else {
+        // Session too old, auto-close it
+        await sessionAPI.abandonActive()
+      }
+    }
+  } catch { /* no active session, ignore */ }
+}
+
+// Socket event handlers for status sync
+function onSocketStatusUpdate(data) {
+  if (selectedRoom.value) {
+    participantStatuses.value = { ...participantStatuses.value, [data.userId]: data.status }
+  }
+}
+
 onMounted(() => {
   fetchRooms()
+  recoverActiveSession()
   window.addEventListener('resize', onResize)
+  const sock = getSocket()
+  sock.on('room:participants', onSocketParticipants)
+  sock.on('status:update', onSocketStatusUpdate)
 })
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval)
   window.removeEventListener('resize', onResize)
   document.body.style.overflow = ''
+  const sock = getSocket()
+  sock.off('room:participants', onSocketParticipants)
+  sock.off('status:update', onSocketStatusUpdate)
+  if (currentSocketRoomId) sock.emit('room:leave', currentSocketRoomId)
+  chatUnread.value = 0
 })
 </script>
 
@@ -571,6 +688,128 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+/* ═══════════════════ Participant Status ═══════════════════ */
+.p-avatar-wrap {
+  position: relative;
+}
+.status-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-primary);
+}
+.status-dot.status-studying { background: #2E5C4C; }
+.status-dot.status-pomodoro { background: #8B2500; }
+.status-dot.status-idle { background: #B8860B; }
+.status-dot.status-away { background: #999; }
+
+.p-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.p-status {
+  font-size: 0.7rem;
+  font-family: var(--font-title);
+}
+.status-text-studying { color: #2E5C4C; }
+.status-text-pomodoro { color: #8B2500; }
+.status-text-idle { color: #B8860B; }
+.status-text-away { color: #999; }
+
+/* ═══════════════════ Immersive Chat Bubble & Panel ═══════════════════ */
+.chat-bubble {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: transform 0.2s;
+  z-index: 910;
+}
+.chat-bubble:hover {
+  transform: scale(1.05);
+}
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.panel-chat {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 360px;
+  max-height: 420px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 240, 232, 0.15);
+  z-index: 910;
+  overflow: hidden;
+}
+.panel-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.chat-close-btn {
+  background: none;
+  border: none;
+  color: rgba(245, 240, 232, 0.6);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.chat-close-btn:hover {
+  color: rgba(245, 240, 232, 0.9);
+}
+
+/* Chat slide transition */
+.chat-slide-enter-active {
+  transition: all 0.3s ease;
+}
+.chat-slide-leave-active {
+  transition: all 0.2s ease;
+}
+.chat-slide-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.chat-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 /* ═══════════════════ Responsive ═══════════════════ */
 @media (max-width: 768px) {
   .rooms-layout { flex-direction: column; }
@@ -583,5 +822,15 @@ onUnmounted(() => {
   .immersive-avatars { flex-direction: row; flex-wrap: wrap; }
   .panel-sound { bottom: 16px; left: 16px; }
   .panel-bottom { bottom: 16px; right: 16px; }
+
+  .panel-chat {
+    width: calc(100% - 32px);
+    right: 16px;
+    bottom: 16px;
+  }
+  .chat-bubble {
+    bottom: 60px;
+    right: 16px;
+  }
 }
 </style>

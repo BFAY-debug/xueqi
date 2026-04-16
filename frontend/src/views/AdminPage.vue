@@ -50,8 +50,8 @@
             <el-table-column prop="category" label="分类" width="80" />
             <el-table-column prop="status" label="状态" width="80">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'published' ? 'success' : row.status === 'pending' ? 'warning' : 'danger'" size="small">
-                  {{ row.status === 'published' ? '已发布' : row.status === 'pending' ? '待审核' : '已拒绝' }}
+                <el-tag :type="row.status === 'published' ? 'success' : row.status === 'hidden' ? 'info' : row.status === 'pending' ? 'warning' : 'danger'" size="small">
+                  {{ row.status === 'published' ? '已发布' : row.status === 'hidden' ? '已隐藏' : row.status === 'pending' ? '待审核' : '已拒绝' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -60,10 +60,12 @@
                 <span style="font-size:0.8rem">👀{{ row.view_count }} ❤️{{ row.like_count }} 💬{{ row.comment_count }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="280">
               <template #default="{ row }">
                 <el-button size="small" :type="row.is_pinned ? 'warning' : ''" @click="togglePinPost(row.id, row.is_pinned)">{{ row.is_pinned ? '取消置顶' : '置顶' }}</el-button>
                 <el-button size="small" :type="row.is_featured ? 'warning' : ''" @click="toggleFeaturePost(row.id, row.is_featured)">{{ row.is_featured ? '取消精选' : '精选' }}</el-button>
+                <el-button size="small" :type="row.status === 'hidden' ? 'success' : 'info'" @click="toggleHidePost(row.id, row.status !== 'hidden')">{{ row.status === 'hidden' ? '恢复' : '隐藏' }}</el-button>
+                <el-button size="small" @click="openEditPostDialog(row)">编辑</el-button>
                 <el-button size="small" type="danger" @click="adminDeletePost(row.id)">删除</el-button>
               </template>
             </el-table-column>
@@ -143,6 +145,7 @@
             </el-table-column>
             <el-table-column label="操作">
               <template #default="{ row }">
+                <el-button size="small" @click="viewUserDetail(row.id)">详情</el-button>
                 <el-button v-if="userStore.isSuperAdmin && row.role_name === 'user'" size="small" @click="changeRole(row.id, 2)">设为管理员</el-button>
                 <el-button v-if="userStore.isSuperAdmin && row.role_name === 'admin'" size="small" @click="changeRole(row.id, 3)">取消管理员</el-button>
                 <el-button v-if="row.status === 1" size="small" type="warning" @click="changeStatus(row.id, 0)">禁言</el-button>
@@ -305,6 +308,44 @@
         <el-button type="primary" @click="batchAddSeats" :loading="saving">添加</el-button>
       </template>
     </el-dialog>
+
+    <!-- Edit Post Dialog -->
+    <el-dialog v-model="showEditPostDialog" title="管理员编辑文章" width="600px">
+      <el-form :model="editPostForm" label-width="60px">
+        <el-form-item label="标题"><el-input v-model="editPostForm.title" /></el-form-item>
+        <el-form-item label="内容"><el-input v-model="editPostForm.content" type="textarea" :rows="10" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditPostDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitEditPost" :loading="saving">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- User Detail Dialog -->
+    <el-dialog v-model="showUserDetailDialog" title="学子详情" width="500px">
+      <div v-if="userDetail" class="user-detail">
+        <div class="user-detail-header">
+          <div class="user-detail-avatar">{{ (userDetail.nickname || userDetail.username || '?')[0] }}</div>
+          <div>
+            <h3 style="margin:0">{{ userDetail.nickname || userDetail.username }}</h3>
+            <p style="margin:4px 0 0;font-size:0.85rem;color:var(--color-text-secondary)">@{{ userDetail.username }} · {{ userDetail.role_name }}</p>
+          </div>
+          <el-tag :type="userDetail.status === 1 ? 'success' : 'danger'" size="small" style="margin-left:auto">{{ userDetail.status === 1 ? '正常' : '禁言' }}</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small" style="margin-top:16px">
+          <el-descriptions-item label="积分">{{ userDetail.total_points || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="等级">{{ userDetail.level_name || '初学' }} {{ userDetail.level_badge || '' }}</el-descriptions-item>
+          <el-descriptions-item label="修习时长">{{ Math.floor((userDetail.total_study_minutes || 0) / 60) }} 小时</el-descriptions-item>
+          <el-descriptions-item label="番茄钟">{{ userDetail.total_pomodoros || 0 }} 个</el-descriptions-item>
+          <el-descriptions-item label="发表文章">{{ userDetail.published_posts || 0 }} 篇</el-descriptions-item>
+          <el-descriptions-item label="发表评论">{{ userDetail.published_comments || 0 }} 条</el-descriptions-item>
+          <el-descriptions-item label="连续签到">{{ userDetail.checkin_streak || 0 }} 天</el-descriptions-item>
+          <el-descriptions-item label="本月违约">{{ userDetail.penalty_count || 0 }} 次</el-descriptions-item>
+          <el-descriptions-item label="禁预约至" v-if="userDetail.ban_until">{{ formatDate(userDetail.ban_until) }}</el-descriptions-item>
+          <el-descriptions-item label="注册时间">{{ formatDate(userDetail.created_at) }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -359,6 +400,16 @@ const showAddSeatsDialog = ref(false)
 const editingLocation = ref(null)
 const locationForm = reactive({ name: '', building: '', floor: '', openTime: '', closeTime: '', description: '' })
 const seatForm = reactive({ rows: 5, cols: 8, prefix: 'A', powerDefault: false })
+
+// Edit post dialog state
+const showEditPostDialog = ref(false)
+const editPostForm = reactive({ id: null, title: '', content: '' })
+
+// User detail dialog state
+const showUserDetailDialog = ref(false)
+const userDetail = ref(null)
+
+function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
 
 async function fetchPendingPosts() {
   try { const res = await communityAdminAPI.getPendingPosts({ pageSize: 50 }); pendingPosts.value = res.data || [] } catch { /* */ }
@@ -568,6 +619,44 @@ async function toggleFeaturePost(id, featured) {
   } catch (err) { ElMessage.error(err.message) }
 }
 
+async function toggleHidePost(id, hidden) {
+  try {
+    await communityAdminAPI.hidePost(id, hidden)
+    ElMessage.success(hidden ? '文章已隐藏' : '文章已恢复')
+    fetchAllPosts()
+  } catch (err) { ElMessage.error(err.message) }
+}
+
+function openEditPostDialog(post) {
+  editPostForm.id = post.id
+  editPostForm.title = post.title || ''
+  editPostForm.content = ''
+  showEditPostDialog.value = true
+}
+
+async function submitEditPost() {
+  if (!editPostForm.title) return ElMessage.warning('标题不能为空')
+  saving.value = true
+  try {
+    await communityAdminAPI.editPost(editPostForm.id, {
+      title: editPostForm.title,
+      content: editPostForm.content || undefined
+    })
+    ElMessage.success('文章已更新')
+    showEditPostDialog.value = false
+    fetchAllPosts()
+  } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
+}
+
+async function viewUserDetail(userId) {
+  try {
+    const res = await adminAPI.getUserDetail(userId)
+    userDetail.value = res.data
+    showUserDetailDialog.value = true
+  } catch (err) { ElMessage.error(err.message) }
+}
+
 async function reviewBook(id, action) {
   const reason = action === 'reject' ? await promptReason() : ''
   if (action === 'reject' && reason === false) return
@@ -662,4 +751,13 @@ onMounted(() => { fetchPendingPosts(); fetchStats() })
 .seat-occupied { background: #f5c6cb; color: #721c24; border: 1px solid #f1b0b7; }
 .seat-maintenance { background: #e2e3e5; color: #6c757d; border: 1px solid #d6d8db; }
 .power-icon { font-size: 0.55rem; }
+
+/* User Detail Dialog */
+.user-detail-header { display: flex; align-items: center; gap: 12px; }
+.user-detail-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--color-green); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; font-family: var(--font-title);
+}
 </style>

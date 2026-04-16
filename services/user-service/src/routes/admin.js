@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 // User management
 router.get('/users', requireRole('admin', 'super_admin'), adminController.getUsers);
+router.get('/users/:id', requireRole('admin', 'super_admin'), adminController.getUserDetail);
 
 // Role management (super_admin only)
 router.put('/users/:id/role', requireRole('super_admin'), adminController.changeUserRole);

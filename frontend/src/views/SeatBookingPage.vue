@@ -96,12 +96,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { locationAPI, reservationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
+import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
@@ -115,6 +116,26 @@ const showDialog = ref(false)
 const submitting = ref(false)
 const selectedSeat = ref(null)
 const reserveForm = ref({ reserveDate: '', startTime: '', endTime: '' })
+
+// Socket.IO for real-time seat updates
+let currentSocketLocationId = null
+
+function joinSeatChannel(locationId) {
+  const sock = getSocket()
+  if (currentSocketLocationId) sock.emit('seat:leave', currentSocketLocationId)
+  sock.emit('seat:join', locationId)
+  currentSocketLocationId = locationId
+}
+
+function onSocketSeatUpdate(data) {
+  if (selectedLocation.value) {
+    seats.value = data.seats || []
+  }
+}
+
+watch(selectedLocation, (loc) => {
+  if (loc) joinSeatChannel(loc.id)
+})
 
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
 function seatClass(seat) {
@@ -200,7 +221,17 @@ async function cancel(id) {
   } catch (err) { ElMessage.error(err.message) }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  const sock = getSocket()
+  sock.on('seat:update', onSocketSeatUpdate)
+})
+
+onUnmounted(() => {
+  const sock = getSocket()
+  sock.off('seat:update', onSocketSeatUpdate)
+  if (currentSocketLocationId) sock.emit('seat:leave', currentSocketLocationId)
+})
 </script>
 
 <style scoped>

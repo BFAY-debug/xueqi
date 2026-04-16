@@ -36,4 +36,20 @@ async function awardPoints(req, res, next) {
   }
 }
 
-module.exports = { getPoints, getPointsLog, awardPoints };
+/**
+ * Internal API: Update checkin streak (called by study-service on session start)
+ */
+async function updateCheckinStreak(req, res, next) {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.error('userId is required', 400);
+    }
+    const result = await pointsService.updateCheckinStreak(userId);
+    res.success(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getPoints, getPointsLog, awardPoints, updateCheckinStreak };

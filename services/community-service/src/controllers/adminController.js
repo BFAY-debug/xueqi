@@ -66,6 +66,7 @@ async function getReviewLogs(req, res, next) {
 
 module.exports = {
   getPendingPosts, reviewPost, togglePin, toggleFeature,
+  toggleHidePost, adminEditPost,
   getPendingComments, reviewComment, getReviewLogs,
   getAllPosts, deletePost, getAllComments, deleteComment
 };
@@ -97,5 +98,21 @@ async function deleteComment(req, res, next) {
   try {
     await adminService.deleteComment(parseInt(req.params.id, 10));
     res.success(null, '评论已删除');
+  } catch (err) { next(err); }
+}
+
+async function toggleHidePost(req, res, next) {
+  try {
+    const { hidden } = req.body;
+    const result = await adminService.toggleHidePost(parseInt(req.params.id, 10), hidden);
+    res.success(result, hidden ? '文章已隐藏' : '文章已恢复');
+  } catch (err) { next(err); }
+}
+
+async function adminEditPost(req, res, next) {
+  try {
+    const { title, content } = req.body;
+    const result = await adminService.adminEditPost(parseInt(req.params.id, 10), req.user.userId, { title, content });
+    res.success(result, '文章已更新');
   } catch (err) { next(err); }
 }

@@ -23,14 +23,14 @@ async function createPost(req, res, next) {
     }
     const result = await postService.createPost(req.user.userId,
       { title, content, summary, category, isAnonymous, tags, permission, contentType });
-    res.success(result, '文章已提交，等待审核', 201);
+    res.success(result, '文章已发布', 201);
   } catch (err) { next(err); }
 }
 
 async function updatePost(req, res, next) {
   try {
     const result = await postService.updatePost(parseInt(req.params.id, 10), req.user.userId, req.body);
-    res.success(result, '帖子已更新，等待重新审核');
+    res.success(result, '文章已更新');
   } catch (err) { next(err); }
 }
 

@@ -102,12 +102,12 @@ async function getPostById(postId) {
 }
 
 /**
- * Create post (user, status=pending)
+ * Create post (user, status=published — direct publish, no review needed)
  */
 async function createPost(userId, { title, content, summary, category, isAnonymous, tags, permission, contentType }) {
   const [result] = await db.execute(
     `INSERT INTO posts (user_id, title, content, summary, category, is_anonymous, permission, content_type, version, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'published')`,
     [userId, title, content, summary || null, category || 'general', isAnonymous ? 1 : 0,
      permission || 'public', contentType || 'markdown']
   );
@@ -140,7 +140,19 @@ async function createPost(userId, { title, content, summary, category, isAnonymo
     }
   }
 
-  return { postId, status: 'pending' };
+  // Award points for publishing a post
+  try {
+    const token = getServiceToken();
+    await axios.post(`${USER_SERVICE_URL}/api/user/points/award`, {
+      userId,
+      action: 'post',
+      description: '发表文章'
+    }, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (err) {
+    logger.warn(`Failed to award post points: ${err.message}`);
+  }
+
+  return { postId, status: 'published' };
 }
 
 /**
@@ -170,8 +182,8 @@ async function updatePost(postId, userId, data) {
   // Increment version
   updates.push('version = version + 1');
 
-  // Re-submit for review if content changed
-  updates.push("status = 'pending'");
+  // Keep published status on edit (no re-review needed)
+  updates.push("status = 'published'");
   params.push(postId);
   await db.execute(`UPDATE posts SET ${updates.join(', ')} WHERE id = ?`, params);
 
@@ -187,7 +199,7 @@ async function updatePost(postId, userId, data) {
      userId]
   );
 
-  return { postId, status: 'pending', version: newVersion };
+  return { postId, status: 'published', version: newVersion };
 }
 
 /**

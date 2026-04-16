@@ -251,8 +251,54 @@ async function reviewApplication(applicationId, action, reviewerId) {
   return { applicationId, status: newStatus };
 }
 
+/**
+ * Get user detail (for admin user management)
+ */
+async function getUserDetail(userId) {
+  const [rows] = await db.execute(
+    `SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, u.bio,
+            u.status, u.created_at,
+            r.name AS role_name,
+            us.total_points, us.total_study_minutes, us.total_pomodoros,
+            us.level_id, us.penalty_count, us.ban_until,
+            us.checkin_streak, us.last_study_date,
+            l.name AS level_name, l.badge AS level_badge
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     LEFT JOIN user_stats us ON us.user_id = u.id
+     LEFT JOIN levels l ON l.id = us.level_id
+     WHERE u.id = ?`,
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    const error = new Error('用户不存在');
+    error.status = 404;
+    throw error;
+  }
+
+  const user = rows[0];
+
+  // Get post count
+  const [postCount] = await db.execute(
+    "SELECT COUNT(*) AS count FROM posts WHERE user_id = ? AND status = 'published'",
+    [userId]
+  );
+  user.published_posts = postCount[0].count;
+
+  // Get comment count
+  const [commentCount] = await db.execute(
+    "SELECT COUNT(*) AS count FROM comments WHERE user_id = ? AND status = 'published'",
+    [userId]
+  );
+  user.published_comments = commentCount[0].count;
+
+  return user;
+}
+
 module.exports = {
   getUsers,
+  getUserDetail,
   changeUserRole,
   changeUserStatus,
   getSystemStats,

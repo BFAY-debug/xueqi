@@ -12,6 +12,11 @@ const locationRoutes = require('./routes/locations');
 const seatRoutes = require('./routes/seats');
 const volunteerRoutes = require('./routes/volunteer');
 const bookRoutes = require('./routes/books');
+const chatRoutes = require('./routes/chat');
+const seatService = require('./services/seatService');
+
+const http = require('http');
+const { initSocket, broadcastParticipants, broadcastSeatUpdate } = require('./socket');
 
 const app = express();
 const PORT = process.env.STUDY_SERVICE_PORT || 3002;
@@ -41,12 +46,22 @@ app.use('/api/study/volunteer', volunteerRoutes);
 app.use('/api/study/admin/volunteer', volunteerRoutes);
 app.use('/api/study/books', bookRoutes);
 app.use('/api/study/admin/books', bookRoutes);
+app.use('/api/study', chatRoutes);
 
 // Error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+initSocket(server);
+
+server.listen(PORT, () => {
   logger.info(`Study service running on port ${PORT}`);
+  // Start automatic no-show checker
+  seatService.startNoShowChecker();
 });
 
-module.exports = app;
+// Expose broadcast functions for use in controllers/services
+app.set('broadcastParticipants', broadcastParticipants);
+app.set('broadcastSeatUpdate', broadcastSeatUpdate);
+
+module.exports = { app, server };

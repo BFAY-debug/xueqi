@@ -30,4 +30,22 @@ async function getMySessions(req, res, next) {
   }
 }
 
-module.exports = { startSession, endSession, getMySessions };
+async function getActiveSession(req, res, next) {
+  try {
+    const session = await sessionService.getActiveSession(req.user.userId);
+    res.success(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function abandonActiveSession(req, res, next) {
+  try {
+    await sessionService.abandonActiveSession(req.user.userId);
+    res.success(null, '已关闭过期会话');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { startSession, endSession, getMySessions, getActiveSession, abandonActiveSession };

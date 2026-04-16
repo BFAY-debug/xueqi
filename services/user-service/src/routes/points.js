@@ -2,14 +2,17 @@ const express = require('express');
 const router = express.Router();
 const pointsController = require('../controllers/pointsController');
 const leaderboardController = require('../controllers/leaderboardController');
-const { authMiddleware, optionalAuth } = require('xueqi-shared');
+const { authMiddleware, optionalAuth, serviceAuthMiddleware } = require('xueqi-shared');
 
 // Points
 router.get('/points', authMiddleware, pointsController.getPoints);
 router.get('/points/log', authMiddleware, pointsController.getPointsLog);
 
 // Internal: other microservices call this to award points
-router.post('/points/award', authMiddleware, pointsController.awardPoints);
+router.post('/points/award', serviceAuthMiddleware, pointsController.awardPoints);
+
+// Internal: update checkin streak (called by study-service on session start)
+router.post('/points/checkin', serviceAuthMiddleware, pointsController.updateCheckinStreak);
 
 // Leaderboard
 router.get('/leaderboard', optionalAuth, leaderboardController.getPointsLeaderboard);

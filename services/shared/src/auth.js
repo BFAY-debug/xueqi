@@ -3,6 +3,37 @@ const logger = require('./logger');
 const pool = require('./db');
 
 /**
+ * Service auth middleware: for service-to-service calls.
+ * Trusts JWT payload for service tokens (userId=0) without DB lookup.
+ */
+async function serviceAuthMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: '未提供认证令牌' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ success: false, message: 'Token 无效或已过期' });
+  }
+
+  // Service token (userId=0): trust the JWT payload directly
+  if (decoded.userId === 0) {
+    req.user = {
+      userId: decoded.userId,
+      username: decoded.username,
+      roleId: decoded.roleId,
+      roleName: decoded.roleName
+    };
+    return next();
+  }
+
+  // Non-service token: reject (this middleware is for services only)
+  return res.status(403).json({ success: false, message: '此接口仅限服务间调用' });
+}
+
+/**
  * Auth middleware: verify JWT and attach user info to req
  */
 async function authMiddleware(req, res, next) {
@@ -96,4 +127,4 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { authMiddleware, optionalAuth, requireRole };
+module.exports = { authMiddleware, optionalAuth, requireRole, serviceAuthMiddleware };

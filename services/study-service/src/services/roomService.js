@@ -1,4 +1,5 @@
 const { db, logger } = require('xueqi-shared');
+const { broadcastParticipants } = require('../socket');
 
 /**
  * List study rooms
@@ -120,6 +121,10 @@ async function joinRoom(roomId, userId) {
     );
   }
 
+  // Broadcast updated participants
+  const participants = await getParticipants(roomId);
+  broadcastParticipants(roomId, { participants, action: 'join', userId });
+
   return getRoomById(roomId);
 }
 
@@ -131,6 +136,10 @@ async function leaveRoom(roomId, userId) {
     'UPDATE room_participants SET is_studying = 0 WHERE room_id = ? AND user_id = ?',
     [roomId, userId]
   );
+
+  // Broadcast updated participants
+  const participants = await getParticipants(roomId);
+  broadcastParticipants(roomId, { participants, action: 'leave', userId });
 
   return { roomId, userId, left: true };
 }

@@ -84,6 +84,50 @@ async function toggleFeature(postId, featured) {
   return { postId, isFeatured: !!featured };
 }
 
+/**
+ * Hide or unhide a post (set status to 'hidden' or 'published')
+ */
+async function toggleHidePost(postId, hidden) {
+  const [rows] = await db.execute('SELECT * FROM posts WHERE id = ?', [postId]);
+  if (rows.length === 0) {
+    const error = new Error('帖子不存在');
+    error.status = 404;
+    throw error;
+  }
+  const newStatus = hidden ? 'hidden' : 'published';
+  await db.execute('UPDATE posts SET status = ? WHERE id = ?', [newStatus, postId]);
+  return { postId, status: newStatus };
+}
+
+/**
+ * Admin edit any post (title, content)
+ */
+async function adminEditPost(postId, adminId, { title, content }) {
+  const [rows] = await db.execute('SELECT * FROM posts WHERE id = ?', [postId]);
+  if (rows.length === 0) {
+    const error = new Error('帖子不存在');
+    error.status = 404;
+    throw error;
+  }
+
+  const post = rows[0];
+  const newVersion = post.version + 1;
+
+  await db.execute(
+    'UPDATE posts SET title = ?, content = ?, version = ? WHERE id = ?',
+    [title || post.title, content || post.content, newVersion, postId]
+  );
+
+  // Record version history
+  await db.execute(
+    `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [postId, newVersion, title || post.title, content || post.content, '管理员编辑', adminId]
+  );
+
+  return { postId, version: newVersion };
+}
+
 // ── Comment Review ────────────────────────────────────
 
 async function getPendingComments(page = 1, pageSize = 20) {
@@ -297,7 +341,7 @@ function getServiceToken() {
 }
 
 module.exports = {
-  getPendingPosts, reviewPost, togglePin, toggleFeature,
+  getPendingPosts, reviewPost, togglePin, toggleFeature, toggleHidePost, adminEditPost,
   getPendingComments, reviewComment,
   getReviewLogs,
   getAllPosts, deletePost, getAllComments, deleteComment

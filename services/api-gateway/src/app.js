@@ -3,6 +3,7 @@ const rootDir = path.resolve(__dirname, '../../../');
 require('dotenv').config({ path: path.join(rootDir, '.env.local') });
 require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { createProxyMiddleware } = require('http-proxy-middleware');
@@ -123,11 +124,12 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'API 路径不存在' });
 });
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+server.listen(PORT, () => {
   logger.info(`API Gateway running on port ${PORT}`);
   logger.info(`  → User service:     ${USER_SERVICE_URL}`);
   logger.info(`  → Study service:    ${STUDY_SERVICE_URL}`);
   logger.info(`  → Community service:${COMMUNITY_SERVICE_URL}`);
 });
 
-module.exports = app;
+module.exports = { app, server };

@@ -12,6 +12,8 @@ router.get('/posts/all', adminController.getAllPosts);
 router.put('/posts/:id/review', adminController.reviewPost);
 router.put('/posts/:id/pin', adminController.togglePin);
 router.put('/posts/:id/feature', adminController.toggleFeature);
+router.put('/posts/:id/hide', adminController.toggleHidePost);
+router.put('/posts/:id/edit', adminController.adminEditPost);
 router.delete('/posts/:id', adminController.deletePost);
 
 // Comment review
