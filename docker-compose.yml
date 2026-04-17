@@ -82,6 +82,7 @@ services:
       - MYSQL_HOST=xueqi-mysql
       - REDIS_HOST=xueqi-redis
       - PORT=${STUDY_SERVICE_PORT}
+      - UPLOAD_DIR=/app/uploads
     ports:
       - "${STUDY_SERVICE_PORT}:${STUDY_SERVICE_PORT}"
     volumes:

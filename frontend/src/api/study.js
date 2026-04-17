@@ -20,6 +20,7 @@ export const sessionAPI = {
 
 export const chatAPI = {
   getMessages: (roomId, limit = 50) => request.get(`/study/rooms/${roomId}/messages`, { params: { limit } }),
+  getRooms: () => request.get('/study/chat/rooms'),
   getMyRooms: () => request.get('/study/chat/my-rooms'),
   uploadImage: (file) => {
     const formData = new FormData()

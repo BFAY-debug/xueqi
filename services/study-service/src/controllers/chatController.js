@@ -46,4 +46,13 @@ async function markRead(req, res, next) {
   }
 }
 
-module.exports = { getMessages, getMyRooms, uploadImage, markRead };
+async function getRooms(req, res, next) {
+  try {
+    const rooms = await chatService.getAvailableRooms();
+    res.success(rooms);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getMessages, getMyRooms, uploadImage, markRead, getRooms };

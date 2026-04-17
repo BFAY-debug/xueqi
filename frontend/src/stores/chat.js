@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { roomAPI } from '@/api/study'
+import { chatAPI, roomAPI } from '@/api/study'
 import { getSocket } from '@/composables/useSocket'
 
 export const useChatStore = defineStore('chat', () => {
@@ -9,6 +9,15 @@ export const useChatStore = defineStore('chat', () => {
   const isOpen = ref(false)
   const unreadCount = ref(0)
   const onlineCount = ref(0)
+  const roomList = ref([])
+  const onlineUsers = ref([])
+
+  async function fetchRoomList() {
+    try {
+      const res = await chatAPI.getRooms()
+      roomList.value = res.data || []
+    } catch { /* ignore */ }
+  }
 
   async function openChat(roomId) {
     if (!roomId) return
@@ -29,10 +38,23 @@ export const useChatStore = defineStore('chat', () => {
     isOpen.value = true
     unreadCount.value = 0
     onlineCount.value = 0
+    onlineUsers.value = []
 
     // Join new room socket channel
     const sock = getSocket()
     sock.emit('room:join', roomId)
+  }
+
+  function exitChat() {
+    if (chatRoomId.value) {
+      const sock = getSocket()
+      sock.emit('room:leave', chatRoomId.value)
+    }
+    chatRoomId.value = null
+    roomInfo.value = null
+    onlineCount.value = 0
+    onlineUsers.value = []
+    isOpen.value = false
   }
 
   function closeChat() {
@@ -56,8 +78,14 @@ export const useChatStore = defineStore('chat', () => {
     onlineCount.value = count
   }
 
+  function setOnlineUsers(users) {
+    onlineUsers.value = users
+    onlineCount.value = users.length
+  }
+
   return {
-    chatRoomId, roomInfo, isOpen, unreadCount, onlineCount,
-    openChat, closeChat, toggleChat, incrementUnread, resetUnread, setOnlineCount
+    chatRoomId, roomInfo, isOpen, unreadCount, onlineCount, roomList, onlineUsers,
+    openChat, closeChat, toggleChat, incrementUnread, resetUnread,
+    setOnlineCount, setOnlineUsers, fetchRoomList, exitChat
   }
 })

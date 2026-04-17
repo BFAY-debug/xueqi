@@ -136,6 +136,16 @@ async function getMessageReadCounts(messageIds) {
   return map;
 }
 
+/**
+ * Get all available chat rooms
+ */
+async function getAvailableRooms() {
+  const [rows] = await db.execute(
+    'SELECT id, name, description, capacity FROM study_rooms WHERE status = 1 ORDER BY id'
+  );
+  return rows;
+}
+
 module.exports = {
   getRecentMessages,
   createMessage,
@@ -143,5 +153,6 @@ module.exports = {
   getUserChatRooms,
   markMessagesRead,
   getMessageReadCount,
-  getMessageReadCounts
+  getMessageReadCounts,
+  getAvailableRooms
 };

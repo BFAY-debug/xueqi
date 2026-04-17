@@ -26,8 +26,9 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+// Serve uploaded files (use UPLOAD_DIR env var in Docker, fallback to relative path in dev)
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+app.use('/uploads', express.static(uploadDir));
 
 app.use(responseHandler);
 

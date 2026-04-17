@@ -32,6 +32,25 @@
           </div>
         </div>
 
+        <!-- Chat Room Sidebar -->
+        <div class="chat-sidebar" v-if="userStore.isLoggedIn">
+          <div class="chat-sidebar-title">
+            <span>💬 论谈房间</span>
+          </div>
+          <div v-if="chatStore.roomList.length" class="chat-sidebar-list">
+            <div
+              v-for="room in chatStore.roomList"
+              :key="room.id"
+              class="chat-sidebar-item"
+              @click="chatStore.openChat(room.id)"
+            >
+              <span class="csi-name">🏮 {{ room.name }}</span>
+              <span class="csi-meta">{{ room.capacity }}人</span>
+            </div>
+          </div>
+          <div v-else class="chat-sidebar-empty">暂无聊天房间</div>
+        </div>
+
         <!-- Room Detail -->
         <div class="room-detail" v-if="selectedRoom">
           <div class="detail-header glass-card">
@@ -448,6 +467,7 @@ function onSocketStatusUpdate(data) {
 onMounted(() => {
   fetchRooms()
   recoverActiveSession()
+  chatStore.fetchRoomList()
   window.addEventListener('resize', onResize)
   const sock = getSocket()
   sock.on('room:participants', onSocketParticipants)
@@ -470,6 +490,27 @@ onUnmounted(() => {
 
 .rooms-layout { display: flex; gap: 24px; }
 .room-list { flex: 0 0 280px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Chat sidebar */
+.chat-sidebar {
+  margin-top: 24px; padding-top: 16px;
+  border-top: 1px solid var(--color-border-light);
+}
+.chat-sidebar-title {
+  font-family: var(--font-title); font-size: 0.9rem;
+  color: var(--color-text-primary); margin-bottom: 10px;
+  padding-left: 8px; border-left: 3px solid var(--color-accent);
+}
+.chat-sidebar-list { display: flex; flex-direction: column; gap: 4px; }
+.chat-sidebar-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 0.85rem; transition: background 0.15s;
+}
+.chat-sidebar-item:hover { background: var(--color-bg-secondary); }
+.csi-name { color: var(--color-text-primary); }
+.csi-meta { font-size: 0.75rem; color: var(--color-text-secondary); }
+.chat-sidebar-empty { text-align: center; color: var(--color-text-secondary); padding: 16px 0; font-size: 0.85rem; }
 
 .room-item {
   display: flex; align-items: center; gap: 12px; padding: 16px;

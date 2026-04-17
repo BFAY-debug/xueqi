@@ -14,6 +14,9 @@ const typingUsers = new Map();
 // Track user status per room: Map<roomId, Map<userId, status>>
 const roomStatuses = new Map();
 
+// Track online users per room: Map<roomId, Map<userId, { nickname, socketCount }>>
+const roomOnlineUsers = new Map();
+
 // Rate limiting: Map<userId, lastMessageTime>
 const lastMessageTime = new Map();
 const MESSAGE_COOLDOWN = 2000; // 2 seconds
@@ -64,6 +67,11 @@ function initSocket(httpServer) {
       joinedRooms.add(roomId);
       logger.debug(`Socket ${socket.id} joined room:${roomId}`);
 
+      // Track online user
+      if (userId) {
+        addOnlineUser(roomId, userId, nickname);
+      }
+
       // Broadcast system message: user joined
       if (userId) {
         try {
@@ -74,12 +82,17 @@ function initSocket(httpServer) {
         }
       }
 
-      broadcastOnlineCount(roomId);
+      broadcastOnlineInfo(roomId);
     });
 
     socket.on('room:leave', async (roomId) => {
       socket.leave(`room:${roomId}`);
       joinedRooms.delete(roomId);
+
+      // Track online user
+      if (userId) {
+        removeOnlineUser(roomId, userId);
+      }
 
       // Broadcast system message: user left
       if (userId) {
@@ -93,7 +106,7 @@ function initSocket(httpServer) {
 
       // Clean up typing status
       removeTypingUser(roomId, socket.id);
-      broadcastOnlineCount(roomId);
+      broadcastOnlineInfo(roomId);
     });
 
     // ── Seat channel management ──────────────────────────
@@ -182,10 +195,12 @@ function initSocket(httpServer) {
     socket.on('disconnect', () => {
       logger.debug(`Socket disconnected: ${socket.id}`);
 
-      // Broadcast online count changes for all joined rooms, then clean up
       for (const roomId of joinedRooms) {
+        if (userId) {
+          removeOnlineUser(roomId, userId);
+        }
         removeTypingUser(roomId, socket.id);
-        broadcastOnlineCount(roomId);
+        broadcastOnlineInfo(roomId);
       }
       joinedRooms.clear();
     });
@@ -234,11 +249,50 @@ function removeTypingUser(roomId, socketId) {
   }
 }
 
-function broadcastOnlineCount(roomId) {
+// ── Online user tracking ──────────────────────────────────
+
+function addOnlineUser(roomId, userId, nickname) {
+  if (!roomOnlineUsers.has(roomId)) {
+    roomOnlineUsers.set(roomId, new Map());
+  }
+  const roomUsers = roomOnlineUsers.get(roomId);
+  const existing = roomUsers.get(userId);
+  if (existing) {
+    existing.socketCount++;
+  } else {
+    roomUsers.set(userId, { nickname, socketCount: 1 });
+  }
+}
+
+function removeOnlineUser(roomId, userId) {
+  const roomUsers = roomOnlineUsers.get(roomId);
+  if (!roomUsers) return;
+  const existing = roomUsers.get(userId);
+  if (existing) {
+    existing.socketCount--;
+    if (existing.socketCount <= 0) {
+      roomUsers.delete(userId);
+    }
+  }
+  if (roomUsers.size === 0) {
+    roomOnlineUsers.delete(roomId);
+  }
+}
+
+function getOnlineUserList(roomId) {
+  const roomUsers = roomOnlineUsers.get(roomId);
+  if (!roomUsers) return [];
+  const users = [];
+  roomUsers.forEach((info, uid) => {
+    users.push({ userId: uid, nickname: info.nickname });
+  });
+  return users;
+}
+
+function broadcastOnlineInfo(roomId) {
   if (!io) return;
-  const room = io.sockets.adapter.rooms.get(`room:${roomId}`);
-  const count = room ? room.size : 0;
-  io.to(`room:${roomId}`).emit('room:onlineCount', { roomId, count });
+  const users = getOnlineUserList(roomId);
+  io.to(`room:${roomId}`).emit('room:onlineUsers', { roomId, users, count: users.length });
 }
 
 // ── Broadcast functions ──────────────────────────────────
@@ -263,5 +317,6 @@ module.exports = {
   initSocket,
   broadcastParticipants,
   broadcastSeatUpdate,
-  getIO
+  getIO,
+  getOnlineUserList
 };
