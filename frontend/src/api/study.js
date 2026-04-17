@@ -19,7 +19,16 @@ export const sessionAPI = {
 }
 
 export const chatAPI = {
-  getMessages: (roomId, limit = 50) => request.get(`/study/rooms/${roomId}/messages`, { params: { limit } })
+  getMessages: (roomId, limit = 50) => request.get(`/study/rooms/${roomId}/messages`, { params: { limit } }),
+  getMyRooms: () => request.get('/study/chat/my-rooms'),
+  uploadImage: (file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return request.post('/study/chat/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  markRead: (roomId) => request.post('/study/chat/mark-read', { roomId })
 }
 
 export const locationAPI = {

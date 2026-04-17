@@ -87,6 +87,7 @@
             <span :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">概览</span>
             <span :class="{ active: activeTab === 'posts' }" @click="activeTab = 'posts'">我的文章</span>
             <span :class="{ active: activeTab === 'bookmarks' }" @click="activeTab = 'bookmarks'">我的收藏</span>
+            <span :class="{ active: activeTab === 'chats' }" @click="activeTab = 'chats'">我的论谈</span>
             <span :class="{ active: activeTab === 'proposals' }" @click="activeTab = 'proposals'">我的提案</span>
             <span :class="{ active: activeTab === 'notifications' }" @click="activeTab = 'notifications'">
               通知
@@ -210,6 +211,23 @@
             <p v-if="!myProposals.length" class="empty-text">还没有提交过提案</p>
           </div>
 
+          <!-- My Chat Rooms -->
+          <div v-if="activeTab === 'chats'" class="tab-content">
+            <div class="chat-room-list">
+              <div v-for="room in myChatRooms" :key="room.room_id" class="chat-room-item card" @click="openChatRoom(room.room_id)">
+                <div class="cri-info">
+                  <span class="cri-icon">🏮</span>
+                  <div class="cri-detail">
+                    <span class="cri-name">{{ room.room_name || `书院 ${room.room_id}` }}</span>
+                    <span class="cri-last" v-if="room.last_message">{{ room.last_message }}</span>
+                  </div>
+                </div>
+                <span class="cri-time" v-if="room.last_time">{{ timeAgo(room.last_time) }}</span>
+              </div>
+            </div>
+            <p v-if="!myChatRooms.length" class="empty-text">还没有参与过论谈</p>
+          </div>
+
           <!-- Notifications -->
           <div v-if="activeTab === 'notifications'" class="tab-content">
             <div class="notif-header" v-if="userStore.unreadCount">
@@ -279,13 +297,15 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import { userAPI, pointsAPI, notificationAPI, adminAPI } from '@/api/user'
 import { postAPI, bookmarkAPI, proposalAPI } from '@/api/community'
-import { reservationAPI } from '@/api/study'
+import { reservationAPI, chatAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const userStore = useUserStore()
+const chatStore = useChatStore()
 const userId = computed(() => userStore.user?.userId)
 
 const activeTab = ref('overview')
@@ -296,6 +316,7 @@ const myProposals = ref([])
 const pointsLog = ref([])
 const notifications = ref([])
 const penalty = ref({ isActive: false })
+const myChatRooms = ref([])
 const saving = ref(false)
 const showEdit = ref(false)
 const showApplyAdmin = ref(false)
@@ -424,6 +445,12 @@ async function fetchNotifications() {
 async function fetchPenalty() {
   try { const res = await reservationAPI.getMyPenalty(); penalty.value = res.data || { isActive: false } } catch { /* */ }
 }
+async function fetchMyChatRooms() {
+  try { const res = await chatAPI.getMyRooms(); myChatRooms.value = res.data || [] } catch { /* */ }
+}
+function openChatRoom(roomId) {
+  chatStore.openChat(roomId)
+}
 
 watch(showEdit, (v) => {
   if (v && userStore.user) {
@@ -483,6 +510,7 @@ onMounted(() => {
   fetchPointsLog()
   fetchNotifications()
   fetchPenalty()
+  fetchMyChatRooms()
 })
 </script>
 
@@ -735,6 +763,17 @@ onMounted(() => {
 
 /* Penalty */
 .penalty-info { padding: 16px; }
+
+/* Chat Rooms */
+.chat-room-list { display: flex; flex-direction: column; gap: 10px; }
+.chat-room-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
+.chat-room-item:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.cri-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.cri-icon { font-size: 1.2rem; }
+.cri-detail { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cri-name { font-size: 0.95rem; font-weight: 500; }
+.cri-last { font-size: 0.8rem; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cri-time { font-size: 0.75rem; color: var(--color-text-secondary); flex-shrink: 0; }
 
 .empty-text { text-align: center; color: var(--color-text-secondary); padding: 40px; }
 .empty-sm { text-align: center; color: var(--color-text-secondary); padding: 20px; font-size: 0.9rem; }

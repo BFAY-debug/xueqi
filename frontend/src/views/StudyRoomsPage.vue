@@ -92,9 +92,11 @@
             </div>
           </div>
 
-          <!-- Chat (only when joined) -->
+          <!-- Open chat (only when joined) -->
           <div class="section-block" v-if="hasJoined && selectedRoom">
-            <RoomChat :roomId="selectedRoom.id" @unread="onChatUnread" />
+            <button class="btn-primary chat-open-btn" @click="openGlobalChat">
+              🏮 打开论谈
+            </button>
           </div>
 
           <!-- Actions -->
@@ -162,7 +164,7 @@
         <!-- Chat bubble (collapsed) -->
         <div v-if="!showImmersiveChat" class="chat-bubble" @click="showImmersiveChat = true">
           <span>💬</span>
-          <span v-if="chatUnread > 0" class="chat-badge">{{ chatUnread }}</span>
+          <span v-if="chatStore.unreadCount > 0" class="chat-badge">{{ chatStore.unreadCount }}</span>
         </div>
 
         <!-- Chat panel (expanded) -->
@@ -191,10 +193,12 @@ import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'
 import RoomChat from '@/components/RoomChat.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
+const chatStore = useChatStore()
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
 
 // Scene definitions — each room gets a scene based on room.id % 4
@@ -242,7 +246,6 @@ const immersiveMode = ref(false)
 const isFullscreen = ref(false)
 const isMobile = ref(window.innerWidth < 768)
 const showImmersiveChat = ref(false)
-const chatUnread = ref(0)
 const participantStatuses = ref({})
 let timerInterval = null
 
@@ -406,8 +409,10 @@ function statusLabel(status) {
   return { studying: '学习中', pomodoro: '番茄钟', idle: '小憩', away: '离开' }[status] || ''
 }
 
-function onChatUnread() {
-  chatUnread.value++
+function openGlobalChat() {
+  if (selectedRoom.value) {
+    chatStore.openChat(selectedRoom.value.id)
+  }
 }
 
 // Recover active session timer from server
@@ -456,7 +461,6 @@ onUnmounted(() => {
   sock.off('room:participants', onSocketParticipants)
   sock.off('status:update', onSocketStatusUpdate)
   if (currentSocketRoomId) sock.emit('room:leave', currentSocketRoomId)
-  chatUnread.value = 0
 })
 </script>
 
@@ -502,6 +506,12 @@ onUnmounted(() => {
 .timer-type { margin-bottom: 20px; }
 .timer-actions { display: flex; justify-content: center; gap: 12px; }
 .detail-actions { text-align: center; margin-top: 16px; }
+.chat-open-btn {
+  width: 100%;
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+}
+.chat-open-btn:hover { opacity: 0.9; }
 
 /* ═══════════════════ Immersive Mode ═══════════════════ */
 .immersive-overlay {

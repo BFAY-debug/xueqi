@@ -14,6 +14,10 @@ const typingUsers = new Map();
 // Track user status per room: Map<roomId, Map<userId, status>>
 const roomStatuses = new Map();
 
+// Rate limiting: Map<userId, lastMessageTime>
+const lastMessageTime = new Map();
+const MESSAGE_COOLDOWN = 2000; // 2 seconds
+
 /**
  * Initialize Socket.IO server on the given HTTP server.
  */
@@ -30,7 +34,6 @@ function initSocket(httpServer) {
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
-      // Allow unauthenticated connections for backward compatibility
       socket.user = null;
       return next();
     }
@@ -70,6 +73,8 @@ function initSocket(httpServer) {
           logger.warn(`Failed to create join message: ${err.message}`);
         }
       }
+
+      broadcastOnlineCount(roomId);
     });
 
     socket.on('room:leave', async (roomId) => {
@@ -88,18 +93,17 @@ function initSocket(httpServer) {
 
       // Clean up typing status
       removeTypingUser(roomId, socket.id);
+      broadcastOnlineCount(roomId);
     });
 
     // ── Seat channel management ──────────────────────────
 
     socket.on('seat:join', (locationId) => {
       socket.join(`seats:${locationId}`);
-      logger.debug(`Socket ${socket.id} joined seats:${locationId}`);
     });
 
     socket.on('seat:leave', (locationId) => {
       socket.leave(`seats:${locationId}`);
-      logger.debug(`Socket ${socket.id} left seats:${locationId}`);
     });
 
     // ── Chat messages ────────────────────────────────────
@@ -107,9 +111,20 @@ function initSocket(httpServer) {
     socket.on('chat:message', async (data) => {
       if (!userId || !data.roomId || !data.content?.trim()) return;
 
+      // Rate limiting
+      const now = Date.now();
+      const last = lastMessageTime.get(userId) || 0;
+      if (now - last < MESSAGE_COOLDOWN) {
+        socket.emit('chat:rateLimited', { cooldown: MESSAGE_COOLDOWN - (now - last) });
+        return;
+      }
+      lastMessageTime.set(userId, now);
+
       try {
-        const msg = await chatService.createMessage(data.roomId, userId, data.content.trim());
-        io.to(`room:${data.roomId}`).emit('chat:message', formatMessage(msg));
+        const msgType = data.anonymous ? 'anonymous' : 'user';
+        const msg = await chatService.createMessage(data.roomId, userId, data.content.trim(), msgType, data.imageUrl || null);
+        const formatted = formatMessage(msg);
+        io.to(`room:${data.roomId}`).emit('chat:message', formatted);
 
         // Clear typing status for this user
         removeTypingUser(data.roomId, socket.id);
@@ -130,12 +145,25 @@ function initSocket(httpServer) {
       socket.to(`room:${roomId}`).emit('chat:stopTyping', { userId });
     });
 
+    // ── Read receipts ────────────────────────────────────
+
+    socket.on('chat:markRead', async (data) => {
+      if (!userId || !data.roomId) return;
+      try {
+        const count = await chatService.markMessagesRead(data.roomId, userId);
+        if (count > 0) {
+          io.to(`room:${data.roomId}`).emit('chat:readUpdate', { roomId: data.roomId, readByUserId: userId });
+        }
+      } catch (err) {
+        logger.warn(`Failed to mark read: ${err.message}`);
+      }
+    });
+
     // ── Status sync ──────────────────────────────────────
 
     socket.on('status:update', (data) => {
       if (!userId || !data.roomId || !data.status) return;
 
-      // Track status
       if (!roomStatuses.has(data.roomId)) {
         roomStatuses.set(data.roomId, new Map());
       }
@@ -154,9 +182,10 @@ function initSocket(httpServer) {
     socket.on('disconnect', () => {
       logger.debug(`Socket disconnected: ${socket.id}`);
 
-      // Clean up typing status for all rooms
+      // Broadcast online count changes for all joined rooms, then clean up
       for (const roomId of joinedRooms) {
         removeTypingUser(roomId, socket.id);
+        broadcastOnlineCount(roomId);
       }
       joinedRooms.clear();
     });
@@ -170,13 +199,15 @@ function initSocket(httpServer) {
 
 function formatMessage(msg) {
   if (!msg) return null;
+  const isAnon = msg.type === 'anonymous';
   return {
     id: msg.id,
     roomId: msg.room_id,
-    userId: msg.user_id,
-    nickname: msg.nickname || msg.username || '系统',
-    avatarUrl: msg.avatar_url,
+    userId: isAnon ? null : msg.user_id,
+    nickname: isAnon ? '匿名学子' : (msg.nickname || msg.username || '系统'),
+    avatarUrl: isAnon ? null : msg.avatar_url,
     content: msg.content,
+    imageUrl: msg.image_url || null,
     type: msg.type,
     createdAt: msg.created_at
   };
@@ -197,27 +228,27 @@ function removeTypingUser(roomId, socketId) {
     if (roomTypers.size === 0) {
       typingUsers.delete(roomId);
     }
-    // Notify room that this user stopped typing
     if (removed && io) {
       io.to(`room:${roomId}`).emit('chat:stopTyping', { userId: removed.userId });
     }
   }
 }
 
+function broadcastOnlineCount(roomId) {
+  if (!io) return;
+  const room = io.sockets.adapter.rooms.get(`room:${roomId}`);
+  const count = room ? room.size : 0;
+  io.to(`room:${roomId}`).emit('room:onlineCount', { roomId, count });
+}
+
 // ── Broadcast functions ──────────────────────────────────
 
-/**
- * Broadcast participant update to a room channel.
- */
 function broadcastParticipants(roomId, data) {
   if (io) {
     io.to(`room:${roomId}`).emit('room:participants', data);
   }
 }
 
-/**
- * Broadcast seat status update to a location channel.
- */
 function broadcastSeatUpdate(locationId, data) {
   if (io) {
     io.to(`seats:${locationId}`).emit('seat:update', data);

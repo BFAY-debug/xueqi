@@ -470,11 +470,22 @@ CREATE TABLE post_bookmarks (
 CREATE TABLE room_messages (
     id         INT PRIMARY KEY AUTO_INCREMENT,
     room_id    INT NOT NULL,
-    user_id    INT NOT NULL,
+    user_id    INT DEFAULT NULL COMMENT 'NULL for system messages',
     content    TEXT NOT NULL,
-    type       ENUM('user', 'system') DEFAULT 'user',
+    image_url  VARCHAR(500) DEFAULT NULL,
+    type       ENUM('user', 'system', 'anonymous') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_room_created (room_id, created_at DESC),
-    FOREIGN KEY (room_id) REFERENCES study_rooms(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (room_id) REFERENCES study_rooms(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 消息已读记录
+-- ----------------------------------------------------------
+CREATE TABLE message_reads (
+    message_id INT NOT NULL,
+    user_id    INT NOT NULL,
+    read_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (message_id, user_id),
+    FOREIGN KEY (message_id) REFERENCES room_messages(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

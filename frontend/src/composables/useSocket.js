@@ -2,7 +2,7 @@
  * Socket.IO composable for real-time updates.
  * Manages connection lifecycle and provides event subscription helpers.
  */
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { io } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 
@@ -13,11 +13,19 @@ const connected = ref(false)
 
 /**
  * Get or create the global Socket.IO connection with auth token.
+ * Reconnects with fresh token if the existing socket is disconnected.
  */
 function getSocket() {
-  if (socket) return socket
-
   const userStore = useUserStore()
+
+  if (socket) {
+    // If disconnected, reconnect with fresh token
+    if (!socket.connected) {
+      socket.auth = { token: userStore.token || '' }
+      socket.connect()
+    }
+    return socket
+  }
 
   socket = io(GATEWAY_URL, {
     path: '/socket.io',
@@ -41,4 +49,12 @@ function getSocket() {
   return socket
 }
 
-export { getSocket, connected }
+function disconnectSocket() {
+  if (socket) {
+    socket.disconnect()
+    socket = null
+    connected.value = false
+  }
+}
+
+export { getSocket, connected, disconnectSocket }
