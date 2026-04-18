@@ -26,8 +26,8 @@ async function ensureDailyReset(userId) {
 
   if (rows.length === 0) return;
 
-  const today = new Date().toISOString().slice(0, 10);
-  if (rows[0].daily_reset_date?.toISOString().slice(0, 10) !== today) {
+  const today = new Date().toLocaleDateString('sv-SE'); // Local date "YYYY-MM-DD"
+  if (rows[0].daily_reset_date?.toLocaleDateString('sv-SE') !== today) {
     await db.execute(
       'UPDATE user_stats SET daily_points = 0, daily_reset_date = CURDATE() WHERE user_id = ?',
       [userId]
@@ -53,10 +53,9 @@ async function ensureMonthlyPenaltyReset(userId) {
     resetDate.getMonth() !== now.getMonth();
 
   if (needsReset) {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     await db.execute(
-      'UPDATE user_stats SET penalty_count = 0, penalty_reset_date = ? WHERE user_id = ?',
-      [firstDay, userId]
+      'UPDATE user_stats SET penalty_count = 0, penalty_reset_date = CURDATE() WHERE user_id = ?',
+      [userId]
     );
     logger.info(`Monthly penalty reset for user ${userId}`);
   }
@@ -80,24 +79,25 @@ async function awardPoints(userId, action, options = {}) {
   // Reset daily counter if needed
   await ensureDailyReset(userId);
 
-  // Check daily limit
+  // Check daily limit per action type
   if (rule.dailyLimit) {
-    const [rows] = await db.execute(
-      'SELECT daily_points FROM user_stats WHERE user_id = ?',
-      [userId]
+    const today = new Date().toLocaleDateString('sv-SE');
+    const [logRows] = await db.execute(
+      'SELECT COALESCE(SUM(points), 0) AS total FROM points_log WHERE user_id = ? AND action = ? AND DATE(created_at) = ?',
+      [userId, action, today]
     );
-    const currentDaily = rows[0]?.daily_points || 0;
+    const actionDaily = Number(logRows[0]?.total) || 0;
 
-    if (currentDaily + pointsToAward > rule.dailyLimit) {
-      logger.info(`Daily limit reached for user ${userId}, action ${action}`);
-      return { awarded: false, reason: 'daily_limit', dailyPoints: currentDaily, limit: rule.dailyLimit };
+    if (actionDaily + pointsToAward > rule.dailyLimit) {
+      logger.info(`Daily limit reached for user ${userId}, action ${action}, actionDaily=${actionDaily}, pointsToAward=${pointsToAward}, limit=${rule.dailyLimit}`);
+      return { awarded: false, reason: 'daily_limit', actionDaily, limit: rule.dailyLimit };
     }
   }
 
   // Special handling for checkin streak
   let actualPoints = pointsToAward;
-  if (action === 'checkin' && options.streakDays) {
-    actualPoints = Math.min(options.streakDays, 30);
+  if (action === 'checkin' && options.streakDays !== undefined) {
+    actualPoints = Math.max(1, Math.min(options.streakDays, 30));
   }
 
   // Log the points
@@ -194,11 +194,13 @@ async function getMyPoints(userId) {
  * Get points log (paginated)
  */
 async function getPointsLog(userId, page = 1, pageSize = 20) {
+  page = Math.max(1, parseInt(page, 10) || 1);
+  pageSize = Math.max(1, Math.min(parseInt(pageSize, 10) || 20, 100));
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    'SELECT * FROM points_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
-    [userId, pageSize, offset]
+    `SELECT * FROM points_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(
@@ -213,7 +215,7 @@ async function getPointsLog(userId, page = 1, pageSize = 20) {
  * Update checkin streak (called when user starts studying)
  */
 async function updateCheckinStreak(userId) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('sv-SE');
 
   const [rows] = await db.execute(
     'SELECT last_study_date, checkin_streak FROM user_stats WHERE user_id = ?',
@@ -223,7 +225,7 @@ async function updateCheckinStreak(userId) {
   if (rows.length === 0) return null;
 
   const { last_study_date, checkin_streak } = rows[0];
-  const lastDate = last_study_date ? new Date(last_study_date).toISOString().slice(0, 10) : null;
+  const lastDate = last_study_date ? new Date(last_study_date).toLocaleDateString('sv-SE') : null;
 
   // Already studied today
   if (lastDate === today) {

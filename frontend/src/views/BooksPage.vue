@@ -124,6 +124,7 @@ async function submitBook() {
     ElMessage.success('推荐已提交，等待审核')
     showSubmit.value = false
     submitForm.value = { title: '', author: '', isbn: '', category: '', description: '' }
+    fetchBooks()
   } catch (err) { ElMessage.error(err.message) }
   finally { submitting.value = false }
 }

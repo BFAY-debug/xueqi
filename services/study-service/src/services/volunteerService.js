@@ -60,8 +60,7 @@ async function getPendingRecords(page = 1, pageSize = 20) {
      JOIN volunteer_tasks vt ON vt.id = vr.task_id
      WHERE vr.status = 'pending'
      ORDER BY vr.created_at ASC
-     LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
   const [countRows] = await db.execute(

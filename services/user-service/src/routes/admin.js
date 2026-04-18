@@ -18,6 +18,7 @@ router.put('/users/:id/status', requireRole('admin', 'super_admin'), adminContro
 
 // System stats (super_admin only)
 router.get('/stats', requireRole('super_admin'), adminController.getSystemStats);
+router.get('/stats/trend', requireRole('super_admin'), adminController.getStatsTrend);
 
 // Admin application - any logged-in user can apply
 router.post('/apply', adminController.applyForAdmin);

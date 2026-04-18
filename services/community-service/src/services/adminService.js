@@ -14,8 +14,7 @@ async function getPendingPosts(page = 1, pageSize = 20) {
      JOIN users u ON u.id = p.user_id
      WHERE p.status = 'pending'
      ORDER BY p.created_at ASC
-     LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
   const [countRows] = await db.execute("SELECT COUNT(*) AS total FROM posts WHERE status = 'pending'");
@@ -326,8 +325,8 @@ async function getReviewLogs({ page = 1, pageSize = 20, targetType = '' }) {
      JOIN users u ON u.id = rl.reviewer_id
      WHERE ${where}
      ORDER BY rl.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   );
 
   const [countRows] = await db.execute(`SELECT COUNT(*) AS total FROM review_logs rl WHERE ${where}`, params);

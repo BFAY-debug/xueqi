@@ -35,13 +35,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'user-service' });
 });
 
-// Routes
+// Routes (specific routes before profile's /:id wildcard)
 app.use('/api/user', authRoutes);
-app.use('/api/user', profileRoutes);
 app.use('/api/user', pointsRoutes);
 app.use('/api/user', notificationRoutes);
 app.use('/api/user', uploadRoutes);
 app.use('/api/user/admin', adminRoutes);
+app.use('/api/user', profileRoutes);
 
 // Error handler
 app.use(errorHandler);

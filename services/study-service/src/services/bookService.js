@@ -27,8 +27,8 @@ async function getBooks({ page = 1, pageSize = 12, search = '', category = '', s
   if (sort === 'popular') orderBy = 'b.rating_count DESC';
 
   const [rows] = await db.execute(
-    `SELECT b.* FROM books b WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+    `SELECT b.* FROM books b WHERE ${where} ORDER BY ${orderBy} LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   );
 
   const [countRows] = await db.execute(
@@ -143,8 +143,7 @@ async function getPendingBooks(page = 1, pageSize = 20) {
      LEFT JOIN users u ON u.id = b.submitted_by
      WHERE b.status = 'pending'
      ORDER BY b.created_at ASC
-     LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
   const [countRows] = await db.execute(
@@ -304,8 +303,8 @@ async function getMyCollections(userId, page = 1, pageSize = 20) {
      JOIN books b ON b.id = bc.book_id
      WHERE bc.user_id = ?
      ORDER BY bc.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(

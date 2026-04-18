@@ -267,6 +267,27 @@
             <div class="stat-card card"><span class="stat-val">{{ sysStats.content?.pendingBooks || 0 }}</span><span class="stat-lbl">待审书籍</span></div>
             <div class="stat-card card"><span class="stat-val">{{ Math.floor((sysStats.platform?.totalStudyMinutes || 0) / 60) }}</span><span class="stat-lbl">总修习时辰</span></div>
           </div>
+          <!-- Trend charts -->
+          <div class="charts-row" v-if="statsTrend">
+            <div class="chart-card card">
+              <div class="chart-title">用户增长 & 活跃趋势（14天）</div>
+              <div ref="chartTrendRef" class="chart-box"></div>
+            </div>
+            <div class="chart-card card">
+              <div class="chart-title">每日修习时长（14天）</div>
+              <div ref="chartStudyRef" class="chart-box"></div>
+            </div>
+          </div>
+          <div class="charts-row" v-if="statsTrend">
+            <div class="chart-card card">
+              <div class="chart-title">用户角色分布</div>
+              <div ref="chartRoleRef" class="chart-box chart-box-sm"></div>
+            </div>
+            <div class="chart-card card">
+              <div class="chart-title">帖子分类分布</div>
+              <div ref="chartCategoryRef" class="chart-box chart-box-sm"></div>
+            </div>
+          </div>
         </template>
       </div>
     </div>
@@ -350,10 +371,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { adminAPI } from '@/api/user'
-import { communityAdminAPI } from '@/api/community'
+import { communityAdminAPI, postAPI } from '@/api/community'
 import { bookAPI, volunteerAPI, locationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -389,6 +410,11 @@ const users = ref([])
 const volunteerPending = ref([])
 const reviewLogs = ref([])
 const sysStats = ref(null)
+const statsTrend = ref(null)
+const chartTrendRef = ref(null)
+const chartStudyRef = ref(null)
+const chartRoleRef = ref(null)
+const chartCategoryRef = ref(null)
 const adminApplications = ref([])
 
 // Seat management state
@@ -436,7 +462,75 @@ async function fetchLogs() {
   try { const res = await communityAdminAPI.getReviewLogs({ pageSize: 50 }); reviewLogs.value = res.data || [] } catch { /* */ }
 }
 async function fetchStats() {
-  try { const res = await adminAPI.getStats(); sysStats.value = res.data } catch { /* */ }
+  try {
+    const res = await adminAPI.getStats(); sysStats.value = res.data
+    const trendRes = await adminAPI.getStatsTrend(14); statsTrend.value = trendRes.data
+    await nextTick()
+    renderCharts()
+  } catch { /* */ }
+}
+
+function renderCharts() {
+  if (!statsTrend.value) return
+  const echarts = require('echarts')
+  const t = statsTrend.value.trend || []
+  const dates = t.map(d => d.date.slice(5)) // "MM-DD"
+
+  // Helper: reuse or create echarts instance
+  function getChart(el) {
+    if (!el) return null
+    const existing = echarts.getInstanceByDom(el)
+    if (existing) return existing
+    return echarts.init(el)
+  }
+
+  // User & Active trend
+  const c1 = getChart(chartTrendRef.value)
+  if (c1) {
+    c1.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['新增用户', '活跃用户'], textStyle: { color: '#888' } },
+      grid: { left: 40, right: 20, top: 30, bottom: 24 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#888', fontSize: 10 } },
+      yAxis: { type: 'value', axisLabel: { color: '#888' }, splitLine: { lineStyle: { color: 'rgba(0,0,0,0.06)' } } },
+      series: [
+        { name: '新增用户', type: 'line', data: t.map(d => d.newUsers), smooth: true, itemStyle: { color: '#5b5b9c' } },
+        { name: '活跃用户', type: 'line', data: t.map(d => d.activeUsers), smooth: true, itemStyle: { color: '#4a9a6a' } }
+      ]
+    })
+  }
+
+  // Study minutes bar
+  const c2 = getChart(chartStudyRef.value)
+  if (c2) {
+    c2.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 50, right: 20, top: 20, bottom: 24 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#888', fontSize: 10 } },
+      yAxis: { type: 'value', name: '分钟', axisLabel: { color: '#888' }, splitLine: { lineStyle: { color: 'rgba(0,0,0,0.06)' } } },
+      series: [{ type: 'bar', data: t.map(d => d.studyMinutes), itemStyle: { color: '#b8860b', borderRadius: [4, 4, 0, 0] } }]
+    })
+  }
+
+  // Role pie
+  const rd = statsTrend.value.roleDistribution || []
+  const c3 = getChart(chartRoleRef.value)
+  if (c3 && rd.length) {
+    c3.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['35%', '65%'], data: rd, label: { color: '#888' }, itemStyle: { borderColor: '#fff', borderWidth: 2 } }]
+    })
+  }
+
+  // Category pie
+  const cd = statsTrend.value.categoryDistribution || []
+  const c4 = getChart(chartCategoryRef.value)
+  if (c4 && cd.length) {
+    c4.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['35%', '65%'], data: cd, label: { color: '#888' }, itemStyle: { borderColor: '#fff', borderWidth: 2 } }]
+    })
+  }
 }
 async function fetchApplications() {
   try { const res = await adminAPI.getApplications({ pageSize: 50 }); adminApplications.value = res.data || [] } catch { /* */ }
@@ -627,11 +721,17 @@ async function toggleHidePost(id, hidden) {
   } catch (err) { ElMessage.error(err.message) }
 }
 
-function openEditPostDialog(post) {
+async function openEditPostDialog(post) {
   editPostForm.id = post.id
   editPostForm.title = post.title || ''
-  editPostForm.content = ''
+  editPostForm.content = '加载中...'
   showEditPostDialog.value = true
+  try {
+    const res = await postAPI.getById(post.id)
+    editPostForm.content = res.data?.content || ''
+  } catch {
+    editPostForm.content = ''
+  }
 }
 
 async function submitEditPost() {
@@ -743,6 +843,11 @@ onMounted(() => { fetchPendingPosts(); fetchStats() })
 .stat-card { padding: 20px; text-align: center; }
 .stat-val { display: block; font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: var(--color-accent); margin-bottom: 4px; }
 .stat-lbl { display: block; font-size: 0.85rem; color: var(--color-text-secondary); }
+
+.charts-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 20px; }
+.chart-card { padding: 16px; }
+.chart-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary); }
+.chart-box { width: 100%; height: 280px; }
 
 /* Seat grid */
 .seat-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px; background: var(--glass-bg-card); border-radius: 8px; }

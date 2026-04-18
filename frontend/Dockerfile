@@ -2,8 +2,8 @@ FROM node:24-slim AS build
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npm run build
 

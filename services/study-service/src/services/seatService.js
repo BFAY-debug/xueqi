@@ -77,14 +77,17 @@ async function getSeatsByLocation(locationId) {
 }
 
 async function batchCreateSeats(locationId, seats) {
-  const values = seats.map(s =>
-    `(${locationId}, '${s.seatCode}', ${s.rowNum || 'NULL'}, ${s.colNum || 'NULL'}, ${s.hasPower ? 1 : 0}, 'available')`
-  );
-
-  // Use INSERT IGNORE to skip duplicates
-  await db.execute(
-    `INSERT IGNORE INTO real_seats (location_id, seat_code, row_num, col_num, has_power, status) VALUES ${values.join(',')}`
-  );
+  // Accept both snake_case (from frontend) and camelCase
+  for (const s of seats) {
+    const code = s.seat_code || s.seatCode || '';
+    const row = s.row_num || s.rowNum || null;
+    const col = s.col_num || s.colNum || null;
+    const power = (s.has_power || s.hasPower) ? 1 : 0;
+    await db.execute(
+      `INSERT IGNORE INTO real_seats (location_id, seat_code, row_num, col_num, has_power, status) VALUES (?, ?, ?, ?, ?, 'available')`,
+      [locationId, code, row, col, power]
+    );
+  }
 
   return getSeatsByLocation(locationId);
 }
@@ -267,8 +270,8 @@ async function getMyReservations(userId, page = 1, pageSize = 10) {
      JOIN real_locations rl ON rl.id = rs.location_id
      WHERE sr.user_id = ?
      ORDER BY sr.reserve_date DESC, sr.start_time DESC
-     LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(

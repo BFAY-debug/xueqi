@@ -103,7 +103,17 @@ async function getUserDetail(req, res, next) {
   }
 }
 
+async function getStatsTrend(req, res, next) {
+  try {
+    const days = parseInt(req.query.days, 10) || 14;
+    const result = await adminService.getStatsTrend(days);
+    res.success(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getUsers, getUserDetail, changeUserRole, changeUserStatus, getSystemStats,
-  applyForAdmin, getPendingApplications, reviewApplication
+  getStatsTrend, applyForAdmin, getPendingApplications, reviewApplication
 };

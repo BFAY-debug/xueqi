@@ -22,8 +22,8 @@ async function getNotifications(userId, page = 1, pageSize = 20) {
     `SELECT * FROM notifications
      WHERE user_id = ?
      ORDER BY created_at DESC
-     LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(

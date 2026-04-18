@@ -68,10 +68,12 @@ async function endSession(sessionId, userId) {
   );
 
   // Update user stats
-  await db.execute(
-    'UPDATE user_stats SET total_study_minutes = total_study_minutes + ? WHERE user_id = ?',
-    [durationMinutes, userId]
-  );
+  if (durationMinutes > 0) {
+    await db.execute(
+      'UPDATE user_stats SET total_study_minutes = total_study_minutes + ? WHERE user_id = ?',
+      [durationMinutes, userId]
+    );
+  }
 
   // Award study points (≥25 min)
   if (durationMinutes >= 25) {
@@ -114,8 +116,8 @@ async function getMySessions(userId, page = 1, pageSize = 20) {
      LEFT JOIN study_rooms sr ON sr.id = ss.room_id
      WHERE ss.user_id = ?
      ORDER BY ss.start_time DESC
-     LIMIT ? OFFSET ?`,
-    [userId, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
   );
 
   const [countRows] = await db.execute(

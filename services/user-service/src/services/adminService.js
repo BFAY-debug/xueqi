@@ -34,8 +34,8 @@ async function getUsers({ page = 1, pageSize = 20, search = '', role = '', statu
      LEFT JOIN levels l ON l.id = us.level_id
      WHERE ${where}
      ORDER BY u.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   );
 
   const [countRows] = await db.execute(
@@ -195,8 +195,7 @@ async function getPendingApplications({ page = 1, pageSize = 20 }) {
      JOIN users u ON a.user_id = u.id
      LEFT JOIN users r ON a.reviewer_id = r.id
      ORDER BY a.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
   const [countRows] = await db.execute(
@@ -296,12 +295,95 @@ async function getUserDetail(userId) {
   return user;
 }
 
+/**
+ * Get stats trend for the last N days
+ */
+async function getStatsTrend(days = 14) {
+  const safeDays = Math.max(7, Math.min(parseInt(days, 10) || 14, 30));
+
+  // Generate date series
+  const dates = [];
+  for (let i = safeDays - 1; i >= 0; i--) {
+    dates.push(new Date(Date.now() - i * 86400000).toLocaleDateString('sv-SE'));
+  }
+
+  // New users per day
+  const [newUsers] = await db.execute(
+    `SELECT DATE(created_at) AS d, COUNT(*) AS cnt FROM users
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(created_at) ORDER BY d`,
+    [safeDays]
+  );
+
+  // New posts per day
+  const [newPosts] = await db.execute(
+    `SELECT DATE(created_at) AS d, COUNT(*) AS cnt FROM posts
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(created_at) ORDER BY d`,
+    [safeDays]
+  );
+
+  // Study minutes per day
+  const [studyMins] = await db.execute(
+    `SELECT DATE(end_time) AS d, SUM(duration_minutes) AS cnt FROM study_sessions
+     WHERE end_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND status = 'completed'
+     GROUP BY DATE(end_time) ORDER BY d`,
+    [safeDays]
+  );
+
+  // Active users per day (users with any points_log entry)
+  const [activeUsers] = await db.execute(
+    `SELECT DATE(created_at) AS d, COUNT(DISTINCT user_id) AS cnt FROM points_log
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(created_at) ORDER BY d`,
+    [safeDays]
+  );
+
+  // Convert to date-keyed maps
+  const toMap = (rows) => {
+    const m = {};
+    rows.forEach(r => { m[r.d instanceof Date ? r.d.toLocaleDateString('sv-SE') : String(r.d)] = r.cnt; });
+    return m;
+  };
+
+  const usersMap = toMap(newUsers);
+  const postsMap = toMap(newPosts);
+  const studyMap = toMap(studyMins);
+  const activeMap = toMap(activeUsers);
+
+  // Build arrays aligned to dates
+  const result = dates.map(d => ({
+    date: d,
+    newUsers: usersMap[d] || 0,
+    newPosts: postsMap[d] || 0,
+    studyMinutes: studyMap[d] || 0,
+    activeUsers: activeMap[d] || 0
+  }));
+
+  // Role distribution
+  const [roles] = await db.execute(
+    'SELECT r.name, COUNT(u.id) AS cnt FROM roles r LEFT JOIN users u ON u.role_id = r.id GROUP BY r.id'
+  );
+
+  // Post category distribution
+  const [categories] = await db.execute(
+    "SELECT category, COUNT(*) AS cnt FROM posts WHERE status = 'published' GROUP BY category"
+  );
+
+  return {
+    trend: result,
+    roleDistribution: roles.map(r => ({ name: r.name, value: r.cnt })),
+    categoryDistribution: categories.map(c => ({ name: c.category, value: c.cnt }))
+  };
+}
+
 module.exports = {
   getUsers,
   getUserDetail,
   changeUserRole,
   changeUserStatus,
   getSystemStats,
+  getStatsTrend,
   applyForAdmin,
   getPendingApplications,
   reviewApplication
