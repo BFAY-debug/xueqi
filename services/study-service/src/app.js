@@ -11,8 +11,8 @@ const sessionRoutes = require('./routes/sessions');
 const locationRoutes = require('./routes/locations');
 const seatRoutes = require('./routes/seats');
 const volunteerRoutes = require('./routes/volunteer');
-const bookRoutes = require('./routes/books');
 const chatRoutes = require('./routes/chat');
+const privateChatRoutes = require('./routes/privateChat');
 const seatService = require('./services/seatService');
 
 const http = require('http');
@@ -45,8 +45,7 @@ app.use('/api/study/seats', seatRoutes);
 app.use('/api/study/reservations', seatRoutes); // reservation-specific routes
 app.use('/api/study/volunteer', volunteerRoutes);
 app.use('/api/study/admin/volunteer', volunteerRoutes);
-app.use('/api/study/books', bookRoutes);
-app.use('/api/study/admin/books', bookRoutes);
+app.use('/api/study/private-chat', privateChatRoutes);
 app.use('/api/study', chatRoutes);
 
 // Error handler

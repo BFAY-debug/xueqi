@@ -34,7 +34,7 @@
         <!-- Other user message -->
         <template v-else-if="msg.userId !== currentUserId">
           <div class="msg-bubble msg-other">
-            <div class="msg-avatar">{{ (msg.nickname || '?')[0] }}</div>
+            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.nickname" :size="28" />
             <div class="msg-body">
               <span class="msg-name">{{ msg.nickname }}</span>
               <div class="msg-text">{{ msg.content }}</div>
@@ -51,7 +51,7 @@
               <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
               <span v-if="msg.readCount !== undefined" class="msg-read-count">{{ msg.readCount > 0 ? `已读 ${msg.readCount}` : '未读' }}</span>
             </div>
-            <div class="msg-avatar self-avatar">{{ (msg.nickname || '?')[0] }}</div>
+            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.nickname" :size="28" />
           </div>
           <div class="msg-time msg-time-self">{{ formatTime(msg.createdAt) }}</div>
         </template>
@@ -99,6 +99,7 @@ import { getSocket } from '@/composables/useSocket'
 import { chatAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
+import UserAvatar from './UserAvatar.vue'
 
 const props = defineProps({
   roomId: { type: Number, required: true },

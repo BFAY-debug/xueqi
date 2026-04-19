@@ -1,6 +1,6 @@
 /**
  * Socket.IO composable for real-time updates.
- * Manages connection lifecycle and provides event subscription helpers.
+ * Manages connection lifecycle, heartbeat, and online status.
  */
 import { ref } from 'vue'
 import { io } from 'socket.io-client'
@@ -10,6 +10,23 @@ const GATEWAY_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
 let socket = null
 const connected = ref(false)
+let heartbeatTimer = null
+
+function startHeartbeat() {
+  stopHeartbeat()
+  heartbeatTimer = setInterval(() => {
+    if (socket?.connected) {
+      socket.emit('online:heartbeat')
+    }
+  }, 30000)
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+}
 
 /**
  * Get or create the global Socket.IO connection with auth token.
@@ -19,7 +36,6 @@ function getSocket() {
   const userStore = useUserStore()
 
   if (socket) {
-    // If disconnected, reconnect with fresh token
     if (!socket.connected) {
       socket.auth = { token: userStore.token || '' }
       socket.connect()
@@ -40,16 +56,22 @@ function getSocket() {
 
   socket.on('connect', () => {
     connected.value = true
+    if (userStore.isLoggedIn) {
+      socket.emit('online:login')
+    }
+    startHeartbeat()
   })
 
   socket.on('disconnect', () => {
     connected.value = false
+    stopHeartbeat()
   })
 
   return socket
 }
 
 function disconnectSocket() {
+  stopHeartbeat()
   if (socket) {
     socket.disconnect()
     socket = null

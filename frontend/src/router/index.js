@@ -23,14 +23,6 @@ const routes = [
     component: () => import('@/views/SeatBookingPage.vue')
   },
   {
-    path: '/books',
-    component: () => import('@/views/BooksPage.vue')
-  },
-  {
-    path: '/books/:id',
-    component: () => import('@/views/BookDetailPage.vue')
-  },
-  {
     path: '/community',
     component: () => import('@/views/CommunityPage.vue')
   },
@@ -56,6 +48,16 @@ const routes = [
   {
     path: '/community/proposals/:id',
     component: () => import('@/views/ProposalPage.vue')
+  },
+  {
+    path: '/messages',
+    component: () => import('@/views/MessagesPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/messages/:id',
+    component: () => import('@/views/ChatPage.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/leaderboard',

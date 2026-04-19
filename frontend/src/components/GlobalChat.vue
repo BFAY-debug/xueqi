@@ -83,7 +83,7 @@
           </div>
           <div class="members-list">
             <div v-for="u in chatStore.onlineUsers" :key="u.userId" class="member-item">
-              <div class="member-avatar">{{ (u.nickname || '?')[0] }}</div>
+              <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.nickname" :size="32" />
               <span class="member-name">{{ u.nickname }}</span>
               <span class="member-online"></span>
             </div>
@@ -97,6 +97,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import UserAvatar from './UserAvatar.vue'
 import { useChatStore } from '@/stores/chat'
 import { connected as socketConnected } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'

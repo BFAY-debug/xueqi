@@ -45,7 +45,10 @@
             <h3 class="post-title">{{ post.title }}</h3>
             <p v-if="post.summary" class="post-summary">{{ post.summary }}</p>
             <div class="post-meta">
-              <span>{{ post.author_name }}</span>
+              <span class="post-author">
+                <UserAvatar :avatar-url="post.author_avatar" :nickname="post.author_name" :size="24" />
+                <span>{{ post.author_name }}</span>
+              </span>
               <span>{{ timeAgo(post.created_at) }}</span>
             </div>
           </div>
@@ -81,6 +84,7 @@ import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { postAPI, tagAPI } from '@/api/community'
 import { useUserStore } from '@/stores/user'
 import { useTimeAgo } from '@/composables/useTimeAgo'
@@ -154,7 +158,8 @@ onMounted(() => { fetchPosts(); fetchTags() })
 .category-tag { font-size: 0.75rem; color: var(--color-green); background: rgba(46,92,76,0.1); padding: 2px 8px; border-radius: 4px; }
 .post-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .post-summary { font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.post-meta { font-size: 0.8rem; color: var(--color-text-secondary); display: flex; gap: 12px; }
+.post-meta { font-size: 0.8rem; color: var(--color-text-secondary); display: flex; gap: 12px; align-items: center; }
+.post-author { display: flex; align-items: center; gap: 6px; }
 .post-stats { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--color-text-secondary); min-width: 60px; text-align: right; }
 
 .sidebar { margin-top: 24px; padding: 20px; background: var(--glass-bg-card); border: var(--glass-border); border-radius: var(--border-radius); }

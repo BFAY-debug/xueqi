@@ -70,24 +70,6 @@ CREATE INDEX idx_seat_reservations_pending ON seat_reservations (status, start_t
 CREATE INDEX idx_seat_reservations_user_date ON seat_reservations (user_id, reserve_date DESC, status);
 
 -- ----------------------------------------------------------
--- 书籍
--- ----------------------------------------------------------
-
--- Search books by title/author (prefix search)
-CREATE INDEX idx_books_title ON books (title);
-CREATE INDEX idx_books_author ON books (author);
-
--- ----------------------------------------------------------
--- 书籍评分
--- ----------------------------------------------------------
-
--- Recent ratings for a book
-CREATE INDEX idx_book_ratings_book ON book_ratings (book_id, created_at DESC);
-
--- User's rated books
-CREATE INDEX idx_book_ratings_user ON book_ratings (user_id);
-
--- ----------------------------------------------------------
 -- 帖子
 -- ----------------------------------------------------------
 

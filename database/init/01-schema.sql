@@ -229,70 +229,6 @@ CREATE TABLE volunteer_records (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
--- 书籍
--- ----------------------------------------------------------
-CREATE TABLE books (
-    id             INT PRIMARY KEY AUTO_INCREMENT,
-    isbn           VARCHAR(20) UNIQUE,
-    title          VARCHAR(200) NOT NULL,
-    author         VARCHAR(200),
-    publisher      VARCHAR(200),
-    publish_year   INT,
-    category       VARCHAR(100),
-    cover_url      VARCHAR(500),
-    description    TEXT,
-    avg_rating     DECIMAL(2,1) DEFAULT 0.0,
-    rating_count   INT DEFAULT 0,
-    status         ENUM('pending', 'published', 'rejected') DEFAULT 'published',
-    submitted_by   INT COMMENT 'user who submitted, NULL=admin added',
-    reviewed_by    INT,
-    reviewed_at    TIMESTAMP NULL,
-    reject_reason  VARCHAR(500),
-    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_status (status),
-    INDEX idx_category (category)
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------
--- 书籍-课程关联
--- ----------------------------------------------------------
-CREATE TABLE book_courses (
-    id           INT PRIMARY KEY AUTO_INCREMENT,
-    book_id      INT NOT NULL,
-    course_name  VARCHAR(100) NOT NULL,
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------
--- 书籍评分/书评
--- ----------------------------------------------------------
-CREATE TABLE book_ratings (
-    id          INT PRIMARY KEY AUTO_INCREMENT,
-    user_id     INT NOT NULL,
-    book_id     INT NOT NULL,
-    rating      TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    review      TEXT,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_user_book (user_id, book_id),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------
--- 书籍收藏
--- ----------------------------------------------------------
-CREATE TABLE book_collections (
-    id          INT PRIMARY KEY AUTO_INCREMENT,
-    user_id     INT NOT NULL,
-    book_id     INT NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_user_book (user_id, book_id),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-) ENGINE=InnoDB;
-
--- ----------------------------------------------------------
 -- 社区帖子
 -- ----------------------------------------------------------
 CREATE TABLE posts (
@@ -389,7 +325,7 @@ CREATE TABLE comment_likes (
 CREATE TABLE review_logs (
     id           INT PRIMARY KEY AUTO_INCREMENT,
     reviewer_id  INT NOT NULL,
-    target_type  VARCHAR(30) NOT NULL COMMENT 'post/comment/book',
+    target_type  VARCHAR(30) NOT NULL COMMENT 'post/comment',
     target_id    INT NOT NULL,
     action       ENUM('approve', 'reject') NOT NULL,
     reason       VARCHAR(500),

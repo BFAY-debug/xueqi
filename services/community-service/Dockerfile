@@ -1,4 +1,5 @@
 FROM node:24-alpine
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 WORKDIR /app
 
 # Maintain same relative structure as local dev

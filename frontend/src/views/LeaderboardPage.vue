@@ -23,20 +23,20 @@
       <template v-else>
         <div class="podium" v-if="top3.length >= 3" ref="podiumEl">
           <div class="podium-item second">
-            <div class="podium-avatar">{{ top3[1]?.nickname?.[0] || '?' }}</div>
+            <UserAvatar :avatar-url="top3[1]?.avatar_url" :nickname="top3[1]?.nickname" :size="48" class="podium-avatar" />
             <div class="podium-name">{{ top3[1]?.nickname || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[1]) }}</div>
             <div class="podium-medal">🥈</div>
           </div>
           <div class="podium-item first">
             <div class="podium-glow"></div>
-            <div class="podium-avatar">{{ top3[0]?.nickname?.[0] || '?' }}</div>
+            <UserAvatar :avatar-url="top3[0]?.avatar_url" :nickname="top3[0]?.nickname" :size="56" class="podium-avatar" />
             <div class="podium-name">{{ top3[0]?.nickname || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[0]) }}</div>
             <div class="podium-medal">🥇</div>
           </div>
           <div class="podium-item third">
-            <div class="podium-avatar">{{ top3[2]?.nickname?.[0] || '?' }}</div>
+            <UserAvatar :avatar-url="top3[2]?.avatar_url" :nickname="top3[2]?.nickname" :size="48" class="podium-avatar" />
             <div class="podium-name">{{ top3[2]?.nickname || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[2]) }}</div>
             <div class="podium-medal">🥉</div>
@@ -47,7 +47,7 @@
         <div class="rank-list card" v-if="list.length">
           <div v-for="(u, i) in list" :key="u.id" class="rank-item">
             <span class="rank-num">{{ i + 4 }}</span>
-            <span class="rank-avatar">{{ u.nickname?.[0] || '?' }}</span>
+            <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="32" class="rank-avatar" />
             <span class="rank-name">{{ u.nickname || u.username }}</span>
             <span class="rank-level">{{ u.level_badge }} {{ u.level_name }}</span>
             <span class="rank-score">{{ scoreField(u) }}</span>
@@ -74,6 +74,7 @@ import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { leaderboardAPI } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
@@ -223,14 +224,9 @@ onMounted(fetchData)
   box-shadow: 0 4px 30px rgba(184, 134, 11, 0.15);
 }
 .podium-avatar {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: var(--color-accent); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; font-family: var(--font-title);
   margin: 0 auto 10px;
 }
 .podium-item.first .podium-avatar {
-  width: 68px; height: 68px; font-size: 1.5rem;
   box-shadow: 0 0 20px rgba(184, 134, 11, 0.4), 0 0 40px rgba(184, 134, 11, 0.15);
 }
 .podium-name { font-weight: 600; margin-bottom: 4px; }
@@ -259,7 +255,7 @@ onMounted(fetchData)
 .rank-item:last-child { border-bottom: none; }
 .rank-item:hover { background: var(--color-accent-light); }
 .rank-num { font-family: var(--font-mono); font-weight: 700; color: var(--color-text-secondary); width: 30px; text-align: center; }
-.rank-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--color-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-family: var(--font-title); }
+.rank-avatar { flex-shrink: 0; }
 .rank-name { flex: 1; font-size: 0.9rem; }
 .rank-level { font-size: 0.8rem; color: var(--color-text-secondary); }
 .rank-score { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--color-accent); }

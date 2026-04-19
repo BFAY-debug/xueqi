@@ -18,6 +18,7 @@ const PORT = process.env.COMMUNITY_SERVICE_PORT || 3003;
 
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(responseHandler);
 

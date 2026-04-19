@@ -57,20 +57,3 @@ export const volunteerAPI = {
   confirm: (id) => request.put(`/study/admin/volunteer/${id}/confirm`),
   reject: (id) => request.put(`/study/admin/volunteer/${id}/reject`)
 }
-
-export const bookAPI = {
-  getList: (params) => request.get('/study/books', { params }),
-  getById: (id) => request.get(`/study/books/${id}`),
-  getRecommend: () => request.get('/study/books/recommend'),
-  submit: (data) => request.post('/study/books/submit', data),
-  rate: (id, data) => request.post(`/study/books/${id}/rate`, data),
-  collect: (id) => request.post(`/study/books/${id}/collect`),
-  uncollect: (id) => request.delete(`/study/books/${id}/collect`),
-  getCollections: (params) => request.get('/study/books/collections', { params }),
-  // Admin
-  add: (data) => request.post('/study/books', data),
-  update: (id, data) => request.put(`/study/books/${id}`, data),
-  delete: (id) => request.delete(`/study/books/${id}`),
-  getPending: (params) => request.get('/study/admin/books/pending', { params }),
-  review: (id, data) => request.put(`/study/admin/books/${id}/review`, data)
-}

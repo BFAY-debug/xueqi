@@ -48,7 +48,7 @@
           <p class="hero-subtitle" ref="heroSubtitle">栖心之所 · 学问之道</p>
           <div class="hero-actions" ref="heroActions">
             <router-link to="/study-rooms" class="btn-primary btn-lg">入门求学</router-link>
-            <router-link to="/books" class="btn-outline btn-lg">游历书海</router-link>
+            <router-link to="/study-rooms" class="btn-outline btn-lg">探索书院</router-link>
           </div>
         </template>
       </div>
@@ -68,7 +68,7 @@
           </div>
           <template v-if="userStore.isLoggedIn && userStore.user">
             <div class="user-welcome">
-              <div class="user-avatar-sm">{{ userStore.user.nickname?.[0] || '?' }}</div>
+              <UserAvatar :avatar-url="userStore.user.avatar_url" :nickname="userStore.user.nickname" :size="40" />
               <div>
                 <div class="user-name">{{ userStore.user.nickname }}</div>
                 <div class="user-level">
@@ -133,7 +133,7 @@
                 <template v-else-if="i === 1">🥈</template>
                 <template v-else>🥉</template>
               </span>
-              <div class="top-avatar">{{ u.nickname?.[0] || '?' }}</div>
+              <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
               <div class="top-info">
                 <span class="top-name">{{ u.nickname || '虚位以待' }}</span>
                 <span class="top-score">{{ u.total_points || 0 }} 分</span>
@@ -164,26 +164,25 @@
           </div>
         </div>
 
-        <!-- Cell 5: Recommended Books -->
-        <div class="bento-cell card bento-cell--books">
+        <!-- Cell 5: Online Users -->
+        <div class="bento-cell card bento-cell--online">
           <div class="bento-cell__header">
-            <span class="bento-label">书海拾遗</span>
-            <router-link to="/books" class="bento-more">书海 →</router-link>
+            <span class="bento-label">在线学友</span>
+            <router-link to="/study-rooms" class="bento-more">书院 →</router-link>
           </div>
-          <div class="books-scroll" v-if="books.length">
-            <router-link
-              v-for="book in books" :key="book.id"
-              :to="'/books/' + book.id"
-              class="book-thumb card"
+          <div class="online-users-grid" v-if="onlineUsers.length">
+            <div
+              v-for="u in onlineUsers.slice(0, 6)" :key="u.userId"
+              class="online-user-card"
             >
-              <div class="book-cover">{{ book.title?.[0] || '书' }}</div>
-              <div class="book-info-sm">
-                <span class="book-title-sm">{{ book.title }}</span>
-                <span class="book-rating-sm" v-if="book.average_rating">★ {{ book.average_rating?.toFixed(1) }}</span>
+              <div class="online-avatar-wrap">
+                <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.nickname" :size="44" />
+                <span class="online-dot"></span>
               </div>
-            </router-link>
+              <span class="online-name">{{ u.nickname }}</span>
+            </div>
           </div>
-          <AppEmpty v-else text="暂无推荐书籍" />
+          <AppEmpty v-else text="暂无在线学友" />
         </div>
 
         <!-- Cell 6: Community Posts -->
@@ -236,15 +235,19 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
-import { roomAPI, bookAPI } from '@/api/study'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { roomAPI } from '@/api/study'
 import { postAPI } from '@/api/community'
 import { leaderboardAPI } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import { useMessageStore } from '@/stores/message'
 import { useTimeAgo } from '@/composables/useTimeAgo'
+import { getSocket } from '@/composables/useSocket'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const userStore = useUserStore()
+const messageStore = useMessageStore()
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
 const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
@@ -252,7 +255,7 @@ const categoryMap = { experience: '修习心得', question: '求学问路', reso
 const rooms = ref([])
 const posts = ref([])
 const topUsers = ref([])
-const books = ref([])
+const onlineUsers = ref([])
 const loading = reactive({ rooms: true, posts: true, leaders: true })
 
 const stats = ref([
@@ -321,16 +324,24 @@ onMounted(async () => {
 
   // Fetch data
   try {
-    const [roomsRes, postsRes, leadersRes, booksRes] = await Promise.all([
+    const [roomsRes, postsRes, leadersRes] = await Promise.all([
       roomAPI.getList(),
       postAPI.getList({ pageSize: 4 }),
-      leaderboardAPI.getPoints({ pageSize: 3 }),
-      bookAPI.getRecommend().catch(() => ({ data: [] }))
+      leaderboardAPI.getPoints({ pageSize: 3 })
     ])
     rooms.value = (roomsRes.data || []).slice(0, 3)
     posts.value = postsRes.data || []
     topUsers.value = leadersRes.data || []
-    books.value = (booksRes.data || []).slice(0, 6)
+    onlineUsers.value = []
+    // Fetch online users via socket (non-blocking)
+    try {
+      const sock = getSocket()
+      if (sock.connected) {
+        sock.emit('online:getUsers', (users) => {
+          onlineUsers.value = users || []
+        })
+      }
+    } catch (e) { /* ignore */ }
 
     // Calculate stats
     const online = (roomsRes.data || []).reduce((s, r) => s + (r.current_count || 0), 0)
@@ -544,7 +555,7 @@ onUnmounted(() => {
 .bento-cell--rooms { grid-column: span 2; grid-row: span 2; }
 .bento-cell--leaderboard { grid-column: span 1; }
 .bento-cell--today { grid-column: span 1; }
-.bento-cell--books { grid-column: span 1; }
+.bento-cell--online { grid-column: span 1; }
 .bento-cell--community { grid-column: span 2; }
 .bento-cell--closing { grid-column: span 2; }
 
@@ -554,12 +565,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-}
-.user-avatar-sm {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--color-accent); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-title); font-size: 1.1rem;
 }
 .user-name { font-weight: 600; font-size: 1rem; }
 .user-level { margin-top: 4px; }
@@ -705,51 +710,42 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-/* ── Books Cell ── */
-.books-scroll {
-  display: flex;
+/* ── Online Users Cell ── */
+.online-users-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 8px;
   flex: 1;
-  align-items: flex-start;
 }
-.books-scroll::-webkit-scrollbar { height: 4px; }
-.books-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
-.book-thumb {
-  flex-shrink: 0;
-  width: 120px;
-  padding: 12px;
-  text-decoration: none;
-  color: inherit;
-  text-align: center;
-  transition: transform 0.2s;
-}
-.book-thumb:hover { transform: translateY(-4px); color: inherit; }
-.book-cover {
-  width: 80px; height: 110px;
-  background: linear-gradient(135deg, var(--color-bg-secondary), var(--color-border-light));
-  border-radius: 4px;
-  margin: 0 auto 8px;
+.online-user-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-family: var(--font-title);
-  font-size: 2rem;
-  color: var(--color-blue);
-  box-shadow: 2px 2px 8px rgba(44, 44, 44, 0.08);
+  gap: 6px;
 }
-.book-info-sm { display: flex; flex-direction: column; gap: 2px; }
-.book-title-sm {
-  font-size: 0.8rem;
+.online-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.online-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 10px;
+  height: 10px;
+  background: #4caf50;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-primary);
+}
+.online-name {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100px;
-}
-.book-rating-sm {
-  font-size: 0.75rem;
-  color: var(--color-gold);
+  max-width: 60px;
+  text-align: center;
 }
 
 /* ── Community Cell ── */

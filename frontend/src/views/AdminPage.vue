@@ -114,22 +114,6 @@
           <p v-if="!allComments.length && !pendingComments.length" class="empty-text">暂无评论</p>
         </template>
 
-        <!-- Pending Books -->
-        <template v-if="activeSection === 'books'">
-          <h2>待审核书籍</h2>
-          <div v-for="b in pendingBooks" :key="b.id" class="review-item card">
-            <div class="review-content">
-              <span class="review-badge">[书籍]</span>
-              {{ b.submitter_name }} 推送「{{ b.title }}」- {{ b.author }}
-            </div>
-            <div class="review-actions">
-              <el-button type="success" size="small" @click="reviewBook(b.id, 'approve')">通过</el-button>
-              <el-button type="danger" size="small" @click="reviewBook(b.id, 'reject')">拒绝</el-button>
-            </div>
-          </div>
-          <p v-if="!pendingBooks.length" class="empty-text">暂无待审核书籍</p>
-        </template>
-
         <!-- Users -->
         <template v-if="activeSection === 'users'">
           <h2>学子管理</h2>
@@ -264,7 +248,6 @@
             <div class="stat-card card"><span class="stat-val">{{ sysStats.users?.activeToday || 0 }}</span><span class="stat-lbl">今日活跃</span></div>
             <div class="stat-card card"><span class="stat-val">{{ sysStats.content?.publishedPosts || 0 }}</span><span class="stat-lbl">已发布帖子</span></div>
             <div class="stat-card card"><span class="stat-val">{{ sysStats.content?.pendingPosts || 0 }}</span><span class="stat-lbl">待审帖子</span></div>
-            <div class="stat-card card"><span class="stat-val">{{ sysStats.content?.pendingBooks || 0 }}</span><span class="stat-lbl">待审书籍</span></div>
             <div class="stat-card card"><span class="stat-val">{{ Math.floor((sysStats.platform?.totalStudyMinutes || 0) / 60) }}</span><span class="stat-lbl">总修习时辰</span></div>
           </div>
           <!-- Trend charts -->
@@ -346,7 +329,7 @@
     <el-dialog v-model="showUserDetailDialog" title="学子详情" width="500px">
       <div v-if="userDetail" class="user-detail">
         <div class="user-detail-header">
-          <div class="user-detail-avatar">{{ (userDetail.nickname || userDetail.username || '?')[0] }}</div>
+          <UserAvatar :avatar-url="userDetail.avatar_url" :nickname="userDetail.nickname || userDetail.username" :size="64" class="user-detail-avatar" />
           <div>
             <h3 style="margin:0">{{ userDetail.nickname || userDetail.username }}</h3>
             <p style="margin:4px 0 0;font-size:0.85rem;color:var(--color-text-secondary)">@{{ userDetail.username }} · {{ userDetail.role_name }}</p>
@@ -373,9 +356,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { adminAPI } from '@/api/user'
 import { communityAdminAPI, postAPI } from '@/api/community'
-import { bookAPI, volunteerAPI, locationAPI } from '@/api/study'
+import { volunteerAPI, locationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -387,7 +371,6 @@ const allMenuItems = [
   { key: 'posts', icon: '📝', label: '文章审核', roles: ['admin', 'super_admin'] },
   { key: 'postManage', icon: '📄', label: '文章管理', roles: ['admin', 'super_admin'] },
   { key: 'comments', icon: '💬', label: '评论管理', roles: ['admin', 'super_admin'] },
-  { key: 'books', icon: '📚', label: '书籍审核', roles: ['admin', 'super_admin'] },
   { key: 'users', icon: '👥', label: '学子管理', roles: ['admin', 'super_admin'] },
   { key: 'seats', icon: '🪑', label: '座位管理', roles: ['admin', 'super_admin'] },
   { key: 'applications', icon: '📨', label: '管理员申请', roles: ['super_admin'] },
@@ -405,7 +388,6 @@ const pendingPosts = ref([])
 const allPosts = ref([])
 const allComments = ref([])
 const pendingComments = ref([])
-const pendingBooks = ref([])
 const users = ref([])
 const volunteerPending = ref([])
 const reviewLogs = ref([])
@@ -448,9 +430,6 @@ async function fetchAllPosts() {
 }
 async function fetchAllComments() {
   try { const res = await communityAdminAPI.getAllComments({ pageSize: 100 }); allComments.value = res.data || [] } catch { /* */ }
-}
-async function fetchPendingBooks() {
-  try { const res = await bookAPI.getPending({ pageSize: 50 }); pendingBooks.value = res.data || [] } catch { /* */ }
 }
 async function fetchUsers() {
   try { const res = await adminAPI.getUsers({ pageSize: 100 }); users.value = res.data || [] } catch { /* */ }
@@ -757,16 +736,6 @@ async function viewUserDetail(userId) {
   } catch (err) { ElMessage.error(err.message) }
 }
 
-async function reviewBook(id, action) {
-  const reason = action === 'reject' ? await promptReason() : ''
-  if (action === 'reject' && reason === false) return
-  try {
-    await bookAPI.review(id, { action, reason })
-    ElMessage.success(action === 'approve' ? '已通过' : '已拒绝')
-    fetchPendingBooks()
-  } catch (err) { ElMessage.error(err.message) }
-}
-
 async function promptReason() {
   try {
     const { value } = await ElMessageBox.prompt('请输入拒绝原因', '拒绝', { confirmButtonText: '确认', cancelButtonText: '取消' })
@@ -801,7 +770,7 @@ async function rejectVolunteer(id) {
 watch(activeSection, (val) => {
   const fetchers = {
     posts: fetchPendingPosts, postManage: fetchAllPosts,
-    comments: () => { fetchAllComments(); fetchPendingComments() }, books: fetchPendingBooks,
+    comments: () => { fetchAllComments(); fetchPendingComments() },
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
     volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
   }
@@ -860,9 +829,6 @@ onMounted(() => { fetchPendingPosts(); fetchStats() })
 /* User Detail Dialog */
 .user-detail-header { display: flex; align-items: center; gap: 12px; }
 .user-detail-avatar {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: var(--color-green); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; font-family: var(--font-title);
+  flex-shrink: 0;
 }
 </style>

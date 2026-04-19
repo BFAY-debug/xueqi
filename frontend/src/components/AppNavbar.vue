@@ -11,7 +11,7 @@
         <router-link to="/">首页</router-link>
         <router-link to="/study-rooms">书院</router-link>
         <router-link to="/seat-booking">占座</router-link>
-        <router-link to="/books">书海</router-link>
+        <router-link to="/messages" class="nav-msg-link">消息<span v-if="msgUnreadCount" class="nav-msg-badge">{{ msgUnreadCount }}</span></router-link>
         <router-link to="/community">论道</router-link>
         <router-link to="/leaderboard">金榜</router-link>
       </div>
@@ -82,9 +82,9 @@
                     <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                     <span>知识广场</span>
                   </router-link>
-                  <router-link to="/books" class="dd-item" @click="dropdownOpen = false">
-                    <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                    <span>书海遨游</span>
+                  <router-link to="/messages" class="dd-item" @click="dropdownOpen = false">
+                    <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>我的消息</span>
                   </router-link>
                   <router-link to="/leaderboard" class="dd-item" @click="dropdownOpen = false">
                     <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -136,7 +136,7 @@
             <router-link to="/" @click="mobileMenuOpen = false">首页</router-link>
             <router-link to="/study-rooms" @click="mobileMenuOpen = false">书院</router-link>
             <router-link to="/seat-booking" @click="mobileMenuOpen = false">占座</router-link>
-            <router-link to="/books" @click="mobileMenuOpen = false">书海</router-link>
+            <router-link to="/messages" @click="mobileMenuOpen = false">消息</router-link>
             <router-link to="/community" @click="mobileMenuOpen = false">论道</router-link>
             <router-link to="/leaderboard" @click="mobileMenuOpen = false">金榜</router-link>
           </div>
@@ -152,11 +152,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useMessageStore } from '@/stores/message'
 
 const userStore = useUserStore()
+const messageStore = useMessageStore()
 const router = useRouter()
 const route = useRoute()
 const scrolled = ref(false)
@@ -164,6 +166,7 @@ const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
 const mobileMenuOpen = ref(false)
 const isDark = ref(false)
+const msgUnreadCount = computed(() => messageStore.unreadTotal)
 
 // Theme toggle
 function toggleTheme() {
@@ -201,6 +204,9 @@ onMounted(() => {
   document.addEventListener('click', onClickOutside)
   userStore.fetchUnreadCount()
   initTheme()
+  if (userStore.isLoggedIn) {
+    messageStore.fetchUnreadCount()
+  }
 })
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
@@ -290,6 +296,15 @@ function handleLogout() {
   height: 2px;
   background: var(--color-accent);
   border-radius: 1px;
+}
+
+.nav-msg-link { display: inline-flex; align-items: center; gap: 4px; }
+.nav-msg-badge {
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 8px; background: var(--color-accent); color: #fff;
+  font-size: 0.65rem; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1;
 }
 
 .nav-right {

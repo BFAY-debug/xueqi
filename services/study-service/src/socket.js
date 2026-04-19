@@ -1,10 +1,12 @@
 /**
  * Socket.IO server for real-time updates.
- * Handles study room participants, seat status, chat messages, and status sync.
+ * Handles study room participants, seat status, chat messages, private messaging, and online status.
  */
 const { Server } = require('socket.io');
 const { logger, jwt: { verifyToken } } = require('xueqi-shared');
 const chatService = require('./services/chatService');
+const privateChatService = require('./services/privateChatService');
+const onlineStatusService = require('./services/onlineStatusService');
 
 let io = null;
 
@@ -20,6 +22,9 @@ const roomOnlineUsers = new Map();
 // Rate limiting: Map<userId, lastMessageTime>
 const lastMessageTime = new Map();
 const MESSAGE_COOLDOWN = 2000; // 2 seconds
+
+// Global online users: Map<userId, { nickname, avatarUrl, socketCount, sockets: Set<socketId> }>
+const globalOnlineUsers = new Map();
 
 /**
  * Initialize Socket.IO server on the given HTTP server.
@@ -59,6 +64,14 @@ function initSocket(httpServer) {
 
     // Track which rooms this socket has joined
     const joinedRooms = new Set();
+
+    // ── Global online & user room ───────────────────────
+
+    if (userId) {
+      socket.join(`user:${userId}`);
+      const avatarUrl = user?.avatar_url || '';
+      addGlobalOnlineUser(userId, nickname, avatarUrl, socket.id);
+    }
 
     // ── Room channel management ──────────────────────────
 
@@ -190,6 +203,94 @@ function initSocket(httpServer) {
       });
     });
 
+    // ── Private messaging ────────────────────────────────
+
+    socket.on('pm:send', async (data) => {
+      if (!userId || !data.toUserId || !data.content?.trim()) return;
+
+      const now = Date.now();
+      const last = lastMessageTime.get(userId) || 0;
+      if (now - last < MESSAGE_COOLDOWN) {
+        socket.emit('chat:rateLimited', { cooldown: MESSAGE_COOLDOWN - (now - last) });
+        return;
+      }
+      lastMessageTime.set(userId, now);
+
+      try {
+        const conv = await privateChatService.getOrCreateConversation(userId, data.toUserId);
+        const msgId = await privateChatService.sendMessage(conv.id, userId, data.content.trim(), data.imageUrl || null);
+
+        const msgData = {
+          id: msgId,
+          conversationId: conv.id,
+          senderId: userId,
+          senderName: nickname,
+          senderAvatar: user?.avatar_url || null,
+          content: data.content.trim(),
+          imageUrl: data.imageUrl || null,
+          createdAt: new Date().toISOString()
+        };
+
+        // Echo to sender
+        socket.emit('pm:message', msgData);
+        // Deliver to receiver
+        io.to(`user:${data.toUserId}`).emit('pm:message', msgData);
+        // Increment unread for receiver
+        await privateChatService.incrementUnread(data.toUserId, conv.id);
+      } catch (err) {
+        logger.warn(`PM send failed: ${err.message}`);
+      }
+    });
+
+    socket.on('pm:typing', (data) => {
+      if (!userId || !data.toUserId) return;
+      io.to(`user:${data.toUserId}`).emit('pm:typingStatus', { userId });
+    });
+
+    socket.on('pm:stopTyping', (data) => {
+      if (!userId || !data.toUserId) return;
+      io.to(`user:${data.toUserId}`).emit('pm:stopTypingStatus', { userId });
+    });
+
+    socket.on('pm:markRead', async (data) => {
+      if (!userId || !data.conversationId) return;
+      try {
+        await privateChatService.markConversationRead(data.conversationId, userId);
+        // Notify the other user in the conversation
+        const [conv] = await require('xueqi-shared').db.execute(
+          'SELECT user1_id, user2_id FROM conversations WHERE id = ?',
+          [data.conversationId]
+        );
+        if (conv.length) {
+          const otherId = conv[0].user1_id === userId ? conv[0].user2_id : conv[0].user1_id;
+          io.to(`user:${otherId}`).emit('pm:readUpdate', { conversationId: data.conversationId, readByUserId: userId });
+        }
+      } catch (err) {
+        logger.warn(`PM mark read failed: ${err.message}`);
+      }
+    });
+
+    // ── Online status ────────────────────────────────────
+
+    socket.on('online:heartbeat', () => {
+      if (!userId) return;
+      const info = globalOnlineUsers.get(userId);
+      if (info) {
+        info.lastSeen = Date.now();
+      }
+    });
+
+    socket.on('online:getUsers', async (callback) => {
+      if (typeof callback === 'function') {
+        try {
+          const users = await onlineStatusService.getOnlineUsers();
+          callback(users);
+        } catch (e) {
+          callback([]);
+        }
+      }
+    });
+
     // ── Disconnect ───────────────────────────────────────
 
     socket.on('disconnect', () => {
@@ -203,6 +304,11 @@ function initSocket(httpServer) {
         broadcastOnlineInfo(roomId);
       }
       joinedRooms.clear();
+
+      // Remove from global online tracking
+      if (userId) {
+        removeGlobalOnlineUser(userId, socket.id);
+      }
     });
   });
 
@@ -311,6 +417,38 @@ function broadcastSeatUpdate(locationId, data) {
 
 function getIO() {
   return io;
+}
+
+// ── Global online user tracking ─────────────────────────
+
+function addGlobalOnlineUser(userId, nickname, avatarUrl, socketId) {
+  let info = globalOnlineUsers.get(userId);
+  if (info) {
+    info.socketCount++;
+    info.sockets.add(socketId);
+  } else {
+    info = { nickname, avatarUrl, socketCount: 1, sockets: new Set([socketId]), lastSeen: Date.now() };
+    globalOnlineUsers.set(userId, info);
+    // New user online, persist to Redis and broadcast
+    onlineStatusService.userOnline(userId, nickname, avatarUrl).catch(() => {});
+    if (io) {
+      io.emit('online:statusChange', { userId, nickname, avatarUrl, status: 'online' });
+    }
+  }
+}
+
+function removeGlobalOnlineUser(userId, socketId) {
+  const info = globalOnlineUsers.get(userId);
+  if (!info) return;
+  info.sockets.delete(socketId);
+  info.socketCount--;
+  if (info.socketCount <= 0) {
+    globalOnlineUsers.delete(userId);
+    onlineStatusService.userOffline(userId).catch(() => {});
+    if (io) {
+      io.emit('online:statusChange', { userId, nickname: info.nickname, status: 'offline' });
+    }
+  }
 }
 
 module.exports = {

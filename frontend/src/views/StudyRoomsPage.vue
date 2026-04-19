@@ -68,7 +68,7 @@
             <div class="participant-grid" v-if="participants.length">
               <div class="participant card" v-for="p in participants" :key="p.user_id">
                 <div class="p-avatar-wrap">
-                  <div class="p-avatar">{{ (p.nickname || p.username || '?')[0] }}</div>
+                  <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="36" />
                   <span v-if="participantStatuses[p.user_id]" class="status-dot" :class="'status-' + participantStatuses[p.user_id]"></span>
                 </div>
                 <div class="p-info">
@@ -77,6 +77,7 @@
                     {{ statusLabel(participantStatuses[p.user_id]) }}
                   </span>
                 </div>
+                <button v-if="p.user_id !== userStore.user?.id" class="p-pm-btn" @click="startPrivateChat(p.user_id)" title="发消息">✉</button>
               </div>
             </div>
             <p v-else class="empty-text">暂无学子修习</p>
@@ -163,7 +164,7 @@
           <div class="immersive-avatars">
             <div class="immersive-avatar" v-for="p in participants.slice(0, 8)" :key="p.user_id"
               :title="p.nickname || p.username">
-              {{ (p.nickname || p.username || '?')[0] }}
+              <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="32" />
             </div>
           </div>
         </div>
@@ -205,19 +206,24 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'
 import RoomChat from '@/components/RoomChat.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
+import { useMessageStore } from '@/stores/message'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
+const messageStore = useMessageStore()
+const router = useRouter()
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
 
 // Scene definitions — each room gets a scene based on room.id % 4
@@ -434,6 +440,13 @@ function openGlobalChat() {
   }
 }
 
+async function startPrivateChat(userId) {
+  const conv = await messageStore.openConversation(userId)
+  if (conv) {
+    router.push(`/messages/${conv.id}`)
+  }
+}
+
 // Recover active session timer from server
 async function recoverActiveSession() {
   if (!userStore.isLoggedIn) return
@@ -537,7 +550,6 @@ onUnmounted(() => {
 
 .participant-grid { display: flex; flex-wrap: wrap; gap: 12px; }
 .participant { display: flex; align-items: center; gap: 8px; padding: 8px 14px; }
-.p-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--color-green); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-family: var(--font-title); }
 .p-name { font-size: 0.85rem; }
 .empty-text { color: var(--color-text-secondary); font-size: 0.9rem; padding: 20px 0; text-align: center; }
 
@@ -705,10 +717,8 @@ onUnmounted(() => {
   gap: 6px;
 }
 .immersive-avatar {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--color-green); color: #fff;
+  width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-title); font-size: 0.8rem;
 }
 
 .panel-sound {
@@ -770,6 +780,18 @@ onUnmounted(() => {
 .status-text-pomodoro { color: #8B2500; }
 .status-text-idle { color: #B8860B; }
 .status-text-away { color: #999; }
+
+.p-pm-btn {
+  background: none; border: 1px solid var(--color-border);
+  border-radius: 50%; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 0.8rem; color: var(--color-text-secondary);
+  margin-left: auto; transition: all 0.15s; flex-shrink: 0;
+}
+.p-pm-btn:hover {
+  color: var(--color-accent); border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
 
 /* ═══════════════════ Immersive Chat Bubble & Panel ═══════════════════ */
 .chat-bubble {
