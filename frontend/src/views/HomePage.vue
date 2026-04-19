@@ -277,7 +277,7 @@ const heroActions = ref(null)
 const { timeAgo } = useTimeAgo()
 
 function roomProgress(room) {
-  return Math.min(100, Math.round(((room.current_count || 0) / room.capacity) * 100))
+  return Math.min(100, Math.round(((room.current_count || 0) / (room.capacity || 1)) * 100))
 }
 
 onMounted(async () => {

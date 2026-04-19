@@ -268,6 +268,17 @@ async function rateBook(bookId, userId, { rating, review }) {
 }
 
 /**
+ * Check if user collected a book
+ */
+async function isCollected(userId, bookId) {
+  const [rows] = await db.execute(
+    'SELECT 1 FROM book_collections WHERE user_id = ? AND book_id = ?',
+    [userId, bookId]
+  );
+  return rows.length > 0;
+}
+
+/**
  * Toggle book collection
  */
 async function toggleCollection(bookId, userId) {
@@ -361,6 +372,7 @@ function getServiceToken() {
 module.exports = {
   getBooks,
   getBookById,
+  isCollected,
   submitBook,
   addBook,
   updateBook,

@@ -470,9 +470,9 @@ async function fetchStats() {
   } catch { /* */ }
 }
 
-function renderCharts() {
+async function renderCharts() {
   if (!statsTrend.value) return
-  const echarts = require('echarts')
+  const echarts = await import('echarts')
   const t = statsTrend.value.trend || []
   const dates = t.map(d => d.date.slice(5)) // "MM-DD"
 
@@ -801,7 +801,7 @@ async function rejectVolunteer(id) {
 watch(activeSection, (val) => {
   const fetchers = {
     posts: fetchPendingPosts, postManage: fetchAllPosts,
-    comments: fetchAllComments, books: fetchPendingBooks,
+    comments: () => { fetchAllComments(); fetchPendingComments() }, books: fetchPendingBooks,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
     volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
   }

@@ -190,7 +190,7 @@ async function getPendingApplications({ page = 1, pageSize = 20 }) {
   const [rows] = await db.execute(
     `SELECT a.id, a.reason, a.status, a.created_at, a.reviewed_at,
             u.id AS user_id, u.username, u.nickname, u.avatar_url,
-            r.name AS reviewer_name
+            r.nickname AS reviewer_name
      FROM admin_applications a
      JOIN users u ON a.user_id = u.id
      LEFT JOIN users r ON a.reviewer_id = r.id

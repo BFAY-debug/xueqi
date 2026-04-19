@@ -17,7 +17,7 @@
             <p class="meta" v-if="book.isbn">ISBN: {{ book.isbn }}</p>
             <div class="rating-section">
               <span class="stars">{{ '★'.repeat(myRating || Math.round(book.avg_rating || 0)) }}{{ '☆'.repeat(5 - (myRating || Math.round(book.avg_rating || 0))) }}</span>
-              <span class="rating-num">{{ book.avg_rating?.toFixed(1) || '-' }} ({{ book.rating_count }} 人评)</span>
+              <span class="rating-num">{{ book.avg_rating?.toFixed(1) || '-' }} ({{ book.rating_count ?? 0 }} 人评)</span>
             </div>
             <div class="detail-tags" v-if="book.courses?.length">
               <span v-for="c in book.courses" :key="c" class="tag">{{ c }}</span>
@@ -73,6 +73,7 @@ async function fetchBook() {
   try {
     const res = await bookAPI.getById(bookId)
     book.value = res.data
+    if (res.data?.is_collected) collected.value = true
   } catch (err) { ElMessage.error(err.message) }
   finally { loading.value = false }
 }

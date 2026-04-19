@@ -14,7 +14,7 @@ async function getMyBookmarks(req, res, next) {
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 20
     });
-    res.success(result.data, 'Success').json({ ...res.successData, total: result.total });
+    res.paginate(result.data, result.total, parseInt(page) || 1, parseInt(pageSize) || 20);
   } catch (err) { next(err); }
 }
 

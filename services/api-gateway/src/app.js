@@ -10,6 +10,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const { logger } = require('xueqi-shared');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.GATEWAY_PORT || 3000;
 
 // Service URLs

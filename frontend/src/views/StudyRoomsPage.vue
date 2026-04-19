@@ -314,7 +314,7 @@ const hasJoined = computed(() => {
 })
 
 function progress(room) {
-  return Math.min(100, Math.round(((room.current_count || 0) / room.capacity) * 100))
+  return Math.min(100, Math.round(((room.current_count || 0) / (room.capacity || 1)) * 100))
 }
 
 async function fetchRooms() {

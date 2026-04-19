@@ -38,6 +38,9 @@ async function listBooks(req, res, next) {
 async function getBook(req, res, next) {
   try {
     const book = await bookService.getBookById(parseInt(req.params.id, 10));
+    if (req.user) {
+      book.is_collected = await bookService.isCollected(req.user.userId, book.id);
+    }
     res.success(book);
   } catch (err) { next(err); }
 }

@@ -25,7 +25,7 @@
         <div class="books-sidebar">
           <h4>分类</h4>
           <div class="category-list">
-            <span v-for="cat in categories" :key="cat" class="category-tag" :class="{ active: category === cat }" @click="category = cat; fetchBooks()">
+            <span v-for="cat in categories" :key="cat" class="category-tag" :class="{ active: (cat === '全部' && !category) || category === cat }" @click="category = cat === '全部' ? '' : cat; fetchBooks()">
               {{ cat }}
             </span>
           </div>
@@ -100,7 +100,7 @@ const search = ref('')
 const category = ref('')
 const sort = ref('newest')
 const loading = ref(false)
-const categories = ['计算机科学', '数学', '文学', '历史', '哲学']
+const categories = ['全部', '计算机科学', '数学', '文学', '历史', '哲学']
 
 const showSubmit = ref(false)
 const submitting = ref(false)
