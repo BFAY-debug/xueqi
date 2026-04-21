@@ -68,7 +68,8 @@ module.exports = {
   getPendingPosts, reviewPost, togglePin, toggleFeature,
   toggleHidePost, adminEditPost,
   getPendingComments, reviewComment, getReviewLogs,
-  getAllPosts, deletePost, getAllComments, deleteComment
+  getAllPosts, deletePost, getAllComments, deleteComment,
+  getPendingProposals, adminMergeProposal, adminRejectProposal
 };
 
 async function getAllPosts(req, res, next) {
@@ -114,5 +115,29 @@ async function adminEditPost(req, res, next) {
     const { title, content } = req.body;
     const result = await adminService.adminEditPost(parseInt(req.params.id, 10), req.user.userId, { title, content });
     res.success(result, '文章已更新');
+  } catch (err) { next(err); }
+}
+
+async function getPendingProposals(req, res, next) {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 20;
+    const { data, total } = await adminService.getPendingProposals(page, pageSize);
+    res.paginate(data, total, page, pageSize);
+  } catch (err) { next(err); }
+}
+
+async function adminMergeProposal(req, res, next) {
+  try {
+    const result = await adminService.adminMergeProposal(parseInt(req.params.id, 10), req.user.userId);
+    res.success(result, '提案已合并');
+  } catch (err) { next(err); }
+}
+
+async function adminRejectProposal(req, res, next) {
+  try {
+    const { reason } = req.body;
+    const result = await adminService.adminRejectProposal(parseInt(req.params.id, 10), req.user.userId, reason);
+    res.success(result, '提案已拒绝');
   } catch (err) { next(err); }
 }

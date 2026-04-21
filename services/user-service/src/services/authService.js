@@ -44,8 +44,8 @@ async function login({ username, password }) {
     `SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.role_id, u.status,
             r.name AS role_name
      FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE u.username = ? OR u.email = ?`,
-    [username, username]
+     WHERE u.username = ? OR u.email = ? OR u.nickname = ?`,
+    [username, username, username]
   );
 
   if (rows.length === 0) {

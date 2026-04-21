@@ -21,6 +21,9 @@ async function createConversation(req, res) {
       return res.error('无效的用户ID', 400);
     }
     const conv = await privateChatService.getOrCreateConversation(userId, toUserId);
+    if (!conv) {
+      return res.error('只能与好友发起会话', 403);
+    }
     res.success(conv);
   } catch (err) {
     logger.error(`Create conversation failed: ${err.message}`);

@@ -3,6 +3,14 @@ const { db, redis, logger } = require('xueqi-shared');
 const UNREAD_PREFIX = 'pm:unread:';
 
 async function getOrCreateConversation(user1Id, user2Id) {
+  // Check friendship via Redis (friendship required for messaging)
+  try {
+    const isFriend = await redis.sismember(`friends:${user1Id}`, user2Id);
+    if (!isFriend) return null;
+  } catch (e) {
+    // Redis down — graceful degradation, allow through
+  }
+
   const [small, large] = user1Id < user2Id ? [user1Id, user2Id] : [user2Id, user1Id];
 
   const [existing] = await db.execute(
@@ -40,8 +48,8 @@ async function getConversationMessages(conversationId, userId, limit = 50, befor
     return [];
   }
 
-  let query = `SELECT pm.id, pm.sender_id, pm.content, pm.image_url, pm.is_read, pm.created_at,
-                      u.nickname, u.avatar_url
+  let query = `SELECT pm.id, pm.sender_id AS senderId, pm.content, pm.image_url AS imageUrl, pm.is_read, pm.created_at,
+                      u.nickname AS senderName, u.avatar_url AS senderAvatar
                FROM private_messages pm
                JOIN users u ON u.id = pm.sender_id
                WHERE pm.conversation_id = ?`;
@@ -71,34 +79,67 @@ async function getUserConversations(userId) {
     [userId, userId]
   );
 
+  if (!rows.length) return [];
+
   const convIds = rows.map(r => r.id);
+
+  // Batch fetch last messages for all conversations
+  const [lastMsgRows] = await db.execute(
+    `SELECT pm.conversation_id, pm.content
+     FROM private_messages pm
+     INNER JOIN (
+       SELECT conversation_id, MAX(id) AS max_id
+       FROM private_messages
+       WHERE conversation_id IN (${convIds.map(() => '?').join(',')})
+       GROUP BY conversation_id
+     ) last ON pm.id = last.max_id`,
+    convIds
+  );
+  const lastMsgMap = {};
+  for (const m of lastMsgRows) {
+    lastMsgMap[m.conversation_id] = m.content;
+  }
+
+  // Sync Redis unread counts from MySQL for consistency
+  await syncUnreadFromDB(userId, convIds);
   const unreadMap = await getUnreadCounts(userId, convIds);
 
-  // Get last message for each conversation
-  const result = [];
-  for (const row of rows) {
+  return rows.map(row => {
     const isUser1 = row.user1_id === userId;
-    const peerId = isUser1 ? row.user2_id : row.user1_id;
-    const peerNickname = isUser1 ? row.user2_nickname : row.user1_nickname;
-    const peerAvatar = isUser1 ? row.user2_avatar : row.user1_avatar;
-
-    // Get last message
-    const [msgRows] = await db.execute(
-      `SELECT content, created_at FROM private_messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [row.id]
-    );
-
-    result.push({
+    return {
       id: row.id,
-      peerId,
-      peerNickname,
-      peerAvatar,
-      lastMessage: msgRows.length ? msgRows[0].content : null,
+      peerId: isUser1 ? row.user2_id : row.user1_id,
+      peerNickname: isUser1 ? row.user2_nickname : row.user1_nickname,
+      peerAvatar: isUser1 ? row.user2_avatar : row.user1_avatar,
+      lastMessage: lastMsgMap[row.id] || null,
       lastMessageAt: row.last_message_at,
       unreadCount: unreadMap[row.id] || 0
-    });
+    };
+  });
+}
+
+async function syncUnreadFromDB(userId, convIds) {
+  if (!convIds.length) return;
+  try {
+    const [rows] = await db.execute(
+      `SELECT conversation_id, COUNT(*) AS cnt FROM private_messages
+       WHERE conversation_id IN (${convIds.map(() => '?').join(',')})
+         AND sender_id != ? AND is_read = 0
+       GROUP BY conversation_id`,
+      [...convIds, userId]
+    );
+    const redisData = {};
+    for (const row of rows) {
+      redisData[row.conversation_id] = row.cnt;
+    }
+    // Set all counts, including 0 for conversations with no unread
+    for (const id of convIds) {
+      redisData[id] = redisData[id] || 0;
+    }
+    await redis.hset(UNREAD_PREFIX + userId, redisData);
+  } catch (e) {
+    logger.warn(`Redis unread sync failed: ${e.message}`);
   }
-  return result;
 }
 
 async function markConversationRead(conversationId, userId) {

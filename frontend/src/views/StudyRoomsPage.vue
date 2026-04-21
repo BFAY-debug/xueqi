@@ -68,7 +68,7 @@
             <div class="participant-grid" v-if="participants.length">
               <div class="participant card" v-for="p in participants" :key="p.user_id">
                 <div class="p-avatar-wrap">
-                  <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="36" />
+                  <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="36" :clickable="true" :user-id="p.user_id" @user-click="openProfileCard" />
                   <span v-if="participantStatuses[p.user_id]" class="status-dot" :class="'status-' + participantStatuses[p.user_id]"></span>
                 </div>
                 <div class="p-info">
@@ -77,7 +77,7 @@
                     {{ statusLabel(participantStatuses[p.user_id]) }}
                   </span>
                 </div>
-                <button v-if="p.user_id !== userStore.user?.id" class="p-pm-btn" @click="startPrivateChat(p.user_id)" title="发消息">✉</button>
+                <button v-if="p.user_id !== userStore.user?.userId" class="p-pm-btn" @click="startPrivateChat(p.user_id)" title="发消息">✉</button>
               </div>
             </div>
             <p v-else class="empty-text">暂无学子修习</p>
@@ -201,6 +201,7 @@
     </Transition>
 
     <AppFooter v-if="!immersiveMode" />
+    <UserProfileCard v-if="profileUserId" :user-id="profileUserId" :visible="!!profileUserId" @close="profileUserId = null" />
   </div>
 </template>
 
@@ -213,16 +214,19 @@ import AppFooter from '@/components/AppFooter.vue'
 import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'
 import RoomChat from '@/components/RoomChat.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import UserProfileCard from '@/components/UserProfileCard.vue'
 import { roomAPI, sessionAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
 import { useMessageStore } from '@/stores/message'
+import { useFriendStore } from '@/stores/friend'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
 const messageStore = useMessageStore()
+const friendStore = useFriendStore()
 const router = useRouter()
 const roomIcons = ['📖', '💡', '🌙', '🎯', '📚']
 
@@ -272,6 +276,7 @@ const isFullscreen = ref(false)
 const isMobile = ref(window.innerWidth < 768)
 const showImmersiveChat = ref(false)
 const participantStatuses = ref({})
+const profileUserId = ref(null)
 let timerInterval = null
 
 // Socket.IO for real-time participant updates
@@ -433,6 +438,8 @@ function onResize() { isMobile.value = window.innerWidth < 768 }
 function statusLabel(status) {
   return { studying: '学习中', pomodoro: '番茄钟', idle: '小憩', away: '离开' }[status] || ''
 }
+
+function openProfileCard(userId) { profileUserId.value = userId }
 
 function openGlobalChat() {
   if (selectedRoom.value) {

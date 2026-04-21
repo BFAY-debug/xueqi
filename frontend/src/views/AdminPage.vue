@@ -114,6 +114,25 @@
           <p v-if="!allComments.length && !pendingComments.length" class="empty-text">暂无评论</p>
         </template>
 
+        <!-- Proposal Review -->
+        <template v-if="activeSection === 'proposals'">
+          <h2>修改审核 <el-tag size="small" type="warning">{{ pendingProposals.length }}</el-tag></h2>
+          <div v-for="p in pendingProposals" :key="p.id" class="review-item card">
+            <div class="review-content">
+              <span class="review-badge">[修改]</span>
+              <strong>{{ p.proposer_name }}</strong> 提议修改 <strong>{{ p.author_name }}</strong> 的文章「{{ p.post_title }}」
+              <p class="review-excerpt" v-if="p.description">说明：{{ p.description }}</p>
+              <p class="review-excerpt">新标题：{{ p.title }}</p>
+              <span class="app-time">{{ p.created_at }}</span>
+            </div>
+            <div class="review-actions">
+              <el-button type="success" size="small" @click="mergeProposal(p.id)">合并</el-button>
+              <el-button type="danger" size="small" @click="rejectProposal(p.id)">拒绝</el-button>
+            </div>
+          </div>
+          <p v-if="!pendingProposals.length" class="empty-text">暂无待审核修改提案</p>
+        </template>
+
         <!-- Users -->
         <template v-if="activeSection === 'users'">
           <h2>学子管理</h2>
@@ -371,6 +390,7 @@ const allMenuItems = [
   { key: 'posts', icon: '📝', label: '文章审核', roles: ['admin', 'super_admin'] },
   { key: 'postManage', icon: '📄', label: '文章管理', roles: ['admin', 'super_admin'] },
   { key: 'comments', icon: '💬', label: '评论管理', roles: ['admin', 'super_admin'] },
+  { key: 'proposals', icon: '✏️', label: '修改审核', roles: ['admin', 'super_admin'] },
   { key: 'users', icon: '👥', label: '学子管理', roles: ['admin', 'super_admin'] },
   { key: 'seats', icon: '🪑', label: '座位管理', roles: ['admin', 'super_admin'] },
   { key: 'applications', icon: '📨', label: '管理员申请', roles: ['super_admin'] },
@@ -388,6 +408,7 @@ const pendingPosts = ref([])
 const allPosts = ref([])
 const allComments = ref([])
 const pendingComments = ref([])
+const pendingProposals = ref([])
 const users = ref([])
 const volunteerPending = ref([])
 const reviewLogs = ref([])
@@ -430,6 +451,9 @@ async function fetchAllPosts() {
 }
 async function fetchAllComments() {
   try { const res = await communityAdminAPI.getAllComments({ pageSize: 100 }); allComments.value = res.data || [] } catch { /* */ }
+}
+async function fetchPendingProposals() {
+  try { const res = await communityAdminAPI.getPendingProposals({ pageSize: 50 }); pendingProposals.value = res.data || [] } catch { /* */ }
 }
 async function fetchUsers() {
   try { const res = await adminAPI.getUsers({ pageSize: 100 }); users.value = res.data || [] } catch { /* */ }
@@ -767,10 +791,29 @@ async function rejectVolunteer(id) {
   try { await volunteerAPI.reject(id); ElMessage.success('已拒绝'); fetchVolunteer() } catch (err) { ElMessage.error(err.message) }
 }
 
+async function mergeProposal(id) {
+  try {
+    await communityAdminAPI.mergeProposal(id)
+    ElMessage.success('提案已合并')
+    fetchPendingProposals()
+  } catch (err) { ElMessage.error(err.message) }
+}
+
+async function rejectProposal(id) {
+  const reason = await promptReason()
+  if (reason === false) return
+  try {
+    await communityAdminAPI.rejectProposal(id, { reason })
+    ElMessage.success('提案已拒绝')
+    fetchPendingProposals()
+  } catch (err) { ElMessage.error(err.message) }
+}
+
 watch(activeSection, (val) => {
   const fetchers = {
     posts: fetchPendingPosts, postManage: fetchAllPosts,
     comments: () => { fetchAllComments(); fetchPendingComments() },
+    proposals: fetchPendingProposals,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
     volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
   }

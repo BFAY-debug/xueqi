@@ -156,9 +156,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMessageStore } from '@/stores/message'
+import { useFriendStore } from '@/stores/friend'
 
 const userStore = useUserStore()
 const messageStore = useMessageStore()
+const friendStore = useFriendStore()
 const router = useRouter()
 const route = useRoute()
 const scrolled = ref(false)
@@ -166,7 +168,7 @@ const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
 const mobileMenuOpen = ref(false)
 const isDark = ref(false)
-const msgUnreadCount = computed(() => messageStore.unreadTotal)
+const msgUnreadCount = computed(() => messageStore.unreadTotal + friendStore.unreadRequestCount)
 
 // Theme toggle
 function toggleTheme() {
@@ -206,6 +208,7 @@ onMounted(() => {
   initTheme()
   if (userStore.isLoggedIn) {
     messageStore.fetchUnreadCount()
+    friendStore.fetchUnreadRequestCount()
   }
 })
 onUnmounted(() => {

@@ -1,0 +1,101 @@
+<h2>好友系统 UI 布局方案</h2>
+<p class="subtitle">在现有页面中嵌入好友功能的两种布局思路</p>
+
+<div class="split">
+  <!-- Option A -->
+  <div class="mockup">
+    <div class="mockup-header">方案 A：消息页双栏式（推荐）</div>
+    <div class="mockup-body">
+      <!-- Top tabs -->
+      <div style="display:flex;border-bottom:2px solid #ddd;margin-bottom:12px">
+        <div style="flex:1;text-align:center;padding:8px;border-bottom:3px solid #8b2500;font-weight:600;color:#8b2500">消息</div>
+        <div style="flex:1;text-align:center;padding:8px;color:#666">好友</div>
+        <div style="flex:1;text-align:center;padding:8px;color:#666">申请 <span style="background:#e74c3c;color:#fff;border-radius:50%;padding:1px 6px;font-size:11px">3</span></div>
+      </div>
+
+      <!-- Search bar -->
+      <div style="background:#f0ebe2;border-radius:8px;padding:8px 12px;margin-bottom:12px;color:#999;font-size:13px">🔍 搜索好友 / 消息</div>
+
+      <!-- Conversation items -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#faf7f2;border-radius:8px">
+          <div style="width:40px;height:40px;border-radius:50%;background:#8b2500;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600">林</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">林小栖</div>
+            <div style="color:#888;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">今天在图书馆学了6小时…</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#aaa">14:32</div>
+            <div style="background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;margin-left:auto;margin-top:4px">2</div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#faf7f2;border-radius:8px">
+          <div style="width:40px;height:40px;border-radius:50%;background:#2e5c4c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600">张</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">张学长</div>
+            <div style="color:#888;font-size:12px">明天一起去自习？</div>
+          </div>
+          <div style="font-size:11px;color:#aaa">昨天</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#faf7f2;border-radius:8px">
+          <div style="width:40px;height:40px;border-radius:50%;background:#c9a84c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600">王</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">王同学</div>
+            <div style="color:#888;font-size:12px">谢谢你的笔记分享！</div>
+          </div>
+          <div style="font-size:11px;color:#aaa">周一</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="mockup">
+    <div class="mockup-header">方案 B：独立好友页 + 弹窗资料卡</div>
+    <div class="mockup-body">
+      <!-- Simulated profile card popup -->
+      <div style="position:relative">
+        <div style="background:#fff;border-radius:12px;border:2px solid #8b2500;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-width:260px;margin:0 auto">
+          <div style="text-align:center">
+            <div style="width:56px;height:56px;border-radius:50%;background:#8b2500;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;margin:0 auto 8px">林</div>
+            <div style="font-weight:700;font-size:1.1rem;color:#2c2c2c">林小栖</div>
+            <div style="font-size:12px;color:#888;margin:4px 0 8px">书山有路勤为径</div>
+            <div style="display:flex;justify-content:center;gap:16px;margin:8px 0;font-size:12px;color:#666">
+              <span>🟢 在线</span>
+              <span>Lv.5</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button style="flex:1;background:#8b2500;color:#fff;border:none;padding:8px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer">发消息</button>
+            <button style="flex:1;background:#f5f0e8;color:#2c2c2c;border:1px solid #ddd;padding:8px;border-radius:6px;font-size:13px;cursor:pointer">已好友 ✓</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;border-top:1px solid #eee;padding-top:12px">
+        <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:8px">独立好友页</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="text-align:center;padding:8px;background:#faf7f2;border-radius:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:#8b2500;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:12px;font-weight:600">林</div>
+            <div style="font-size:11px">林小栖</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#faf7f2;border-radius:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:#2e5c4c;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:12px;font-weight:600">张</div>
+            <div style="font-size:11px">张学长</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#faf7f2;border-radius:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:#c9a84c;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:12px;font-weight:600">王</div>
+            <div style="font-size:11px">王同学</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:20px">
+  <div class="pros"><h4>方案 A 优势</h4><ul><li>类似微信，用户习惯熟悉</li><li>消息+好友+申请三合一，不需要额外导航</li><li>改动集中在 MessagesPage，影响范围小</li></ul></div>
+  <div class="cons"><h4>方案 B 优势</h4><ul><li>资料卡弹窗交互更丰富</li><li>好友页可展示更多社交信息</li><li>但需要新增路由和页面</li></ul></div>
+</div>

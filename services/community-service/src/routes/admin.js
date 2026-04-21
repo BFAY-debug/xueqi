@@ -22,6 +22,11 @@ router.get('/comments/all', adminController.getAllComments);
 router.put('/comments/:id/review', adminController.reviewComment);
 router.delete('/comments/:id', adminController.deleteComment);
 
+// Proposal review
+router.get('/proposals/pending', adminController.getPendingProposals);
+router.put('/proposals/:id/merge', adminController.adminMergeProposal);
+router.put('/proposals/:id/reject', adminController.adminRejectProposal);
+
 // Review logs
 router.get('/review-logs', adminController.getReviewLogs);
 

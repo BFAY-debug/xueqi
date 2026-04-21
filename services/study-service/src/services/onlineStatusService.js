@@ -36,12 +36,21 @@ async function isOnline(userId) {
 async function getOnlineUsers() {
   try {
     const ids = await redis.smembers(ONLINE_KEY);
-    const users = [];
+    if (!ids.length) return [];
+
+    // Batch fetch all user info via pipeline
+    const pipeline = redis.pipeline();
     for (const id of ids) {
-      const info = await redis.hgetall(ONLINE_INFO_PREFIX + id);
-      if (info.nickname) {
+      pipeline.hgetall(ONLINE_INFO_PREFIX + id);
+    }
+    const results = await pipeline.exec();
+
+    const users = [];
+    for (let i = 0; i < ids.length; i++) {
+      const info = results[i]?.[1];
+      if (info?.nickname) {
         users.push({
-          userId: parseInt(id, 10),
+          userId: parseInt(ids[i], 10),
           nickname: info.nickname,
           avatarUrl: info.avatarUrl || null
         });

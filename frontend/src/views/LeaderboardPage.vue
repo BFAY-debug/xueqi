@@ -13,6 +13,31 @@
         <span v-for="t in tabs" :key="t.value" class="lb-tab" :class="{ active: activeTab === t.value }" @click="switchTab(t.value)">{{ t.label }}</span>
       </div>
 
+      <!-- Points Rules -->
+      <div class="rules-card card">
+        <div class="rules-header" @click="showRules = !showRules">
+          <span class="rules-title">📜 积分规则</span>
+          <span class="rules-arrow" :class="{ open: showRules }">▾</span>
+        </div>
+        <Transition name="rules-slide">
+          <div v-if="showRules" class="rules-body">
+            <div class="rules-table">
+              <div v-for="r in pointsRules" :key="r.label" class="rules-row">
+                <span class="rules-row-icon">{{ r.icon }}</span>
+                <span class="rules-row-label">{{ r.label }}</span>
+                <span class="rules-row-pts">+{{ r.points }}</span>
+                <span class="rules-row-limit" v-if="r.daily">日上限 {{ r.daily }}</span>
+              </div>
+            </div>
+            <div class="rules-levels">
+              <span v-for="lv in levelList" :key="lv.name" class="rules-lv" :class="{ active: (userStore.user?.level_id || 1) >= lv.id }">
+                {{ lv.badge }} {{ lv.name }} {{ lv.min }}分
+              </span>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
       <!-- League Badge -->
       <div class="league-badge" v-if="myRank && userStore.isLoggedIn">
         <span class="seal league-seal" :class="leagueClass">{{ leagueName }}</span>
@@ -79,6 +104,25 @@ import { leaderboardAPI } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+const showRules = ref(false)
+const pointsRules = [
+  { icon: '📖', label: '完成自习', points: '10', daily: 50 },
+  { icon: '🍅', label: '番茄钟', points: '5', daily: 25 },
+  { icon: '💺', label: '座位签到', points: '15', daily: null },
+  { icon: '📝', label: '发帖', points: '5', daily: 20 },
+  { icon: '💬', label: '评论', points: '2', daily: 10 },
+  { icon: '❤️', label: '被点赞', points: '1', daily: null },
+  { icon: '📅', label: '连续签到', points: '1~30', daily: 30 },
+  { icon: '🤝', label: '志愿任务', points: '按任务', daily: null }
+]
+const levelList = [
+  { id: 1, name: '书童', min: 0, badge: '📗' },
+  { id: 2, name: '秀才', min: 100, badge: '📘' },
+  { id: 3, name: '举人', min: 500, badge: '📙' },
+  { id: 4, name: '进士', min: 1500, badge: '📕' },
+  { id: 5, name: '翰林', min: 4000, badge: '🏛️' },
+  { id: 6, name: '大儒', min: 10000, badge: '👑' }
+]
 const tabs = [
   { value: 'total', label: '总榜' },
   { value: 'weekly', label: '本周榜' },
@@ -122,7 +166,7 @@ function scoreField(user) {
     case 'total': return `${user.total_points || 0} 积分`
     case 'weekly': return `${user.weekly_points || 0} 积分`
     case 'monthly': return `${user.monthly_points || 0} 积分`
-    case 'study': return `${Math.floor((user.total_study_minutes || 0) / 60)} 时辰`
+    case 'study': return `${Math.floor((user.total_study_minutes || 0) / 60)} 小时`
     case 'streak': return `${user.checkin_streak || 0} 天`
     default: return '-'
   }
@@ -201,6 +245,27 @@ onMounted(fetchData)
 .lb-tab { padding: 6px 16px; font-size: 0.9rem; cursor: pointer; border-radius: 4px; color: var(--color-text-secondary); transition: all 0.2s; }
 .lb-tab:hover { color: var(--color-accent); }
 .lb-tab.active { background: var(--color-accent); color: #fff; border-radius: 20px; }
+
+/* Points Rules */
+.rules-card { margin-bottom: 20px; overflow: hidden; }
+.rules-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; user-select: none; }
+.rules-header:hover { background: var(--color-bg-secondary); }
+.rules-title { font-family: var(--font-title); font-size: 0.9rem; color: var(--color-gold); font-weight: 600; }
+.rules-arrow { font-size: 0.75rem; color: var(--color-text-secondary); transition: transform 0.2s; }
+.rules-arrow.open { transform: rotate(180deg); }
+.rules-body { padding: 0 20px 16px; border-top: 1px solid var(--color-border-light); }
+.rules-table { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.rules-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; padding: 3px 0; }
+.rules-row-icon { width: 20px; text-align: center; }
+.rules-row-label { flex: 1; }
+.rules-row-pts { color: var(--color-gold); font-weight: 600; font-family: var(--font-mono); }
+.rules-row-limit { color: var(--color-text-secondary); font-size: 0.75rem; }
+.rules-levels { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+.rules-lv { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--color-bg-secondary); color: var(--color-text-secondary); transition: all 0.2s; }
+.rules-lv.active { background: var(--color-accent-light); color: var(--color-accent); font-weight: 600; }
+.rules-slide-enter-active, .rules-slide-leave-active { transition: all 0.2s ease; }
+.rules-slide-enter-from, .rules-slide-leave-to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
+.rules-slide-enter-to, .rules-slide-leave-from { max-height: 400px; }
 
 /* League Badge */
 .league-badge { text-align: center; margin-bottom: 20px; }

@@ -23,7 +23,8 @@ export const useUserStore = defineStore('user', () => {
     const res = await authAPI.login(credentials)
     setToken(res.data.accessToken, res.data.refreshToken)
     user.value = res.data.user
-    await fetchUnreadCount()
+    // Defer non-critical requests so they don't block navigation
+    fetchUnreadCount().catch(() => {})
     return res.data
   }
 
@@ -46,7 +47,7 @@ export const useUserStore = defineStore('user', () => {
       const res = await userAPI.getProfile()
       user.value = res.data
     } catch {
-      logout()
+      // Don't logout on fetch failure — the 401 interceptor handles that
     }
   }
 

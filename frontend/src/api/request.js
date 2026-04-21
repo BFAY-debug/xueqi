@@ -35,6 +35,12 @@ request.interceptors.response.use(
     }
 
     if (response.status === 401) {
+      // Login endpoint handles its own errors — pass through
+      if (error.config.url?.includes('/login') || error.config.url?.includes('/register')) {
+        const message = response.data?.message || '用户名或密码错误'
+        return Promise.reject(new Error(message))
+      }
+
       const userStore = useUserStore()
       // Try refresh token
       if (userStore.refreshToken && !error.config._retry) {
@@ -53,7 +59,9 @@ request.interceptors.response.use(
         }
       }
       userStore.logout()
-      router.push(`/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
+      if (router.currentRoute.value.path !== '/login') {
+        router.push(`/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
+      }
       return Promise.reject(new Error('登录已过期，请重新登录'))
     }
 

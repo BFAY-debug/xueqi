@@ -3,7 +3,7 @@
  * Handles study room participants, seat status, chat messages, private messaging, and online status.
  */
 const { Server } = require('socket.io');
-const { logger, jwt: { verifyToken } } = require('xueqi-shared');
+const { logger, jwt: { verifyToken }, db, redis } = require('xueqi-shared');
 const chatService = require('./services/chatService');
 const privateChatService = require('./services/privateChatService');
 const onlineStatusService = require('./services/onlineStatusService');
@@ -19,8 +19,9 @@ const roomStatuses = new Map();
 // Track online users per room: Map<roomId, Map<userId, { nickname, socketCount }>>
 const roomOnlineUsers = new Map();
 
-// Rate limiting: Map<userId, lastMessageTime>
-const lastMessageTime = new Map();
+// Rate limiting: separate Maps for room chat and private messaging
+const roomLastMessageTime = new Map();
+const pmLastMessageTime = new Map();
 const MESSAGE_COOLDOWN = 2000; // 2 seconds
 
 // Global online users: Map<userId, { nickname, avatarUrl, socketCount, sockets: Set<socketId> }>
@@ -39,7 +40,7 @@ function initSocket(httpServer) {
   });
 
   // Socket authentication middleware
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
       socket.user = null;
@@ -47,7 +48,16 @@ function initSocket(httpServer) {
     }
     try {
       const decoded = verifyToken(token);
-      socket.user = decoded;
+      // Enrich with nickname and avatar from DB
+      const [rows] = await db.execute(
+        'SELECT nickname, avatar_url FROM users WHERE id = ? AND status = 1',
+        [decoded.userId]
+      );
+      socket.user = {
+        ...decoded,
+        nickname: rows[0]?.nickname || decoded.username,
+        avatar_url: rows[0]?.avatar_url || null
+      };
       next();
     } catch (err) {
       socket.user = null;
@@ -58,7 +68,7 @@ function initSocket(httpServer) {
   io.on('connection', (socket) => {
     const user = socket.user;
     const userId = user?.userId || null;
-    const nickname = user?.username || '未知';
+    const nickname = user?.nickname || user?.username || '未知';
 
     logger.info(`Socket connected: ${socket.id} user=${userId || 'anonymous'}`);
 
@@ -139,12 +149,12 @@ function initSocket(httpServer) {
 
       // Rate limiting
       const now = Date.now();
-      const last = lastMessageTime.get(userId) || 0;
+      const last = roomLastMessageTime.get(userId) || 0;
       if (now - last < MESSAGE_COOLDOWN) {
         socket.emit('chat:rateLimited', { cooldown: MESSAGE_COOLDOWN - (now - last) });
         return;
       }
-      lastMessageTime.set(userId, now);
+      roomLastMessageTime.set(userId, now);
 
       try {
         const msgType = data.anonymous ? 'anonymous' : 'user';
@@ -206,19 +216,39 @@ function initSocket(httpServer) {
     // ── Private messaging ────────────────────────────────
 
     socket.on('pm:send', async (data) => {
-      if (!userId || !data.toUserId || !data.content?.trim()) return;
+      if (!userId || !data.toUserId || (!data.content?.trim() && !data.imageUrl)) return;
 
       const now = Date.now();
-      const last = lastMessageTime.get(userId) || 0;
+      const last = pmLastMessageTime.get(userId) || 0;
       if (now - last < MESSAGE_COOLDOWN) {
-        socket.emit('chat:rateLimited', { cooldown: MESSAGE_COOLDOWN - (now - last) });
+        socket.emit('pm:rateLimited', { cooldown: MESSAGE_COOLDOWN - (now - last) });
         return;
       }
-      lastMessageTime.set(userId, now);
+      pmLastMessageTime.set(userId, now);
+
+      // Friend & block check via Redis
+      try {
+        const [isFriend, blockedByReceiver, blockedBySender] = await Promise.all([
+          redis.sismember(`friends:${userId}`, data.toUserId),
+          redis.sismember(`blocks:${data.toUserId}`, userId),
+          redis.sismember(`blocks:${userId}`, data.toUserId)
+        ]);
+        if (!isFriend) {
+          socket.emit('pm:error', { message: '只能给好友发消息' });
+          return;
+        }
+        if (blockedByReceiver || blockedBySender) {
+          socket.emit('pm:error', { message: '无法发送消息' });
+          return;
+        }
+      } catch (e) {
+        logger.warn(`Friend check Redis failed: ${e.message}`);
+      }
 
       try {
         const conv = await privateChatService.getOrCreateConversation(userId, data.toUserId);
-        const msgId = await privateChatService.sendMessage(conv.id, userId, data.content.trim(), data.imageUrl || null);
+        const content = (data.content || '').trim() || '[图片]';
+        const msgId = await privateChatService.sendMessage(conv.id, userId, content, data.imageUrl || null);
 
         const msgData = {
           id: msgId,
@@ -226,7 +256,7 @@ function initSocket(httpServer) {
           senderId: userId,
           senderName: nickname,
           senderAvatar: user?.avatar_url || null,
-          content: data.content.trim(),
+          content,
           imageUrl: data.imageUrl || null,
           createdAt: new Date().toISOString()
         };
@@ -257,7 +287,7 @@ function initSocket(httpServer) {
       try {
         await privateChatService.markConversationRead(data.conversationId, userId);
         // Notify the other user in the conversation
-        const [conv] = await require('xueqi-shared').db.execute(
+        const [conv] = await db.execute(
           'SELECT user1_id, user2_id FROM conversations WHERE id = ?',
           [data.conversationId]
         );
@@ -274,6 +304,16 @@ function initSocket(httpServer) {
 
     socket.on('online:heartbeat', () => {
       if (!userId) return;
+      // Verify token is still valid
+      const token = socket.handshake.auth.token;
+      if (token) {
+        try {
+          verifyToken(token);
+        } catch {
+          socket.disconnect(true);
+          return;
+        }
+      }
       const info = globalOnlineUsers.get(userId);
       if (info) {
         info.lastSeen = Date.now();
@@ -311,6 +351,36 @@ function initSocket(httpServer) {
       }
     });
   });
+
+  // Subscribe to friend events from user-service
+  try {
+    const subscriber = redis.duplicate();
+    subscriber.subscribe('xueqi:friend_events');
+    subscriber.on('message', (channel, message) => {
+      if (channel !== 'xueqi:friend_events' || !io) return;
+      try {
+        const event = JSON.parse(message);
+        if (event.type === 'friend_request') {
+          io.to(`user:${event.toUserId}`).emit('friend:request', {
+            requestId: event.requestId,
+            fromUserId: event.fromUserId,
+            fromNickname: event.fromNickname,
+            fromAvatar: event.fromAvatar
+          });
+        } else if (event.type === 'friend_accepted') {
+          io.to(`user:${event.toUserId}`).emit('friend:accepted', {
+            acceptedByUserId: event.acceptedByUserId,
+            acceptedByNickname: event.acceptedByNickname,
+            conversationId: event.conversationId
+          });
+        }
+      } catch (e) {
+        logger.warn(`Parse friend event failed: ${e.message}`);
+      }
+    });
+  } catch (e) {
+    logger.warn(`Redis subscribe failed: ${e.message}`);
+  }
 
   logger.info('Socket.IO server initialized');
   return io;

@@ -46,7 +46,7 @@
             <p v-if="post.summary" class="post-summary">{{ post.summary }}</p>
             <div class="post-meta">
               <span class="post-author">
-                <UserAvatar :avatar-url="post.author_avatar" :nickname="post.author_name" :size="24" />
+                <UserAvatar :avatar-url="post.author_avatar" :nickname="post.author_name" :size="24" :clickable="true" :user-id="post.author_id" @user-click="openProfileCard" />
                 <span>{{ post.author_name }}</span>
               </span>
               <span>{{ timeAgo(post.created_at) }}</span>
@@ -74,6 +74,7 @@
       </div>
     </div>
     <AppFooter />
+    <UserProfileCard v-if="profileUserId" :user-id="profileUserId" :visible="!!profileUserId" @close="profileUserId = null" />
   </div>
 </template>
 
@@ -85,12 +86,16 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import UserProfileCard from '@/components/UserProfileCard.vue'
 import { postAPI, tagAPI } from '@/api/community'
 import { useUserStore } from '@/stores/user'
+import { useFriendStore } from '@/stores/friend'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 
 const userStore = useUserStore()
+const friendStore = useFriendStore()
 const posts = ref([])
+const profileUserId = ref(null)
 const tags = ref([])
 const loading = ref(false)
 const keyword = ref('')
@@ -110,6 +115,8 @@ const categoryMap = { experience: '修习心得', question: '求学问路', reso
 const { timeAgo } = useTimeAgo()
 
 function search() { fetchPosts() }
+
+function openProfileCard(userId) { profileUserId.value = userId }
 
 async function fetchPosts() {
   loading.value = true

@@ -53,5 +53,8 @@ export const communityAdminAPI = {
   getAllComments: (params) => request.get('/community/admin/comments/all', { params }),
   reviewComment: (id, data) => request.put(`/community/admin/comments/${id}/review`, data),
   deleteComment: (id) => request.delete(`/community/admin/comments/${id}`),
-  getReviewLogs: (params) => request.get('/community/admin/review-logs', { params })
+  getReviewLogs: (params) => request.get('/community/admin/review-logs', { params }),
+  getPendingProposals: (params) => request.get('/community/admin/proposals/pending', { params }),
+  mergeProposal: (id) => request.put(`/community/admin/proposals/${id}/merge`),
+  rejectProposal: (id, data) => request.put(`/community/admin/proposals/${id}/reject`, data)
 }

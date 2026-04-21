@@ -305,6 +305,113 @@ async function deleteComment(commentId) {
   return { deleted: true };
 }
 
+// ── Proposal Review ────────────────────────────────────
+
+async function getPendingProposals(page = 1, pageSize = 20) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
+  const offset = (page - 1) * pageSize;
+
+  const [rows] = await db.execute(
+    `SELECT ep.*, p.title AS post_title, p.user_id AS post_author_id,
+            u.nickname AS proposer_name, u.avatar_url AS proposer_avatar,
+            au.nickname AS author_name
+     FROM edit_proposals ep
+     JOIN posts p ON p.id = ep.post_id
+     JOIN users u ON u.id = ep.proposer_id
+     JOIN users au ON au.id = p.user_id
+     WHERE ep.status = 'open'
+     ORDER BY ep.created_at ASC
+     LIMIT ${pageSize} OFFSET ${offset}`
+  );
+
+  const [countRows] = await db.execute("SELECT COUNT(*) AS total FROM edit_proposals WHERE status = 'open'");
+
+  return { data: rows, total: countRows[0].total };
+}
+
+async function adminMergeProposal(proposalId, adminId) {
+  const [rows] = await db.execute('SELECT * FROM edit_proposals WHERE id = ?', [proposalId]);
+  if (rows.length === 0) {
+    const error = new Error('提案不存在');
+    error.status = 404;
+    throw error;
+  }
+  const proposal = rows[0];
+  if (proposal.status !== 'open') {
+    const error = new Error('该提案不在开放状态');
+    error.status = 400;
+    throw error;
+  }
+
+  const [posts] = await db.execute('SELECT version FROM posts WHERE id = ?', [proposal.post_id]);
+  const newVersion = posts[0].version + 1;
+
+  await db.execute(
+    'UPDATE posts SET content = ?, version = ?, title = ? WHERE id = ?',
+    [proposal.content, newVersion, proposal.title, proposal.post_id]
+  );
+
+  await db.execute(
+    `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [proposal.post_id, newVersion, proposal.title, proposal.content,
+     `管理员合并提案 #${proposalId}: ${proposal.description}`, adminId]
+  );
+
+  await db.execute(
+    `UPDATE edit_proposals SET status = 'merged', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?`,
+    [adminId, proposalId]
+  );
+
+  await db.execute(
+    `INSERT INTO review_logs (reviewer_id, target_type, target_id, action, reason) VALUES (?, 'proposal', ?, 'approve', ?)`,
+    [adminId, proposalId, '管理员合并']
+  );
+
+  await db.execute(
+    `INSERT INTO notifications (user_id, type, title, content, related_id, related_type)
+     VALUES (?, 'review_result', '编辑提案已合并', ?, ?, 'proposal')`,
+    [proposal.proposer_id, `你对「${proposal.title}」的编辑提案已被管理员合并`, proposalId]
+  );
+
+  return { merged: true, newVersion };
+}
+
+async function adminRejectProposal(proposalId, adminId, reason) {
+  const [rows] = await db.execute('SELECT * FROM edit_proposals WHERE id = ?', [proposalId]);
+  if (rows.length === 0) {
+    const error = new Error('提案不存在');
+    error.status = 404;
+    throw error;
+  }
+  const proposal = rows[0];
+  if (proposal.status !== 'open') {
+    const error = new Error('该提案不在开放状态');
+    error.status = 400;
+    throw error;
+  }
+
+  await db.execute(
+    `UPDATE edit_proposals SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW(), review_comment = ? WHERE id = ?`,
+    [adminId, reason || '', proposalId]
+  );
+
+  await db.execute(
+    `INSERT INTO review_logs (reviewer_id, target_type, target_id, action, reason) VALUES (?, 'proposal', ?, 'reject', ?)`,
+    [adminId, proposalId, reason || null]
+  );
+
+  await db.execute(
+    `INSERT INTO notifications (user_id, type, title, content, related_id, related_type)
+     VALUES (?, 'review_result', '编辑提案被拒绝', ?, ?, 'proposal')`,
+    [proposal.proposer_id,
+     `你对「${proposal.title}」的编辑提案被管理员拒绝${reason ? '，原因：' + reason : ''}`, proposalId]
+  );
+
+  return { rejected: true };
+}
+
 // ── Review Logs ───────────────────────────────────────
 
 async function getReviewLogs({ page = 1, pageSize = 20, targetType = '' }) {
@@ -343,5 +450,6 @@ module.exports = {
   getPendingPosts, reviewPost, togglePin, toggleFeature, toggleHidePost, adminEditPost,
   getPendingComments, reviewComment,
   getReviewLogs,
-  getAllPosts, deletePost, getAllComments, deleteComment
+  getAllPosts, deletePost, getAllComments, deleteComment,
+  getPendingProposals, adminMergeProposal, adminRejectProposal
 };

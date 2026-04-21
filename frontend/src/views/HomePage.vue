@@ -48,7 +48,7 @@
           <p class="hero-subtitle" ref="heroSubtitle">栖心之所 · 学问之道</p>
           <div class="hero-actions" ref="heroActions">
             <router-link to="/study-rooms" class="btn-primary btn-lg">入门求学</router-link>
-            <router-link to="/study-rooms" class="btn-outline btn-lg">探索书院</router-link>
+            <router-link to="/community" class="btn-outline btn-lg">探索书院</router-link>
           </div>
         </template>
       </div>
