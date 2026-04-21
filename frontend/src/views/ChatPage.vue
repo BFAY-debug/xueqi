@@ -268,6 +268,8 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 16px; margin-bottom: 8px;
   overflow: visible;
+  background: rgba(46, 92, 76, 0.06);
+  border-color: rgba(46, 92, 76, 0.15);
 }
 .chat-peer-info { display: flex; flex-direction: column; }
 .chat-peer-name { font-weight: 600; font-size: 0.95rem; }
@@ -277,6 +279,8 @@ onUnmounted(() => {
 .chat-messages {
   flex: 1; overflow-y: auto; padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
+  background: rgba(46, 92, 76, 0.04);
+  border-color: rgba(46, 92, 76, 0.15);
 }
 .chat-messages::-webkit-scrollbar { width: 4px; }
 .chat-messages::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
@@ -288,8 +292,9 @@ onUnmounted(() => {
   border-radius: 12px; word-break: break-word;
 }
 .pm-other-bubble {
-  background: var(--color-bg-secondary);
+  background: rgba(46, 92, 76, 0.08);
   border-bottom-left-radius: 4px;
+  border: 1px solid rgba(46, 92, 76, 0.15);
 }
 .pm-self-bubble {
   background: var(--color-accent); color: #fff;
@@ -309,6 +314,8 @@ onUnmounted(() => {
   display: flex; gap: 8px; padding: 10px 12px; margin-top: 8px; align-items: center;
   z-index: 20;
   overflow: visible !important;
+  background: rgba(46, 92, 76, 0.06);
+  border-color: rgba(46, 92, 76, 0.15);
 }
 .input-actions {
   display: flex; gap: 4px; flex-shrink: 0;

@@ -64,13 +64,14 @@
                   <span class="comment-text">{{ c.content }}</span>
                   <span class="comment-time">{{ timeAgo(c.created_at) }}</span>
                   <button class="comment-action" @click="likeComment(c)">❤️ {{ c.like_count }}</button>
-                  <button v-if="userStore.isLoggedIn" class="comment-action" @click="replyTo = c.author_name; replyParentId = c.id">回复</button>
+                  <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(c, c)">回复</button>
                 </div>
                 <!-- Nested replies -->
                 <div v-for="r in getReplies(c.id)" :key="r.id" class="comment-reply">
                   <span class="comment-author">{{ r.is_anonymous ? '匿名学子' : (r.author_name || '学子') }}</span>
                   <span class="comment-text">{{ r.content }}</span>
                   <span class="comment-time">{{ timeAgo(r.created_at) }}</span>
+                  <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(r, c)">回复</button>
                 </div>
               </div>
               <p v-if="!comments.length" class="empty-text">暂无评论</p>
@@ -206,6 +207,11 @@ const categoryMap = { experience: '修习心得', question: '求学问路', reso
 const topLevelComments = computed(() => comments.value.filter(c => !c.parent_id))
 
 function getReplies(parentId) { return comments.value.filter(c => c.parent_id === parentId) }
+
+function setReply(target, parent) {
+  replyTo.value = target.is_anonymous ? '匿名学子' : (target.author_name || '学子')
+  replyParentId.value = parent.id
+}
 
 const { timeAgo } = useTimeAgo()
 
@@ -365,7 +371,7 @@ onMounted(async () => {
 .page-wrapper { min-height: 100vh; background: var(--color-bg-primary); }
 
 .detail-layout { display: flex; gap: 24px; }
-.detail-main { flex: 1; min-width: 0; }
+.detail-main { flex: 1; min-width: 0; padding: 24px; }
 .detail-sidebar { width: 280px; flex-shrink: 0; }
 
 .detail-header { margin-bottom: 24px; }
@@ -376,23 +382,23 @@ onMounted(async () => {
 .detail-title { font-family: var(--font-title); font-size: 2rem; margin-bottom: 12px; }
 .detail-meta { font-size: 0.85rem; color: var(--color-text-secondary); display: flex; gap: 16px; }
 
-.detail-body { margin-bottom: 24px; }
+.detail-body { margin-bottom: 24px; background: rgba(46, 92, 76, 0.06); border: 1px solid rgba(46, 92, 76, 0.15); border-radius: var(--border-radius); padding: 20px; }
 
-.action-bar { display: flex; gap: 16px; padding: 16px 0; border-top: 1px solid var(--color-border-light); border-bottom: 1px solid var(--color-border-light); margin-bottom: 24px; }
+.action-bar { display: flex; gap: 16px; padding: 14px 16px; margin-bottom: 24px; background: rgba(74, 107, 138, 0.06); border: 1px solid rgba(74, 107, 138, 0.15); border-radius: var(--border-radius); }
 .action-btn { background: none; border: 1px solid var(--color-border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; color: var(--color-text-secondary); transition: all 0.2s; text-decoration: none; }
 .action-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .action-btn.active { background: var(--color-accent-light); color: var(--color-accent); border-color: var(--color-accent); }
 .proposal-btn { background: var(--color-accent); color: #fff !important; border-color: var(--color-accent); }
 .proposal-btn:hover { opacity: 0.9; }
 
+.comments-section { background: rgba(139, 37, 0, 0.04); border: 1px solid rgba(139, 37, 0, 0.12); border-radius: var(--border-radius); padding: 20px; }
 .section-title { font-family: var(--font-title); font-size: 1.1rem; margin-bottom: 16px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
 
 .comment-form { margin-bottom: 20px; }
 .comment-form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; }
 
 .comment-list { display: flex; flex-direction: column; gap: 4px; }
-.comment-item { padding: 12px; border-radius: 6px; }
-.comment-item:nth-child(odd) { background: var(--glass-bg-card); }
+.comment-item { padding: 12px; border-radius: 6px; background: rgba(255,255,252,0.6); border: 1px solid rgba(196, 185, 154, 0.3); }
 .comment-body { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .comment-author { font-weight: 600; font-size: 0.85rem; }
 .comment-text { flex: 1; font-size: 0.9rem; }

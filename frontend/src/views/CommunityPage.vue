@@ -157,8 +157,8 @@ onMounted(() => { fetchPosts(); fetchTags() })
 .sort-select span.active { color: var(--color-accent); font-weight: 600; }
 
 .post-list { display: flex; flex-direction: column; gap: 12px; }
-.post-item { display: flex; justify-content: space-between; padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-.post-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.post-item { display: flex; justify-content: space-between; padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; background: rgba(46, 92, 76, 0.06); border-color: rgba(46, 92, 76, 0.2); }
+.post-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(46, 92, 76, 0.1); }
 .post-left { flex: 1; min-width: 0; }
 .post-badges { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .pin-badge, .feature-badge { font-size: 0.75rem; }
