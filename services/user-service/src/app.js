@@ -13,6 +13,7 @@ const notificationRoutes = require('./routes/notifications');
 const uploadRoutes = require('./routes/upload');
 const adminRoutes = require('./routes/admin');
 const friendRoutes = require('./routes/friends');
+const followRoutes = require('./routes/follows');
 
 const app = express();
 const PORT = process.env.USER_SERVICE_PORT || 3001;
@@ -43,6 +44,7 @@ app.use('/api/user', notificationRoutes);
 app.use('/api/user', uploadRoutes);
 app.use('/api/user/admin', adminRoutes);
 app.use('/api/user', friendRoutes);
+app.use('/api/user', followRoutes);
 app.use('/api/user', profileRoutes);
 
 // Error handler

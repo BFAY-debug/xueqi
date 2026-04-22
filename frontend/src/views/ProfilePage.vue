@@ -87,6 +87,8 @@
             <span :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">概览</span>
             <span :class="{ active: activeTab === 'posts' }" @click="activeTab = 'posts'">我的文章</span>
             <span :class="{ active: activeTab === 'bookmarks' }" @click="activeTab = 'bookmarks'">我的收藏</span>
+            <span :class="{ active: activeTab === 'following' }" @click="activeTab = 'following'">关注</span>
+            <span :class="{ active: activeTab === 'followers' }" @click="activeTab = 'followers'">粉丝</span>
             <span :class="{ active: activeTab === 'chats' }" @click="activeTab = 'chats'">我的论谈</span>
             <span :class="{ active: activeTab === 'proposals' }" @click="activeTab = 'proposals'">我的提案</span>
             <span :class="{ active: activeTab === 'notifications' }" @click="activeTab = 'notifications'">
@@ -211,6 +213,28 @@
             <p v-if="!myProposals.length" class="empty-text">还没有提交过提案</p>
           </div>
 
+          <!-- Following -->
+          <div v-if="activeTab === 'following'" class="tab-content">
+            <div class="follow-list">
+              <div v-for="u in followingList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
+                <span class="follow-name">{{ u.nickname }}</span>
+              </div>
+            </div>
+            <p v-if="!followingList.length" class="empty-text">还没有关注任何人</p>
+          </div>
+
+          <!-- Followers -->
+          <div v-if="activeTab === 'followers'" class="tab-content">
+            <div class="follow-list">
+              <div v-for="u in followerList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
+                <span class="follow-name">{{ u.nickname }}</span>
+              </div>
+            </div>
+            <p v-if="!followerList.length" class="empty-text">暂无粉丝</p>
+          </div>
+
           <!-- My Chat Rooms -->
           <div v-if="activeTab === 'chats'" class="tab-content">
             <div class="chat-room-list">
@@ -266,6 +290,8 @@
       </div>
     </div>
 
+    <UserProfileCard v-if="profileCardUserId" :user-id="profileCardUserId" :visible="!!profileCardUserId" @close="profileCardUserId = null" />
+
     <!-- Edit Dialog -->
     <el-dialog v-model="showEdit" title="编辑资料" width="440px">
       <el-form label-width="60px">
@@ -295,8 +321,11 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import UserProfileCard from '@/components/UserProfileCard.vue'
 import { userAPI, pointsAPI, notificationAPI, adminAPI } from '@/api/user'
 import { postAPI, bookmarkAPI, proposalAPI } from '@/api/community'
+import { followAPI } from '@/api/follow'
 import { reservationAPI, chatAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
@@ -309,6 +338,9 @@ const chatStore = useChatStore()
 const userId = computed(() => userStore.user?.userId)
 
 const activeTab = ref('overview')
+const followingList = ref([])
+const followerList = ref([])
+const profileCardUserId = ref(null)
 const stats = ref({})
 const myPosts = ref([])
 const myBookmarks = ref([])
@@ -501,6 +533,29 @@ async function markAllRead() {
     notifications.value.forEach(n => n.is_read = 1)
   } catch { /* */ }
 }
+
+function openProfile(userId) { profileCardUserId.value = userId }
+
+async function fetchFollowing() {
+  if (!userId.value) return
+  try {
+    const res = await followAPI.getFollowing(userId.value, { pageSize: 50 })
+    followingList.value = Array.isArray(res.data) ? res.data : res.data?.data || []
+  } catch { /* ignore */ }
+}
+
+async function fetchFollowers() {
+  if (!userId.value) return
+  try {
+    const res = await followAPI.getFollowers(userId.value, { pageSize: 50 })
+    followerList.value = Array.isArray(res.data) ? res.data : res.data?.data || []
+  } catch { /* ignore */ }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'following') fetchFollowing()
+  if (tab === 'followers') fetchFollowers()
+})
 
 onMounted(() => {
   fetchStats()
@@ -776,6 +831,11 @@ onMounted(() => {
 .cri-time { font-size: 0.75rem; color: var(--color-text-secondary); flex-shrink: 0; }
 
 .empty-text { text-align: center; color: var(--color-text-secondary); padding: 40px; }
+
+.follow-list { display: flex; flex-direction: column; gap: 8px; }
+.follow-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: all 0.15s; }
+.follow-item:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.follow-name { font-size: 0.9rem; }
 .empty-sm { text-align: center; color: var(--color-text-secondary); padding: 20px; font-size: 0.9rem; }
 .empty-sm a { color: var(--color-accent); }
 

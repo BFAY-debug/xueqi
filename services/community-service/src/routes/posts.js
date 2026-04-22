@@ -6,6 +6,7 @@ const { authMiddleware, optionalAuth } = require('xueqi-shared');
 // Public
 router.get('/posts', optionalAuth, postController.listPosts);
 router.get('/posts/:id', optionalAuth, postController.getPost);
+router.get('/users/:userId/posts', postController.getUserPublicPosts);
 router.get('/posts/:id/versions', postController.getVersions);
 router.get('/posts/:id/versions/:version', postController.getVersion);
 

@@ -74,6 +74,10 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/user/:id',
+    component: () => import('@/views/UserPage.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/NotFoundPage.vue')
   }

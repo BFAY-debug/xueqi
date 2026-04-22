@@ -17,6 +17,10 @@
             <h1 class="detail-title">{{ post.title }}</h1>
             <div class="detail-meta">
               <span>{{ post.author_name }}</span>
+              <button v-if="userStore.isLoggedIn && userStore.user?.userId !== post.user_id"
+                class="follow-btn" :class="{ active: isFollowingAuthor }" @click="toggleFollowAuthor">
+                {{ isFollowingAuthor ? '已关注' : '+ 关注' }}
+              </button>
               <span>{{ timeAgo(post.created_at) }}</span>
               <span>👀 {{ post.view_count }}</span>
             </div>
@@ -168,6 +172,7 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import { postAPI, commentAPI, proposalAPI, bookmarkAPI } from '@/api/community'
+import { followAPI } from '@/api/follow'
 import { useUserStore } from '@/stores/user'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 
@@ -187,6 +192,7 @@ const commentAnonymous = ref(false)
 const commentLoading = ref(false)
 const replyTo = ref(null)
 const replyParentId = ref(null)
+const isFollowingAuthor = ref(false)
 
 // Version control
 const showVersionDialog = ref(false)
@@ -222,6 +228,13 @@ async function fetchPost() {
     post.value = res.data
   } catch (err) { ElMessage.error('文章不存在') }
   finally { postLoading.value = false }
+
+  if (userStore.isLoggedIn && post.value && userStore.user?.userId !== post.value.user_id) {
+    try {
+      const res = await followAPI.check(post.value.user_id)
+      isFollowingAuthor.value = res.data?.following || false
+    } catch { /* ignore */ }
+  }
 }
 
 async function fetchComments() {
@@ -359,6 +372,14 @@ async function likeComment(c) {
   } catch { /* ignore */ }
 }
 
+async function toggleFollowAuthor() {
+  if (!post.value) return
+  try {
+    const res = await followAPI.toggle(post.value.user_id)
+    isFollowingAuthor.value = res.data?.following || false
+  } catch (err) { ElMessage.error(err.message) }
+}
+
 onMounted(async () => {
   await fetchPost()
   fetchComments()
@@ -380,7 +401,11 @@ onMounted(async () => {
 .feature-badge { font-size: 0.75rem; }
 .version-badge { font-size: 0.75rem; color: var(--color-blue); background: rgba(74,107,138,0.1); padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); }
 .detail-title { font-family: var(--font-title); font-size: 2rem; margin-bottom: 12px; }
-.detail-meta { font-size: 0.85rem; color: var(--color-text-secondary); display: flex; gap: 16px; }
+.detail-meta { font-size: 0.85rem; color: var(--color-text-secondary); display: flex; gap: 16px; align-items: center; }
+
+.follow-btn { padding: 2px 12px; border-radius: 12px; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; font-family: var(--font-body); }
+.follow-btn:hover { background: var(--color-accent-light); }
+.follow-btn.active { background: var(--color-bg-secondary); border-color: var(--color-border); color: var(--color-text-secondary); }
 
 .detail-body { margin-bottom: 24px; background: rgba(46, 92, 76, 0.06); border: 1px solid rgba(46, 92, 76, 0.15); border-radius: var(--border-radius); padding: 20px; }
 

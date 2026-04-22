@@ -386,5 +386,29 @@ module.exports = {
   getMyPosts,
   getVersions,
   getVersion,
-  rollbackVersion
+  rollbackVersion,
+  getUserPublicPosts
 };
+
+async function getUserPublicPosts(userId, page = 1, pageSize = 20) {
+  page = Math.max(1, parseInt(page, 10) || 1);
+  pageSize = Math.min(Math.max(1, parseInt(pageSize, 10) || 20), 50);
+  const offset = (page - 1) * pageSize;
+
+  const [rows] = await db.execute(
+    `SELECT p.id, p.title, p.summary, p.category, p.view_count, p.like_count, p.comment_count,
+            p.created_at, p.is_featured, p.is_pinned, p.version
+     FROM posts p
+     WHERE p.user_id = ? AND p.status = 'published'
+     ORDER BY p.created_at DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    [userId]
+  );
+
+  const [countRows] = await db.execute(
+    "SELECT COUNT(*) AS total FROM posts WHERE user_id = ? AND status = 'published'",
+    [userId]
+  );
+
+  return { data: rows, total: countRows[0].total };
+}

@@ -8,6 +8,7 @@ export const postAPI = {
   delete: (id) => request.delete(`/community/posts/${id}`),
   like: (id) => request.post(`/community/posts/${id}/like`),
   getMy: (params) => request.get('/community/my/posts', { params }),
+  getUserPosts: (userId, params) => request.get(`/community/users/${userId}/posts`, { params }),
   getVersions: (id) => request.get(`/community/posts/${id}/versions`),
   getVersion: (id, ver) => request.get(`/community/posts/${id}/versions/${ver}`),
   rollbackVersion: (id, ver) => request.post(`/community/posts/${id}/versions/${ver}/rollback`)

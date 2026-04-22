@@ -82,4 +82,14 @@ async function rollbackVersion(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { listPosts, getPost, createPost, updatePost, deletePost, likePost, getMyPosts, getVersions, getVersion, rollbackVersion };
+async function getUserPublicPosts(req, res, next) {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 20;
+    const { data, total } = await postService.getUserPublicPosts(userId, page, pageSize);
+    res.paginate(data, total, page, pageSize);
+  } catch (err) { next(err); }
+}
+
+module.exports = { listPosts, getPost, createPost, updatePost, deletePost, likePost, getMyPosts, getVersions, getVersion, rollbackVersion, getUserPublicPosts };

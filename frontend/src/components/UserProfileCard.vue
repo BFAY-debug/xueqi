@@ -35,6 +35,7 @@
               </div>
               <h3 class="profile-nickname">{{ userInfo.nickname }}</h3>
               <p v-if="userInfo.bio" class="profile-bio">{{ userInfo.bio }}</p>
+              <button class="btn-view-page" @click="goToUserPage">查看主页</button>
             </div>
 
             <div class="profile-actions">
@@ -230,6 +231,11 @@ async function fetchData() {
 function handleClose() {
   showMenu.value = false
   emit('close')
+}
+
+function goToUserPage() {
+  emit('close')
+  router.push('/user/' + props.userId)
 }
 
 // ── Friend Request ────────────────────────────────────
@@ -430,9 +436,28 @@ async function handleUnblock() {
 .profile-bio {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
-  margin: 0;
+  margin: 0 0 8px;
   line-height: 1.5;
   word-break: break-word;
+}
+
+.btn-view-page {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.btn-view-page:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
 }
 
 /* ── Loading / Error ────────────────────────────────── */
