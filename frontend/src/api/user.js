@@ -23,7 +23,8 @@ export const userAPI = {
 
 export const pointsAPI = {
   getPoints: () => request.get('/user/points'),
-  getPointsLog: (params) => request.get('/user/points/log', { params })
+  getPointsLog: (params) => request.get('/user/points/log', { params }),
+  dailyCheckin: () => request.post('/user/points/daily-checkin')
 }
 
 export const leaderboardAPI = {

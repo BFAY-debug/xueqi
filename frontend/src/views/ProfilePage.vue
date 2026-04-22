@@ -42,6 +42,14 @@
             <div class="streak-header">
               <span class="streak-flame" :class="streakClass">{{ streakIcon }}</span>
               <span class="streak-count">{{ stats.checkin_streak || 0 }} 天连续</span>
+              <button
+                class="checkin-btn"
+                :class="{ 'checked': checkedToday, 'loading': checkinLoading }"
+                :disabled="checkedToday || checkinLoading"
+                @click="handleDailyCheckin"
+              >
+                {{ checkinLoading ? '...' : (checkedToday ? '已签到 ✓' : '每日签到') }}
+              </button>
             </div>
             <div class="streak-week">
               <span v-for="(d, i) in weekDays" :key="i" class="streak-day" :class="{ done: checkedDays.includes(i) }">
@@ -351,6 +359,7 @@ const notifications = ref([])
 const penalty = ref({ isActive: false })
 const myChatRooms = ref([])
 const saving = ref(false)
+const checkinLoading = ref(false)
 const showEdit = ref(false)
 const showApplyAdmin = ref(false)
 const applyReason = ref('')
@@ -380,6 +389,13 @@ const levelColor = computed(() => {
 })
 
 // Streak
+const checkedToday = computed(() => {
+  const lastDate = stats.value.last_study_date
+  if (!lastDate) return false
+  const today = new Date().toLocaleDateString('sv-SE')
+  return new Date(lastDate).toLocaleDateString('sv-SE') === today
+})
+
 const checkedDays = computed(() => {
   // Simple: if streak > 0, mark recent days. For now, mark today and previous based on streak.
   const streak = stats.value.checkin_streak || 0
@@ -506,6 +522,25 @@ async function uploadAvatar(e) {
     ElMessage.success('头像已更新')
   } catch (err) { ElMessage.error(err.message) }
   finally { saving.value = false }
+}
+
+async function handleDailyCheckin() {
+  if (checkedToday.value || checkinLoading.value) return
+  checkinLoading.value = true
+  try {
+    const res = await pointsAPI.dailyCheckin()
+    const data = res.data
+    if (data.alreadyCheckedIn) {
+      ElMessage.info('今日已签到')
+    } else {
+      ElMessage.success(`签到成功！连续 ${data.streak} 天，获得 ${data.streak > 0 ? Math.min(data.streak, 30) : 1} 积分`)
+    }
+    await fetchStats()
+  } catch (e) {
+    ElMessage.error(e.message || '签到失败')
+  } finally {
+    checkinLoading.value = false
+  }
 }
 
 async function saveProfile() {
@@ -641,6 +676,35 @@ onMounted(() => {
   font-size: 1rem;
   font-weight: 700;
   color: var(--color-accent);
+}
+.checkin-btn {
+  margin-left: auto;
+  padding: 4px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.checkin-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.checkin-btn:disabled {
+  cursor: default;
+  transform: none;
+}
+.checkin-btn.checked {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-light);
+}
+.checkin-btn.loading {
+  opacity: 0.7;
 }
 .streak-week {
   display: flex;

@@ -21,8 +21,6 @@ async function getRecentMessages(roomId, limit = 50, userId = null) {
     throw error;
   }
   const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
-async function getRecentMessages(roomId, limit = 50) {
-  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
   const [rows] = await db.execute(
     `SELECT m.id, m.room_id, m.user_id, m.content, m.image_url, m.type, m.created_at,
             u.nickname, u.avatar_url, u.username

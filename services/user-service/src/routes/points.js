@@ -7,6 +7,7 @@ const { authMiddleware, optionalAuth, serviceAuthMiddleware } = require('xueqi-s
 // Points
 router.get('/points', authMiddleware, pointsController.getPoints);
 router.get('/points/log', authMiddleware, pointsController.getPointsLog);
+router.post('/points/daily-checkin', authMiddleware, pointsController.dailyCheckin);
 
 // Internal: other microservices call this to award points
 router.post('/points/award', serviceAuthMiddleware, pointsController.awardPoints);

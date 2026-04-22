@@ -52,4 +52,13 @@ async function updateCheckinStreak(req, res, next) {
   }
 }
 
-module.exports = { getPoints, getPointsLog, awardPoints, updateCheckinStreak };
+async function dailyCheckin(req, res, next) {
+  try {
+    const result = await pointsService.updateCheckinStreak(req.user.userId);
+    res.success(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getPoints, getPointsLog, awardPoints, updateCheckinStreak, dailyCheckin };
