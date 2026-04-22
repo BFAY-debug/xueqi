@@ -21,15 +21,17 @@ function responseHandler(req, res, next) {
   };
 
   res.paginate = (data, total, page, pageSize, message = 'Success') => {
+    page = Math.max(1, parseInt(page, 10) || 1);
+    pageSize = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
     return res.status(200).json({
       success: true,
       message,
       data,
       pagination: {
         total,
-        page: parseInt(page, 10),
-        pageSize: parseInt(pageSize, 10),
-        totalPages: Math.ceil(total / parseInt(pageSize, 10))
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize)
       }
     });
   };

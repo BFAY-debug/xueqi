@@ -25,6 +25,7 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 import { useMessageStore } from '@/stores/message'
+import { getSocket } from '@/composables/useSocket'
 import UserAvatar from './UserAvatar.vue'
 
 defineProps({
@@ -35,8 +36,19 @@ defineEmits(['select'])
 
 const messageStore = useMessageStore()
 
+function onStatusChange() {
+  messageStore.fetchOnlineUsers()
+}
+
 onMounted(() => {
   messageStore.fetchOnlineUsers()
+  const socket = getSocket()
+  socket.on('online:statusChange', onStatusChange)
+})
+
+onUnmounted(() => {
+  const socket = getSocket()
+  socket.off('online:statusChange', onStatusChange)
 })
 </script>
 

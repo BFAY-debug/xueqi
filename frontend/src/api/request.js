@@ -42,13 +42,16 @@ request.interceptors.response.use(
       }
 
       const userStore = useUserStore()
-      // Try refresh token
+      // Try refresh token — deduplicate with shared promise
       if (userStore.refreshToken && !error.config._retry) {
         error.config._retry = true
         try {
-          const res = await axios.post('/api/user/refresh', {
-            refreshToken: userStore.refreshToken
-          })
+          if (!window.__refreshPromise) {
+            window.__refreshPromise = axios.post('/api/user/refresh', {
+              refreshToken: userStore.refreshToken
+            }).finally(() => { window.__refreshPromise = null })
+          }
+          const res = await window.__refreshPromise
           if (res.data.success) {
             userStore.setToken(res.data.data.accessToken, res.data.data.refreshToken)
             error.config.headers.Authorization = `Bearer ${res.data.data.accessToken}`

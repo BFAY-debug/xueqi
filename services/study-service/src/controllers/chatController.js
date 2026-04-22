@@ -6,7 +6,7 @@ async function getMessages(req, res, next) {
   try {
     const roomId = parseInt(req.params.id, 10);
     const limit = parseInt(req.query.limit, 10) || 50;
-    const messages = await chatService.getRecentMessages(roomId, limit);
+    const messages = await chatService.getRecentMessages(roomId, limit, req.user.userId);
     res.success(messages);
   } catch (err) {
     next(err);

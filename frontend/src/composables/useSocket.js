@@ -56,6 +56,8 @@ function getSocket() {
 
   socket.on('connect', () => {
     connected.value = true
+    // Refresh auth token on reconnect in case it was refreshed during disconnect
+    socket.auth = { token: userStore.token || '' }
     if (userStore.isLoggedIn) {
       socket.emit('online:login')
     }

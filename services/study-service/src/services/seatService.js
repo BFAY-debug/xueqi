@@ -38,11 +38,13 @@ async function createLocation({ name, building, floor, openTime, closeTime, tota
 }
 
 async function updateLocation(locationId, data) {
+  const ALLOWED_COLUMNS = ['name', 'building', 'floor', 'open_time', 'close_time', 'total_seats', 'description', 'status'];
   const fields = [];
   const params = [];
 
   for (const [key, value] of Object.entries(data)) {
     const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    if (!ALLOWED_COLUMNS.includes(dbKey)) continue;
     fields.push(`${dbKey} = ?`);
     params.push(value);
   }
@@ -427,7 +429,8 @@ function getServiceToken() {
     userId: 0,
     username: 'study-service',
     roleId: 1,
-    roleName: 'super_admin'
+    roleName: 'super_admin',
+    type: 'service'
   });
 }
 

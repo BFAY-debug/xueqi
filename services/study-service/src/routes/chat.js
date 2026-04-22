@@ -6,7 +6,7 @@ const chatController = require('../controllers/chatController');
 const { authMiddleware } = require('xueqi-shared');
 
 router.get('/rooms/:id/messages', authMiddleware, chatController.getMessages);
-router.get('/chat/rooms', chatController.getRooms);
+router.get('/chat/rooms', authMiddleware, chatController.getRooms);
 router.get('/chat/my-rooms', authMiddleware, chatController.getMyRooms);
 router.post('/chat/mark-read', authMiddleware, chatController.markRead);
 

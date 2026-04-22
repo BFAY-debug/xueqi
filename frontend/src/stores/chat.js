@@ -58,6 +58,14 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function closeChat() {
+    if (chatRoomId.value) {
+      const sock = getSocket()
+      sock.emit('room:leave', chatRoomId.value)
+    }
+    chatRoomId.value = null
+    roomInfo.value = null
+    onlineCount.value = 0
+    onlineUsers.value = []
     isOpen.value = false
   }
 

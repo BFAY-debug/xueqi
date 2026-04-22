@@ -152,7 +152,7 @@ async function rejectRecord(recordId, adminId) {
 function getServiceToken() {
   const { jwt: { generateToken } } = require('xueqi-shared');
   return generateToken({
-    userId: 0, username: 'study-service', roleId: 1, roleName: 'super_admin'
+    userId: 0, username: 'study-service', roleId: 1, roleName: 'super_admin', type: 'service'
   });
 }
 

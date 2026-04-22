@@ -143,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { userAPI } from '@/api/user'
 import { useFriendStore } from '@/stores/friend'
@@ -166,7 +166,10 @@ const loading = ref(false)
 const error = ref('')
 const userInfo = ref(null)
 const friendStatus = ref('none')
-const isOnline = ref(false)
+const isOnline = computed(() => {
+  const onlineList = messageStore.onlineUsers || []
+  return onlineList.some(u => u.userId === props.userId)
+})
 
 // Friend request
 const showRequestInput = ref(false)
@@ -218,9 +221,6 @@ async function fetchData() {
     } catch {
       friendStatus.value = 'none'
     }
-
-    const onlineList = messageStore.onlineUsers || []
-    isOnline.value = onlineList.some(u => u.userId === props.userId)
   } catch (e) {
     error.value = e.response?.data?.message || e.message || '加载失败'
   } finally {

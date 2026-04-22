@@ -18,8 +18,8 @@ async function serviceAuthMiddleware(req, res, next) {
     return res.status(401).json({ success: false, message: 'Token 无效或已过期' });
   }
 
-  // Service token (userId=0): trust the JWT payload directly
-  if (decoded.userId === 0) {
+  // Service token: must have type=service claim
+  if (decoded.type === 'service') {
     req.user = {
       userId: decoded.userId,
       username: decoded.username,

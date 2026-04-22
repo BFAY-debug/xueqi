@@ -228,6 +228,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', onWindowResize)
+  stopDrag()
+  stopResize()
 })
 </script>
 

@@ -61,6 +61,15 @@ async function reserveSeat(req, res, next) {
     if (!reserveDate || !startTime || !endTime) {
       return res.error('reserveDate, startTime, endTime 不能为空', 400);
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(reserveDate)) {
+      return res.error('日期格式应为 YYYY-MM-DD', 400);
+    }
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(startTime) || !/^\d{2}:\d{2}(:\d{2})?$/.test(endTime)) {
+      return res.error('时间格式应为 HH:MM 或 HH:MM:SS', 400);
+    }
+    if (startTime >= endTime) {
+      return res.error('结束时间必须晚于开始时间', 400);
+    }
     const result = await seatService.reserveSeat(
       parseInt(req.params.id, 10), req.user.userId, { reserveDate, startTime, endTime }
     );

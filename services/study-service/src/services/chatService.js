@@ -1,8 +1,26 @@
 const { db, logger } = require('xueqi-shared');
 
 /**
- * Get recent messages for a room
+ * Check if a user is a participant in a room
  */
+async function isRoomParticipant(roomId, userId) {
+  const [rows] = await db.execute(
+    'SELECT id FROM room_participants WHERE room_id = ? AND user_id = ?',
+    [roomId, userId]
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Get recent messages for a room (with participant check)
+ */
+async function getRecentMessages(roomId, limit = 50, userId = null) {
+  if (userId !== null && !(await isRoomParticipant(roomId, userId))) {
+    const error = new Error('你不是该房间的参与者');
+    error.status = 403;
+    throw error;
+  }
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
 async function getRecentMessages(roomId, limit = 50) {
   const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
   const [rows] = await db.execute(

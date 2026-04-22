@@ -298,7 +298,7 @@ async function getMyPosts(userId, page = 1, pageSize = 20) {
 
 function getServiceToken() {
   const { jwt: { generateToken } } = require('xueqi-shared');
-  return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin' });
+  return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin', type: 'service' });
 }
 
 /**
@@ -339,11 +339,17 @@ async function getVersion(postId, version) {
 /**
  * Rollback a post to a specific version
  */
-async function rollbackVersion(postId, version, userId) {
+async function rollbackVersion(postId, version, userId, roleName) {
   const [postRows] = await db.execute('SELECT * FROM posts WHERE id = ?', [postId]);
   if (postRows.length === 0) {
     const error = new Error('帖子不存在');
     error.status = 404;
+    throw error;
+  }
+
+  if (postRows[0].user_id !== userId && !['admin', 'super_admin'].includes(roleName)) {
+    const error = new Error('无权回滚此帖子');
+    error.status = 403;
     throw error;
   }
 

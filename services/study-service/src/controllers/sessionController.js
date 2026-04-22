@@ -3,7 +3,14 @@ const sessionService = require('../services/sessionService');
 async function startSession(req, res, next) {
   try {
     const { roomId, sessionType } = req.body;
-    const result = await sessionService.startSession(req.user.userId, { roomId, sessionType });
+    const validTypes = ['free', 'pomodoro'];
+    if (sessionType && !validTypes.includes(sessionType)) {
+      return res.error('无效的学习类型', 400);
+    }
+    const result = await sessionService.startSession(req.user.userId, {
+      roomId: roomId ? parseInt(roomId, 10) || null : null,
+      sessionType
+    });
     res.success(result, '学习会话已开始', 201);
   } catch (err) {
     next(err);

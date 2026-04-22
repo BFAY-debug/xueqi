@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI, userAPI, notificationAPI } from '@/api/user'
+import { disconnectSocket } from '@/composables/useSocket'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -39,6 +40,7 @@ export const useUserStore = defineStore('user', () => {
     unreadCount.value = 0
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
+    disconnectSocket()
   }
 
   async function fetchProfile() {

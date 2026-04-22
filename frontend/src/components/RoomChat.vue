@@ -120,10 +120,18 @@ const pendingImage = ref(null)
 const imageInput = ref(null)
 const previewUrl = ref(null)
 let typingTimer = null
+let _audioCtx = null
+
+function getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  return _audioCtx
+}
 
 function playNotifSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = getAudioCtx()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.connect(gain); gain.connect(ctx.destination)

@@ -21,6 +21,23 @@ async function createPost(req, res, next) {
     if (!title || !content) {
       return res.error('标题和内容不能为空', 400);
     }
+    if (title.length > 200) {
+      return res.error('标题不能超过 200 字', 400);
+    }
+    if (content.length > 50000) {
+      return res.error('内容不能超过 50000 字', 400);
+    }
+    const validCategories = ['general', 'study', 'life', 'tech', 'resource', 'question'];
+    if (category && !validCategories.includes(category)) {
+      return res.error('无效的分类', 400);
+    }
+    const validPermissions = ['public', 'friends', 'private'];
+    if (permission && !validPermissions.includes(permission)) {
+      return res.error('无效的可见范围', 400);
+    }
+    if (tags && (!Array.isArray(tags) || tags.length > 10)) {
+      return res.error('标签数量不能超过 10 个', 400);
+    }
     const result = await postService.createPost(req.user.userId,
       { title, content, summary, category, isAnonymous, tags, permission, contentType });
     res.success(result, '文章已发布', 201);
@@ -76,7 +93,8 @@ async function rollbackVersion(req, res, next) {
     const result = await postService.rollbackVersion(
       parseInt(req.params.id, 10),
       parseInt(req.params.version, 10),
-      req.user.userId
+      req.user.userId,
+      req.user.roleName
     );
     res.success(result, `已回滚至 v${req.params.version}`);
   } catch (err) { next(err); }
