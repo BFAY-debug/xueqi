@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { friendAPI } from '@/api/friend'
+import { useMessageStore } from '@/stores/message'
 
 export const useFriendStore = defineStore('friend', () => {
   const friends = ref([])
@@ -97,6 +98,9 @@ export const useFriendStore = defineStore('friend', () => {
     })
     socket.on('friend:accepted', () => {
       fetchFriends()
+      // Refresh conversations so the new chat is immediately available
+      const messageStore = useMessageStore()
+      messageStore.fetchConversations()
     })
   }
 

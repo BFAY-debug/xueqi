@@ -330,6 +330,7 @@ import { reservationAPI, chatAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
 import { useTimeAgo } from '@/composables/useTimeAgo'
+import { compressImage } from '@/utils/compressImage'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
@@ -498,10 +499,13 @@ async function uploadAvatar(e) {
   const file = e.target.files?.[0]
   if (!file) return
   try {
-    await userAPI.uploadAvatar(file)
+    saving.value = true
+    const compressed = await compressImage(file, { maxWidth: 300, maxHeight: 300, quality: 0.85 })
+    await userAPI.uploadAvatar(compressed)
     await userStore.fetchProfile()
     ElMessage.success('头像已更新')
   } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
 }
 
 async function saveProfile() {

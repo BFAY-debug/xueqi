@@ -137,6 +137,7 @@ async function sendRequest(senderId, receiverId, message = null) {
     requestId: result.insertId,
     senderId,
     receiverId,
+    senderNickname,
     message
   });
 

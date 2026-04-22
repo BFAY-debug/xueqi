@@ -90,6 +90,7 @@ import { useMessageStore } from '@/stores/message'
 import { useFriendStore } from '@/stores/friend'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
+import { compressImage } from '@/utils/compressImage'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -204,7 +205,8 @@ async function handleImageSelect(e) {
   }
   sendingImage.value = true
   try {
-    const res = await chatAPI.uploadImage(file)
+    const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
+    const res = await chatAPI.uploadImage(compressed)
     const socket = getSocket()
     socket.emit('pm:send', {
       toUserId: peerInfo.value.userId,

@@ -360,18 +360,19 @@ function initSocket(httpServer) {
       if (channel !== 'xueqi:friend_events' || !io) return;
       try {
         const event = JSON.parse(message);
+        const d = event.data || {};
         if (event.type === 'friend_request') {
-          io.to(`user:${event.toUserId}`).emit('friend:request', {
-            requestId: event.requestId,
-            fromUserId: event.fromUserId,
-            fromNickname: event.fromNickname,
-            fromAvatar: event.fromAvatar
+          io.to(`user:${d.receiverId}`).emit('friend:request', {
+            requestId: d.requestId,
+            fromUserId: d.senderId,
+            fromNickname: d.senderNickname || '',
+            fromAvatar: d.senderAvatar || ''
           });
         } else if (event.type === 'friend_accepted') {
-          io.to(`user:${event.toUserId}`).emit('friend:accepted', {
-            acceptedByUserId: event.acceptedByUserId,
-            acceptedByNickname: event.acceptedByNickname,
-            conversationId: event.conversationId
+          // Notify the sender that their request was accepted
+          io.to(`user:${d.senderId}`).emit('friend:accepted', {
+            acceptedByUserId: d.receiverId,
+            conversationId: d.conversationId
           });
         }
       } catch (e) {
