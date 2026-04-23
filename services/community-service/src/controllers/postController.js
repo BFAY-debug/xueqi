@@ -24,8 +24,8 @@ async function createPost(req, res, next) {
     if (title.length > 200) {
       return res.error('标题不能超过 200 字', 400);
     }
-    if (content.length > 50000) {
-      return res.error('内容不能超过 50000 字', 400);
+    if (content.length > 500000) {
+      return res.error('内容不能超过 500000 字', 400);
     }
     const validCategories = ['general', 'study', 'life', 'tech', 'resource', 'question'];
     if (category && !validCategories.includes(category)) {
