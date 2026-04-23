@@ -291,6 +291,43 @@
             </div>
           </div>
         </template>
+
+        <!-- Feedback (super_admin) -->
+        <template v-if="activeSection === 'feedback'">
+          <h2>用户反馈</h2>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <el-radio-group v-model="feedbackFilter" @change="fetchFeedback">
+              <el-radio-button value="pending">待处理</el-radio-button>
+              <el-radio-button value="resolved">已处理</el-radio-button>
+              <el-radio-button value="ignored">已忽略</el-radio-button>
+              <el-radio-button value="">全部</el-radio-button>
+            </el-radio-group>
+          </div>
+          <div v-for="fb in feedbackList" :key="fb.id" class="review-item card">
+            <div class="review-content">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <el-tag :type="fb.type === 'Bug 反馈' ? 'danger' : fb.type === '功能建议' ? 'primary' : fb.type === '体验优化' ? 'warning' : 'info'" size="small">{{ fb.type }}</el-tag>
+                <strong>{{ fb.username || '未知用户' }}</strong>
+                <span style="font-size:0.8rem;color:var(--color-text-secondary)">@{{ fb.account_id || fb.username }}</span>
+              </div>
+              <p class="review-excerpt" style="white-space:pre-wrap">{{ fb.content }}</p>
+              <div style="display:flex;gap:12px;margin-top:4px">
+                <span class="app-time">{{ fb.created_at }}</span>
+                <el-tag v-if="fb.status === 'resolved'" type="success" size="small">已处理</el-tag>
+                <el-tag v-else-if="fb.status === 'ignored'" type="info" size="small">已忽略</el-tag>
+                <el-tag v-else type="warning" size="small">待处理</el-tag>
+              </div>
+              <div v-if="fb.admin_reply" style="margin-top:8px;padding:8px 12px;background:var(--color-bg-secondary);border-radius:6px;font-size:0.85rem">
+                <strong>回复：</strong>{{ fb.admin_reply }}
+              </div>
+            </div>
+            <div class="review-actions" v-if="fb.status === 'pending'">
+              <el-button type="success" size="small" @click="resolveFeedback(fb.id)">已处理</el-button>
+              <el-button type="info" size="small" @click="ignoreFeedback(fb.id)">忽略</el-button>
+            </div>
+          </div>
+          <p v-if="!feedbackList.length" class="empty-text">暂无反馈</p>
+        </template>
       </div>
     </div>
 
@@ -376,7 +413,7 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { adminAPI } from '@/api/user'
+import { adminAPI, feedbackAPI } from '@/api/user'
 import { communityAdminAPI, postAPI } from '@/api/community'
 import { volunteerAPI, locationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
@@ -396,7 +433,8 @@ const allMenuItems = [
   { key: 'applications', icon: '📨', label: '管理员申请', roles: ['super_admin'] },
   { key: 'volunteer', icon: '🤝', label: '志愿审核', roles: ['admin', 'super_admin'] },
   { key: 'logs', icon: '📋', label: '审核日志', roles: ['admin', 'super_admin'] },
-  { key: 'stats', icon: '📈', label: '系统统计', roles: ['super_admin'] }
+  { key: 'stats', icon: '📈', label: '系统统计', roles: ['super_admin'] },
+  { key: 'feedback', icon: '📬', label: '用户反馈', roles: ['super_admin'] }
 ]
 
 const filteredMenu = computed(() => {
@@ -419,6 +457,8 @@ const chartStudyRef = ref(null)
 const chartRoleRef = ref(null)
 const chartCategoryRef = ref(null)
 const adminApplications = ref([])
+const feedbackList = ref([])
+const feedbackFilter = ref('pending')
 
 // Seat management state
 const locations = ref([])
@@ -537,6 +577,30 @@ async function renderCharts() {
 }
 async function fetchApplications() {
   try { const res = await adminAPI.getApplications({ pageSize: 50 }); adminApplications.value = res.data || [] } catch { /* */ }
+}
+async function fetchFeedback() {
+  try {
+    const params = { pageSize: 50 }
+    if (feedbackFilter.value) params.status = feedbackFilter.value
+    const res = await feedbackAPI.getList(params)
+    feedbackList.value = res.data || []
+  } catch { /* */ }
+}
+async function resolveFeedback(id) {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入回复（可选）', '处理反馈', { confirmButtonText: '确认处理', cancelButtonText: '取消', inputPlaceholder: '如：感谢反馈，已修复该问题' })
+    await feedbackAPI.updateStatus(id, { status: 'resolved', adminReply: value || '' })
+    ElMessage.success('已标记为已处理')
+    fetchFeedback()
+  } catch { /* cancelled */ }
+}
+async function ignoreFeedback(id) {
+  try {
+    await ElMessageBox.confirm('确认忽略该反馈？', '忽略确认', { type: 'warning' })
+    await feedbackAPI.updateStatus(id, { status: 'ignored' })
+    ElMessage.success('已忽略')
+    fetchFeedback()
+  } catch { /* cancelled */ }
 }
 async function fetchLocations() {
   try { const res = await locationAPI.getList(); locations.value = res.data || [] } catch { /* */ }
@@ -815,7 +879,7 @@ watch(activeSection, (val) => {
     comments: () => { fetchAllComments(); fetchPendingComments() },
     proposals: fetchPendingProposals,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
-    volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats
+    volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats, feedback: fetchFeedback
   }
   fetchers[val]?.()
 })

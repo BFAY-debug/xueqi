@@ -9,19 +9,31 @@
         <span class="footer-slogan">墨韵书声 · 栖心之所</span>
       </div>
       <div class="footer-links">
-        <a href="#">关于学栖</a>
-        <a href="#">使用反馈</a>
-        <a href="#">开发团队</a>
+        <a @click.prevent="openDrawer('about')">关于学栖</a>
+        <a @click.prevent="openDrawer('feedback')">使用反馈</a>
+        <a @click.prevent="openDrawer('team')">开发团队</a>
       </div>
       <div class="footer-copy">
         &copy; {{ year }} 学栖 · 以学习为核心的社区平台
       </div>
     </div>
+
+    <FooterDrawer :visible="drawerVisible" :type="drawerType" @close="drawerVisible = false" />
   </footer>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import FooterDrawer from '@/components/FooterDrawer.vue'
+
 const year = new Date().getFullYear()
+const drawerVisible = ref(false)
+const drawerType = ref('about')
+
+function openDrawer(type) {
+  drawerType.value = type
+  drawerVisible.value = true
+}
 </script>
 
 <style scoped>
@@ -70,6 +82,7 @@ const year = new Date().getFullYear()
   color: var(--color-text-secondary);
   font-size: 0.85rem;
   text-decoration: none;
+  cursor: pointer;
   transition: color 0.2s;
 }
 

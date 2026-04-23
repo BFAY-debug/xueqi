@@ -54,3 +54,9 @@ export const adminAPI = {
   getApplications: (params) => request.get('/user/admin/applications', { params }),
   reviewApplication: (id, action) => request.put(`/user/admin/applications/${id}`, { action })
 }
+
+export const feedbackAPI = {
+  submit: (data) => request.post('/user/feedback', data),
+  getList: (params) => request.get('/user/feedback', { params }),
+  updateStatus: (id, data) => request.put(`/user/feedback/${id}`, data)
+}

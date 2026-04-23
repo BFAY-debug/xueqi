@@ -426,3 +426,18 @@ CREATE TABLE message_reads (
     PRIMARY KEY (message_id, user_id),
     FOREIGN KEY (message_id) REFERENCES room_messages(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- 用户反馈
+-- ----------------------------------------------------------
+CREATE TABLE feedback (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    user_id     INT NOT NULL,
+    type        VARCHAR(50) NOT NULL DEFAULT '其他',
+    content     TEXT NOT NULL,
+    status      ENUM('pending', 'resolved', 'ignored') DEFAULT 'pending',
+    admin_reply TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_status (status),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
