@@ -20,9 +20,10 @@
           <div class="user-avatar-section">
             <div class="avatar-wrapper">
               <img v-if="userInfo.avatar_url" :src="userInfo.avatar_url" alt="avatar" class="user-avatar" />
-              <div v-else class="avatar-placeholder">{{ userInfo.nickname?.[0] || '?' }}</div>
+              <div v-else class="avatar-placeholder">{{ userInfo.username?.[0] || '?' }}</div>
             </div>
-            <h2 class="user-name">{{ userInfo.nickname }}</h2>
+            <h2 class="user-name">{{ userInfo.username }}</h2>
+            <p v-if="userInfo.account_id" class="user-account-id">@{{ userInfo.account_id }}</p>
             <p v-if="userInfo.bio" class="user-bio">{{ userInfo.bio }}</p>
 
             <div class="user-level">
@@ -111,8 +112,8 @@
           <div v-if="activeTab === 'following'" class="tab-content">
             <div class="follow-list">
               <div v-for="u in followingList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
-                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
-                <span class="follow-name">{{ u.nickname }}</span>
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="36" />
+                <span class="follow-name">{{ u.username }}</span>
               </div>
             </div>
             <p v-if="!followingList.length" class="empty-text">暂无关注</p>
@@ -122,8 +123,8 @@
           <div v-if="activeTab === 'followers'" class="tab-content">
             <div class="follow-list">
               <div v-for="u in followerList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
-                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
-                <span class="follow-name">{{ u.nickname }}</span>
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="36" />
+                <span class="follow-name">{{ u.username }}</span>
               </div>
             </div>
             <p v-if="!followerList.length" class="empty-text">暂无粉丝</p>
@@ -292,6 +293,11 @@ onMounted(() => fetchData())
 .user-name {
   font-family: var(--font-title);
   font-size: 1.3rem;
+  margin-bottom: 4px;
+}
+.user-account-id {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 .user-bio {

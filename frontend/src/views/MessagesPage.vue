@@ -27,10 +27,10 @@
             class="conv-card card"
             @click="openChat(conv)"
           >
-            <UserAvatar :avatar-url="conv.peerAvatar" :nickname="conv.peerNickname" :size="44" />
+            <UserAvatar :avatar-url="conv.peerAvatar" :nickname="conv.peerName" :size="44" />
             <div class="conv-info">
               <div class="conv-top">
-                <span class="conv-name">{{ conv.peerNickname }}</span>
+                <span class="conv-name">{{ conv.peerName }}</span>
                 <span class="conv-time">{{ formatTime(conv.lastMessageAt) }}</span>
               </div>
               <div class="conv-bottom">
@@ -51,10 +51,10 @@
         <div class="friends-grid" v-if="filteredFriends.length">
           <div v-for="f in filteredFriends" :key="f.id" class="friend-card card" @click="openFriendChat(f)">
             <div class="friend-avatar-wrap">
-              <UserAvatar :avatar-url="f.avatar_url" :nickname="f.nickname" :size="44" />
+              <UserAvatar :avatar-url="f.avatar_url" :nickname="f.username" :size="44" />
             </div>
             <div class="friend-info">
-              <span class="friend-name">{{ f.nickname }}</span>
+              <span class="friend-name">{{ f.username }}</span>
               <span class="friend-bio">{{ f.bio || '暂无签名' }}</span>
             </div>
           </div>
@@ -69,9 +69,9 @@
           <input v-model="userSearchQuery" placeholder="搜索用户昵称或用户名..." class="friend-search-input" @input="onUserSearch" />
           <div v-if="searchResults.length" class="search-results">
             <div v-for="u in searchResults" :key="u.id" class="req-card card">
-              <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="40" />
+              <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="40" />
               <div class="req-info">
-                <span class="req-name">{{ u.nickname }}</span>
+                <span class="req-name">{{ u.username }}</span>
                 <span class="friend-bio">{{ u.bio || '暂无签名' }}</span>
               </div>
               <div class="req-actions">
@@ -95,9 +95,9 @@
         <template v-if="reqSubTab === 'incoming'">
           <div v-if="friendStore.incomingRequests.length" class="requests-list">
             <div v-for="req in friendStore.incomingRequests" :key="req.id" class="req-card card">
-              <UserAvatar :avatar-url="req.sender_avatar" :nickname="req.sender_nickname" :size="40" />
+              <UserAvatar :avatar-url="req.sender_avatar" :nickname="req.sender_username" :size="40" />
               <div class="req-info">
-                <span class="req-name">{{ req.sender_nickname }}</span>
+                <span class="req-name">{{ req.sender_username }}</span>
                 <span class="req-msg" v-if="req.message">"{{ req.message }}"</span>
                 <span class="req-time">{{ formatTime(req.created_at) }}</span>
               </div>
@@ -113,9 +113,9 @@
         <template v-if="reqSubTab === 'outgoing'">
           <div v-if="friendStore.outgoingRequests.length" class="requests-list">
             <div v-for="req in friendStore.outgoingRequests" :key="req.id" class="req-card card">
-              <UserAvatar :avatar-url="req.receiver_avatar" :nickname="req.receiver_nickname" :size="40" />
+              <UserAvatar :avatar-url="req.receiver_avatar" :nickname="req.receiver_username" :size="40" />
               <div class="req-info">
-                <span class="req-name">{{ req.receiver_nickname }}</span>
+                <span class="req-name">{{ req.receiver_username }}</span>
                 <span class="req-status" :class="'status-' + req.status">{{ req.status === 'pending' ? '等待回复' : '已拒绝' }}</span>
               </div>
             </div>
@@ -169,7 +169,7 @@ const filteredFriends = computed(() => {
   const keyword = friendSearch.value.trim().toLowerCase()
   if (!keyword) return friendStore.friends
   return friendStore.friends.filter(f =>
-    (f.nickname || '').toLowerCase().includes(keyword)
+    (f.username || '').toLowerCase().includes(keyword)
   )
 })
 

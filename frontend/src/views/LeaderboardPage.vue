@@ -48,21 +48,21 @@
       <template v-else>
         <div class="podium" v-if="top3.length >= 3" ref="podiumEl">
           <div class="podium-item second">
-            <UserAvatar :avatar-url="top3[1]?.avatar_url" :nickname="top3[1]?.nickname" :size="48" class="podium-avatar" />
-            <div class="podium-name">{{ top3[1]?.nickname || '-' }}</div>
+            <UserAvatar :avatar-url="top3[1]?.avatar_url" :nickname="top3[1]?.username" :size="48" class="podium-avatar" />
+            <div class="podium-name">{{ top3[1]?.username || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[1]) }}</div>
             <div class="podium-medal">🥈</div>
           </div>
           <div class="podium-item first">
             <div class="podium-glow"></div>
-            <UserAvatar :avatar-url="top3[0]?.avatar_url" :nickname="top3[0]?.nickname" :size="56" class="podium-avatar" />
-            <div class="podium-name">{{ top3[0]?.nickname || '-' }}</div>
+            <UserAvatar :avatar-url="top3[0]?.avatar_url" :nickname="top3[0]?.username" :size="56" class="podium-avatar" />
+            <div class="podium-name">{{ top3[0]?.username || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[0]) }}</div>
             <div class="podium-medal">🥇</div>
           </div>
           <div class="podium-item third">
-            <UserAvatar :avatar-url="top3[2]?.avatar_url" :nickname="top3[2]?.nickname" :size="48" class="podium-avatar" />
-            <div class="podium-name">{{ top3[2]?.nickname || '-' }}</div>
+            <UserAvatar :avatar-url="top3[2]?.avatar_url" :nickname="top3[2]?.username" :size="48" class="podium-avatar" />
+            <div class="podium-name">{{ top3[2]?.username || '-' }}</div>
             <div class="podium-score">{{ scoreField(top3[2]) }}</div>
             <div class="podium-medal">🥉</div>
           </div>
@@ -72,8 +72,8 @@
         <div class="rank-list card" v-if="list.length">
           <div v-for="(u, i) in list" :key="u.id" class="rank-item">
             <span class="rank-num">{{ i + 4 }}</span>
-            <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="32" class="rank-avatar" />
-            <span class="rank-name">{{ u.nickname || u.username }}</span>
+            <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="32" class="rank-avatar" />
+            <span class="rank-name">{{ u.username }}</span>
             <span class="rank-level">{{ u.level_badge }} {{ u.level_name }}</span>
             <span class="rank-score">{{ scoreField(u) }}</span>
           </div>
@@ -84,7 +84,7 @@
       <!-- My Rank -->
       <div v-if="myRank && userStore.isLoggedIn" class="my-rank card">
         <span>吾之排名</span>
-        <span>居第 {{ myRank.pointsRank }} 名 · {{ userStore.user?.nickname }} · {{ userStore.user?.total_points || 0 }} 积分</span>
+        <span>居第 {{ myRank.pointsRank }} 名 · {{ userStore.user?.username }} · {{ userStore.user?.total_points || 0 }} 积分</span>
       </div>
     </div>
     <AppFooter />

@@ -83,8 +83,8 @@
           </div>
           <div class="members-list">
             <div v-for="u in chatStore.onlineUsers" :key="u.userId" class="member-item">
-              <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.nickname" :size="32" />
-              <span class="member-name">{{ u.nickname }}</span>
+              <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.username" :size="32" />
+              <span class="member-name">{{ u.username }}</span>
               <span class="member-online"></span>
             </div>
             <div v-if="!chatStore.onlineUsers.length" class="members-empty">暂无在线成员</div>

@@ -34,9 +34,9 @@
         <!-- Other user message -->
         <template v-else-if="msg.userId !== currentUserId">
           <div class="msg-bubble msg-other">
-            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.nickname" :size="28" />
+            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.username" :size="28" />
             <div class="msg-body">
-              <span class="msg-name">{{ msg.nickname }}</span>
+              <span class="msg-name">{{ msg.username }}</span>
               <div class="msg-text">{{ msg.content }}</div>
               <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
             </div>
@@ -51,7 +51,7 @@
               <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
               <span v-if="msg.readCount !== undefined" class="msg-read-count">{{ msg.readCount > 0 ? `已读 ${msg.readCount}` : '未读' }}</span>
             </div>
-            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.nickname" :size="28" />
+            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.username" :size="28" />
           </div>
           <div class="msg-time msg-time-self">{{ formatTime(msg.createdAt) }}</div>
         </template>
@@ -205,7 +205,7 @@ async function sendMessage() {
     id: `local-${Date.now()}`,
     roomId: props.roomId,
     userId: msgType === 'anonymous' ? null : currentUserId.value,
-    nickname: msgType === 'anonymous' ? '匿名学子' : (userStore.user?.nickname || userStore.user?.username || '我'),
+    username: msgType === 'anonymous' ? '匿名学子' : (userStore.user?.username || '我'),
     content, imageUrl, type: msgType,
     createdAt: new Date().toISOString(),
     readCount: 0
@@ -266,7 +266,7 @@ function onChatMessage(msg) {
 
 function onChatTyping(data) {
   if (data.userId === currentUserId.value) return
-  typingName.value = data.nickname || '某人'
+  typingName.value = data.username || '某人'
 }
 
 function onChatStopTyping() { typingName.value = '' }

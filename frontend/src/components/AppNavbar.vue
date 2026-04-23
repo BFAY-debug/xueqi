@@ -41,7 +41,7 @@
           <div class="avatar-dropdown" ref="dropdownRef">
             <div class="avatar-trigger" @click="dropdownOpen = !dropdownOpen">
               <img v-if="userStore.user?.avatar_url" :src="userStore.user.avatar_url" class="avatar" />
-              <div v-else class="avatar-placeholder">{{ userStore.user?.nickname?.[0] || '学' }}</div>
+              <div v-else class="avatar-placeholder">{{ userStore.user?.username?.[0] || '学' }}</div>
             </div>
 
             <Transition name="dropdown">
@@ -49,10 +49,10 @@
                 <!-- User Info Header -->
                 <div class="dd-header">
                   <img v-if="userStore.user?.avatar_url" :src="userStore.user.avatar_url" class="dd-avatar" />
-                  <div v-else class="dd-avatar dd-avatar-placeholder">{{ userStore.user?.nickname?.[0] || '学' }}</div>
+                  <div v-else class="dd-avatar dd-avatar-placeholder">{{ userStore.user?.username?.[0] || '学' }}</div>
                   <div class="dd-user-info">
-                    <div class="dd-nickname">{{ userStore.user?.nickname }}</div>
-                    <div class="dd-username">@{{ userStore.user?.username }}</div>
+                    <div class="dd-nickname">{{ userStore.user?.username }}</div>
+                    <div class="dd-username">@{{ userStore.user?.accountId || userStore.user?.username }}</div>
                   </div>
                 </div>
 

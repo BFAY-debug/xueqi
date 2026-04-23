@@ -36,7 +36,7 @@ async function getPosts({ page = 1, pageSize = 20, category = '', tag = '', keyw
     `SELECT p.id, p.title, p.summary, p.content_type, p.version, p.category, p.is_anonymous,
             p.is_pinned, p.is_featured, p.view_count, p.like_count, p.comment_count,
             p.bookmark_count, p.created_at,
-            CASE WHEN p.is_anonymous = 1 THEN '匿名学子' ELSE u.nickname END AS author_name,
+            CASE WHEN p.is_anonymous = 1 THEN '匿名学子' ELSE u.username END AS author_name,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE u.avatar_url END AS author_avatar,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE l.badge END AS author_badge,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE l.name END AS author_level
@@ -64,7 +64,7 @@ async function getPosts({ page = 1, pageSize = 20, category = '', tag = '', keyw
 async function getPostById(postId) {
   const [rows] = await db.execute(
     `SELECT p.*,
-            CASE WHEN p.is_anonymous = 1 THEN '匿名学子' ELSE u.nickname END AS author_name,
+            CASE WHEN p.is_anonymous = 1 THEN '匿名学子' ELSE u.username END AS author_name,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE u.avatar_url END AS author_avatar,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE l.badge END AS author_badge,
             CASE WHEN p.is_anonymous = 1 THEN NULL ELSE l.name END AS author_level
@@ -307,7 +307,7 @@ function getServiceToken() {
 async function getVersions(postId) {
   const [rows] = await db.execute(
     `SELECT pv.id, pv.version, pv.title, pv.edit_summary, pv.created_by, pv.created_at,
-            u.nickname AS editor_name
+            u.username AS editor_name
      FROM post_versions pv
      LEFT JOIN users u ON u.id = pv.created_by
      WHERE pv.post_id = ?
@@ -322,7 +322,7 @@ async function getVersions(postId) {
  */
 async function getVersion(postId, version) {
   const [rows] = await db.execute(
-    `SELECT pv.*, u.nickname AS editor_name
+    `SELECT pv.*, u.username AS editor_name
      FROM post_versions pv
      LEFT JOIN users u ON u.id = pv.created_by
      WHERE pv.post_id = ? AND pv.version = ?`,

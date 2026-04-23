@@ -57,7 +57,7 @@ async function getFollowers(userId, page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.nickname, u.avatar_url, uf.created_at AS followed_at
+    `SELECT u.id, u.username, u.avatar_url, uf.created_at AS followed_at
      FROM user_follows uf
      JOIN users u ON u.id = uf.follower_id
      WHERE uf.following_id = ? AND u.status = 1
@@ -80,7 +80,7 @@ async function getFollowing(userId, page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.nickname, u.avatar_url, uf.created_at AS followed_at
+    `SELECT u.id, u.username, u.avatar_url, uf.created_at AS followed_at
      FROM user_follows uf
      JOIN users u ON u.id = uf.following_id
      WHERE uf.follower_id = ? AND u.status = 1

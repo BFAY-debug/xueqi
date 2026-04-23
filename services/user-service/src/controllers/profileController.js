@@ -11,10 +11,7 @@ async function getMyProfile(req, res, next) {
 
 async function updateMyProfile(req, res, next) {
   try {
-    const { nickname, bio, email } = req.body;
-    if (nickname !== undefined && (typeof nickname !== 'string' || nickname.length > 50)) {
-      return res.error('昵称不能超过 50 字', 400);
-    }
+    const { bio, email, accountId } = req.body;
     if (bio !== undefined && typeof bio === 'string' && bio.length > 200) {
       return res.error('签名不能超过 200 字', 400);
     }
@@ -26,7 +23,12 @@ async function updateMyProfile(req, res, next) {
         return res.error('邮箱不能超过 100 字', 400);
       }
     }
-    const profile = await userService.updateProfile(req.user.userId, { nickname, bio, email });
+    if (accountId !== undefined && accountId !== null) {
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(accountId)) {
+        return res.error('账号ID只能包含字母、数字、下划线，长度3-20', 400);
+      }
+    }
+    const profile = await userService.updateProfile(req.user.userId, { bio, email, accountId });
     res.success(profile, '资料更新成功');
   } catch (err) {
     next(err);

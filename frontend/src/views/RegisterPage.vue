@@ -26,7 +26,7 @@
             <el-input v-model="form.confirmPassword" type="password" placeholder="确认密码" size="large" show-password />
           </el-form-item>
           <el-form-item>
-            <el-input v-model="form.nickname" placeholder="昵称（选填）" size="large" />
+            <el-input v-model="form.accountId" placeholder="账号ID（选填）" size="large" />
           </el-form-item>
           <el-button type="primary" native-type="submit" :loading="loading" class="submit-btn" size="large">
             注 册
@@ -59,7 +59,7 @@ const form = ref({
   email: '',
   password: '',
   confirmPassword: '',
-  nickname: ''
+  accountId: ''
 })
 
 const validateConfirm = (rule, value, callback) => {
@@ -98,13 +98,18 @@ async function handleRegister() {
 
   loading.value = true
   try {
-    await userStore.register({
+    const res = await userStore.register({
       username: form.value.username,
       email: form.value.email,
       password: form.value.password,
-      nickname: form.value.nickname || undefined
+      accountId: form.value.accountId || undefined
     })
-    ElMessage.success('注册成功，请登录')
+    const accountId = res.data?.accountId
+    if (accountId) {
+      ElMessage.success(`注册成功！你的账号ID: ${accountId}`)
+    } else {
+      ElMessage.success('注册成功，请登录')
+    }
     router.push(`/login?redirect=${encodeURIComponent(redirect.value)}`)
   } catch (err) {
     ElMessage.error(err.message || '注册失败')

@@ -68,11 +68,11 @@
             <div class="participant-grid" v-if="participants.length">
               <div class="participant card" v-for="p in participants" :key="p.user_id">
                 <div class="p-avatar-wrap">
-                  <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="36" :clickable="true" :user-id="p.user_id" @user-click="openProfileCard" />
+                  <UserAvatar :avatar-url="p.avatar_url" :nickname="p.username" :size="36" :clickable="true" :user-id="p.user_id" @user-click="openProfileCard" />
                   <span v-if="participantStatuses[p.user_id]" class="status-dot" :class="'status-' + participantStatuses[p.user_id]"></span>
                 </div>
                 <div class="p-info">
-                  <span class="p-name">{{ p.nickname || p.username }}</span>
+                  <span class="p-name">{{ p.username }}</span>
                   <span v-if="participantStatuses[p.user_id]" class="p-status" :class="'status-text-' + participantStatuses[p.user_id]">
                     {{ statusLabel(participantStatuses[p.user_id]) }}
                   </span>
@@ -163,8 +163,8 @@
           <div class="panel-label">同窗 {{ participants.length }} 人</div>
           <div class="immersive-avatars">
             <div class="immersive-avatar" v-for="p in participants.slice(0, 8)" :key="p.user_id"
-              :title="p.nickname || p.username">
-              <UserAvatar :avatar-url="p.avatar_url" :nickname="p.nickname || p.username" :size="32" />
+              :title="p.username">
+              <UserAvatar :avatar-url="p.avatar_url" :nickname="p.username" :size="32" />
             </div>
           </div>
         </div>

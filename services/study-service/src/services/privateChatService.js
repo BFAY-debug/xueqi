@@ -49,7 +49,7 @@ async function getConversationMessages(conversationId, userId, limit = 50, befor
   }
 
   let query = `SELECT pm.id, pm.sender_id AS senderId, pm.content, pm.image_url AS imageUrl, pm.is_read, pm.created_at,
-                      u.nickname AS senderName, u.avatar_url AS senderAvatar
+                      u.username AS senderName, u.avatar_url AS senderAvatar
                FROM private_messages pm
                JOIN users u ON u.id = pm.sender_id
                WHERE pm.conversation_id = ?`;
@@ -69,8 +69,8 @@ async function getConversationMessages(conversationId, userId, limit = 50, befor
 async function getUserConversations(userId) {
   const [rows] = await db.execute(
     `SELECT c.id, c.user1_id, c.user2_id, c.last_message_at,
-            u1.nickname AS user1_nickname, u1.avatar_url AS user1_avatar,
-            u2.nickname AS user2_nickname, u2.avatar_url AS user2_avatar
+            u1.username AS user1_name, u1.avatar_url AS user1_avatar,
+            u2.username AS user2_name, u2.avatar_url AS user2_avatar
      FROM conversations c
      JOIN users u1 ON u1.id = c.user1_id
      JOIN users u2 ON u2.id = c.user2_id
@@ -109,7 +109,7 @@ async function getUserConversations(userId) {
     return {
       id: row.id,
       peerId: isUser1 ? row.user2_id : row.user1_id,
-      peerNickname: isUser1 ? row.user2_nickname : row.user1_nickname,
+      peerName: isUser1 ? row.user2_name : row.user1_name,
       peerAvatar: isUser1 ? row.user2_avatar : row.user1_avatar,
       lastMessage: lastMsgMap[row.id] || null,
       lastMessageAt: row.last_message_at,

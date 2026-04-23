@@ -8,7 +8,7 @@ const CACHE_TTL = 300; // 5 minutes
  */
 function baseLeaderboardQuery(whereClause, orderBy, limit = 50, offset = 0) {
   return db.execute(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url,
+    `SELECT u.id, u.username, u.username, u.avatar_url,
             us.total_points, us.total_study_minutes, us.checkin_streak,
             l.name AS level_name, l.badge AS level_badge
      FROM user_stats us
@@ -44,7 +44,7 @@ async function getWeeklyLeaderboard(page = 1, pageSize = 50) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url,
+    `SELECT u.id, u.username, u.username, u.avatar_url,
             COALESCE(SUM(pl.points), 0) AS weekly_points,
             (SELECT l2.name FROM levels l2 JOIN user_stats us2 ON us2.level_id = l2.id WHERE us2.user_id = u.id) AS level_name,
             (SELECT l2.badge FROM levels l2 JOIN user_stats us2 ON us2.level_id = l2.id WHERE us2.user_id = u.id) AS level_badge
@@ -72,7 +72,7 @@ async function getMonthlyLeaderboard(page = 1, pageSize = 50) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url,
+    `SELECT u.id, u.username, u.username, u.avatar_url,
             COALESCE(SUM(pl.points), 0) AS monthly_points,
             (SELECT l2.name FROM levels l2 JOIN user_stats us2 ON us2.level_id = l2.id WHERE us2.user_id = u.id) AS level_name,
             (SELECT l2.badge FROM levels l2 JOIN user_stats us2 ON us2.level_id = l2.id WHERE us2.user_id = u.id) AS level_badge

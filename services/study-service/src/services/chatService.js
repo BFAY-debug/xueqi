@@ -23,7 +23,7 @@ async function getRecentMessages(roomId, limit = 50, userId = null) {
   const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
   const [rows] = await db.execute(
     `SELECT m.id, m.room_id, m.user_id, m.content, m.image_url, m.type, m.created_at,
-            u.nickname, u.avatar_url, u.username
+            u.username, u.avatar_url
      FROM room_messages m
      LEFT JOIN users u ON u.id = m.user_id
      WHERE m.room_id = ?
@@ -33,7 +33,7 @@ async function getRecentMessages(roomId, limit = 50, userId = null) {
   );
   return rows.reverse().map(row => {
     if (row.type === 'anonymous') {
-      return { ...row, user_id: null, nickname: '匿名学子', username: '匿名学子', avatar_url: null };
+      return { ...row, user_id: null, username: '匿名学子', avatar_url: null };
     }
     return row;
   });
@@ -50,7 +50,7 @@ async function createMessage(roomId, userId, content, type = 'user', imageUrl = 
 
   const [rows] = await db.execute(
     `SELECT m.id, m.room_id, m.user_id, m.content, m.image_url, m.type, m.created_at,
-            u.nickname, u.avatar_url, u.username
+            u.username, u.avatar_url
      FROM room_messages m
      LEFT JOIN users u ON u.id = m.user_id
      WHERE m.id = ?`,

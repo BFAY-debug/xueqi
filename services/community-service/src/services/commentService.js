@@ -13,7 +13,7 @@ async function getComments(postId, page = 1, pageSize = 50) {
 
   const [rows] = await db.execute(
     `SELECT c.*,
-            CASE WHEN c.is_anonymous = 1 THEN '匿名学子' ELSE u.nickname END AS author_name,
+            CASE WHEN c.is_anonymous = 1 THEN '匿名学子' ELSE u.username END AS author_name,
             CASE WHEN c.is_anonymous = 1 THEN NULL ELSE u.avatar_url END AS author_avatar,
             CASE WHEN c.is_anonymous = 1 THEN NULL ELSE l.badge END AS author_badge
      FROM comments c

@@ -48,7 +48,7 @@ async function sendRequest(senderId, receiverId, message = null) {
 
   // receiver must exist and be active
   const [receiverRows] = await db.execute(
-    'SELECT id, nickname FROM users WHERE id = ? AND status = 1',
+    'SELECT id, username FROM users WHERE id = ? AND status = 1',
     [receiverId]
   );
   if (receiverRows.length === 0) {
@@ -56,7 +56,7 @@ async function sendRequest(senderId, receiverId, message = null) {
     err.status = 404;
     throw err;
   }
-  const receiverNickname = receiverRows[0].nickname;
+  const receiverName = receiverRows[0].username;
 
   // check block in either direction
   const [blockRows] = await db.execute(
@@ -117,17 +117,17 @@ async function sendRequest(senderId, receiverId, message = null) {
 
   // Get sender nickname for notification
   const [senderRows] = await db.execute(
-    'SELECT nickname FROM users WHERE id = ?',
+    'SELECT username FROM users WHERE id = ?',
     [senderId]
   );
-  const senderNickname = senderRows[0]?.nickname || '用户';
+  const senderName = senderRows[0]?.username || '用户';
 
   // Create notification for receiver
   await notificationService.createNotification({
     userId: receiverId,
     type: 'friend_request',
     title: '好友请求',
-    content: `${senderNickname} 请求添加你为好友`,
+    content: `${senderName} 请求添加你为好友`,
     relatedId: result.insertId,
     relatedType: 'friend_request'
   });
@@ -137,7 +137,7 @@ async function sendRequest(senderId, receiverId, message = null) {
     requestId: result.insertId,
     senderId,
     receiverId,
-    senderNickname,
+    senderName,
     message
   });
 
@@ -218,17 +218,17 @@ async function acceptRequest(requestId, userId) {
 
   // Get receiver nickname for notification
   const [receiverRows] = await db.execute(
-    'SELECT nickname FROM users WHERE id = ?',
+    'SELECT username FROM users WHERE id = ?',
     [userId]
   );
-  const receiverNickname = receiverRows[0]?.nickname || '用户';
+  const receiverName = receiverRows[0]?.username || '用户';
 
   // Notify sender that their request was accepted
   await notificationService.createNotification({
     userId: request.sender_id,
     type: 'friend_accepted',
     title: '好友请求已接受',
-    content: `${receiverNickname} 接受了你的好友请求`,
+    content: `${receiverName} 接受了你的好友请求`,
     relatedId: friendResult.insertId,
     relatedType: 'friendship'
   });
@@ -427,11 +427,11 @@ async function getFriends(userId, page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.nickname, u.avatar_url, u.bio, u.status, f.created_at AS friend_since
+    `SELECT u.id, u.username, u.avatar_url, u.bio, u.status, f.created_at AS friend_since
      FROM friendships f
      JOIN users u ON u.id = CASE WHEN f.user1_id = ? THEN f.user2_id ELSE f.user1_id END
      WHERE (f.user1_id = ? OR f.user2_id = ?)
-     ORDER BY u.nickname ASC
+     ORDER BY u.username ASC
      LIMIT ${pageSize} OFFSET ${offset}`,
     [userId, userId, userId]
   );
@@ -461,7 +461,7 @@ async function getFriendRequests(userId, type = 'incoming', page = 1, pageSize =
 
   if (type === 'incoming') {
     dataQuery = `SELECT fr.id, fr.sender_id, fr.message, fr.status, fr.created_at,
-                        u.nickname AS sender_nickname, u.avatar_url AS sender_avatar
+                        u.username AS sender_username, u.avatar_url AS sender_avatar
                  FROM friend_requests fr
                  JOIN users u ON u.id = fr.sender_id
                  WHERE fr.receiver_id = ? AND fr.status = 'pending'
@@ -472,7 +472,7 @@ async function getFriendRequests(userId, type = 'incoming', page = 1, pageSize =
   } else {
     // outgoing: pending + rejected
     dataQuery = `SELECT fr.id, fr.receiver_id, fr.message, fr.status, fr.created_at,
-                        u.nickname AS receiver_nickname, u.avatar_url AS receiver_avatar
+                        u.username AS receiver_username, u.avatar_url AS receiver_avatar
                  FROM friend_requests fr
                  JOIN users u ON u.id = fr.receiver_id
                  WHERE fr.sender_id = ? AND fr.status IN ('pending', 'rejected')
@@ -590,7 +590,7 @@ async function getBlockedUsers(userId, page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.nickname, u.avatar_url, b.created_at AS blocked_at
+    `SELECT u.id, u.username, u.avatar_url, b.created_at AS blocked_at
      FROM blocks b
      JOIN users u ON u.id = b.blocked_id
      WHERE b.blocker_id = ?
@@ -623,11 +623,11 @@ async function searchUsers(userId, query, page = 1, pageSize = 20) {
   const likeQuery = `%${query}%`;
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.nickname, u.avatar_url, u.bio
+    `SELECT u.id, u.username, u.avatar_url, u.bio
      FROM users u
      WHERE u.id != ? AND u.status = 1
-       AND (u.nickname LIKE ? OR u.username LIKE ?)
-     ORDER BY u.nickname ASC
+       AND (u.username LIKE ? OR u.account_id LIKE ?)
+     ORDER BY u.username ASC
      LIMIT ${pageSize} OFFSET ${offset}`,
     [userId, likeQuery, likeQuery]
   );
@@ -635,7 +635,7 @@ async function searchUsers(userId, query, page = 1, pageSize = 20) {
   const [countRows] = await db.execute(
     `SELECT COUNT(*) AS total FROM users
      WHERE id != ? AND status = 1
-       AND (nickname LIKE ? OR username LIKE ?)`,
+       AND (username LIKE ? OR account_id LIKE ?)`,
     [userId, likeQuery, likeQuery]
   );
 

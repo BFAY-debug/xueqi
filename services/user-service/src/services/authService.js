@@ -4,9 +4,25 @@ const { db, jwt } = require('xueqi-shared');
 const SALT_ROUNDS = 10;
 
 /**
+ * Generate a unique account_id (6-char alphanumeric)
+ */
+async function generateAccountId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  for (let attempt = 0; attempt < 20; attempt++) {
+    let id = '';
+    for (let i = 0; i < 6; i++) {
+      id += chars[Math.floor(Math.random() * chars.length)];
+    }
+    const [rows] = await db.execute('SELECT id FROM users WHERE account_id = ?', [id]);
+    if (rows.length === 0) return id;
+  }
+  throw new Error('Failed to generate unique account_id');
+}
+
+/**
  * Register a new user
  */
-async function register({ username, email, password, nickname }) {
+async function register({ username, email, password, accountId: inputAccountId }) {
   // Check duplicates
   const [existing] = await db.execute(
     'SELECT id FROM users WHERE username = ? OR email = ?',
@@ -19,12 +35,12 @@ async function register({ username, email, password, nickname }) {
     throw error;
   }
 
+  const accountId = inputAccountId || await generateAccountId();
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const nicknameValue = nickname || username;
 
   const [result] = await db.execute(
-    'INSERT INTO users (username, email, password_hash, nickname, role_id) VALUES (?, ?, ?, ?, 3)',
-    [username, email, passwordHash, nicknameValue]
+    'INSERT INTO users (username, account_id, email, password_hash, role_id) VALUES (?, ?, ?, ?, 3)',
+    [username, accountId, email, passwordHash]
   );
 
   // Create user_stats row
@@ -33,7 +49,7 @@ async function register({ username, email, password, nickname }) {
     [result.insertId]
   );
 
-  return { userId: result.insertId, username, email };
+  return { userId: result.insertId, username, accountId, email };
 }
 
 /**
@@ -41,10 +57,10 @@ async function register({ username, email, password, nickname }) {
  */
 async function login({ username, password }) {
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.role_id, u.status,
+    `SELECT u.id, u.username, u.account_id, u.email, u.password_hash, u.role_id, u.status,
             r.name AS role_name
      FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE u.username = ? OR u.email = ? OR u.nickname = ?`,
+     WHERE u.username = ? OR u.email = ? OR u.account_id = ?`,
     [username, username, username]
   );
 
@@ -83,8 +99,8 @@ async function login({ username, password }) {
     user: {
       userId: user.id,
       username: user.username,
+      accountId: user.account_id,
       email: user.email,
-      nickname: user.nickname,
       roleId: user.role_id,
       roleName: user.role_name
     },

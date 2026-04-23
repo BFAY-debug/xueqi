@@ -36,7 +36,7 @@
       <!-- Content -->
       <div class="hero-content">
         <template v-if="userStore.isLoggedIn && userStore.user">
-          <h1 class="hero-greeting" ref="heroTitle">欢迎回来，{{ userStore.user.nickname }}</h1>
+          <h1 class="hero-greeting" ref="heroTitle">欢迎回来，{{ userStore.user.username }}</h1>
           <p class="hero-subtitle" ref="heroSubtitle">学而时习之，不亦说乎</p>
           <div class="hero-actions" ref="heroActions">
             <router-link to="/study-rooms" class="btn-primary btn-lg">进入书院</router-link>
@@ -68,9 +68,9 @@
           </div>
           <template v-if="userStore.isLoggedIn && userStore.user">
             <div class="user-welcome">
-              <UserAvatar :avatar-url="userStore.user.avatar_url" :nickname="userStore.user.nickname" :size="40" />
+              <UserAvatar :avatar-url="userStore.user.avatar_url" :nickname="userStore.user.username" :size="40" />
               <div>
-                <div class="user-name">{{ userStore.user.nickname }}</div>
+                <div class="user-name">{{ userStore.user.username }}</div>
                 <div class="user-level">
                   <span class="seal" :class="`seal--level-${userLevel}`">Lv.{{ userLevel }}</span>
                 </div>
@@ -133,9 +133,9 @@
                 <template v-else-if="i === 1">🥈</template>
                 <template v-else>🥉</template>
               </span>
-              <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
+              <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="36" />
               <div class="top-info">
-                <span class="top-name">{{ u.nickname || '虚位以待' }}</span>
+                <span class="top-name">{{ u.username || '虚位以待' }}</span>
                 <span class="top-score">{{ u.total_points || 0 }} 分</span>
               </div>
             </div>
@@ -176,10 +176,10 @@
               class="online-user-card"
             >
               <div class="online-avatar-wrap">
-                <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.nickname" :size="44" />
+                <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.username" :size="44" />
                 <span class="online-dot"></span>
               </div>
-              <span class="online-name">{{ u.nickname }}</span>
+              <span class="online-name">{{ u.username }}</span>
             </div>
           </div>
           <AppEmpty v-else text="暂无在线学友" />

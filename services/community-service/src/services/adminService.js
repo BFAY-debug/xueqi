@@ -9,7 +9,7 @@ async function getPendingPosts(page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT p.*, u.username, u.nickname
+    `SELECT p.*, u.username, u.username
      FROM posts p
      JOIN users u ON u.id = p.user_id
      WHERE p.status = 'pending'
@@ -135,7 +135,7 @@ async function getPendingComments(page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT c.*, u.username, u.nickname, p.title AS post_title
+    `SELECT c.*, u.username, u.username, p.title AS post_title
      FROM comments c
      JOIN users u ON u.id = c.user_id
      JOIN posts p ON p.id = c.post_id
@@ -230,7 +230,7 @@ async function getAllPosts({ page = 1, pageSize = 20, status = '' }) {
   const [rows] = await db.execute(
     `SELECT p.id, p.title, p.category, p.status, p.is_pinned, p.is_featured,
             p.view_count, p.like_count, p.comment_count, p.created_at,
-            u.nickname AS author_name
+            u.username AS author_name
      FROM posts p
      JOIN users u ON u.id = p.user_id
      WHERE ${where}
@@ -273,7 +273,7 @@ async function getAllComments({ page = 1, pageSize = 20, postId = '' }) {
 
   const [rows] = await db.execute(
     `SELECT c.id, c.post_id, c.content, c.is_anonymous, c.like_count, c.created_at,
-            u.nickname AS author_name, p.title AS post_title
+            u.username AS author_name, p.title AS post_title
      FROM comments c
      JOIN users u ON u.id = c.user_id
      JOIN posts p ON p.id = c.post_id
@@ -314,8 +314,8 @@ async function getPendingProposals(page = 1, pageSize = 20) {
 
   const [rows] = await db.execute(
     `SELECT ep.*, p.title AS post_title, p.user_id AS post_author_id,
-            u.nickname AS proposer_name, u.avatar_url AS proposer_avatar,
-            au.nickname AS author_name
+            u.username AS proposer_name, u.avatar_url AS proposer_avatar,
+            au.username AS author_name
      FROM edit_proposals ep
      JOIN posts p ON p.id = ep.post_id
      JOIN users u ON u.id = ep.proposer_id

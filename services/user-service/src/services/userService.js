@@ -5,7 +5,7 @@ const { db, logger } = require('xueqi-shared');
  */
 async function getMyProfile(userId) {
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, u.bio,
+    `SELECT u.id, u.username, u.account_id, u.email, u.avatar_url, u.bio,
             u.role_id, u.status, u.created_at,
             r.name AS role_name,
             us.total_study_minutes, us.total_pomodoros, us.total_points,
@@ -30,8 +30,8 @@ async function getMyProfile(userId) {
     id: row.id,
     userId: row.id,
     username: row.username,
+    accountId: row.account_id,
     email: row.email,
-    nickname: row.nickname,
     avatar_url: row.avatar_url,
     bio: row.bio,
     roleId: row.role_id,
@@ -55,7 +55,7 @@ async function getMyProfile(userId) {
  */
 async function getPublicProfile(userId) {
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url, u.bio, u.created_at,
+    `SELECT u.id, u.username, u.account_id, u.avatar_url, u.bio, u.created_at,
             r.name AS role_name,
             us.total_study_minutes, us.total_pomodoros, us.total_points,
             us.level_id, us.checkin_streak,
@@ -80,14 +80,10 @@ async function getPublicProfile(userId) {
 /**
  * Update user profile
  */
-async function updateProfile(userId, { nickname, bio, email }) {
+async function updateProfile(userId, { bio, email, accountId }) {
   const updates = [];
   const params = [];
 
-  if (nickname !== undefined) {
-    updates.push('nickname = ?');
-    params.push(nickname);
-  }
   if (bio !== undefined) {
     updates.push('bio = ?');
     params.push(bio);
@@ -105,6 +101,24 @@ async function updateProfile(userId, { nickname, bio, email }) {
     }
     updates.push('email = ?');
     params.push(email);
+  }
+  if (accountId !== undefined) {
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(accountId)) {
+      const error = new Error('账号ID只能包含字母、数字、下划线，长度3-20');
+      error.status = 400;
+      throw error;
+    }
+    const [existing] = await db.execute(
+      'SELECT id FROM users WHERE account_id = ? AND id != ?',
+      [accountId, userId]
+    );
+    if (existing.length > 0) {
+      const error = new Error('该账号ID已被使用');
+      error.status = 409;
+      throw error;
+    }
+    updates.push('account_id = ?');
+    params.push(accountId);
   }
 
   if (updates.length === 0) {

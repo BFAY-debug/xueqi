@@ -50,7 +50,7 @@ async function authMiddleware(req, res, next) {
 
   try {
     const [rows] = await pool.execute(
-      'SELECT u.id, u.username, u.email, u.role_id, u.status, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?',
+      'SELECT u.id, u.username, u.account_id, u.email, u.role_id, u.status, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?',
       [decoded.userId]
     );
 
@@ -65,6 +65,7 @@ async function authMiddleware(req, res, next) {
     req.user = {
       userId: rows[0].id,
       username: rows[0].username,
+      accountId: rows[0].account_id,
       email: rows[0].email,
       roleId: rows[0].role_id,
       roleName: rows[0].role_name
@@ -92,7 +93,7 @@ async function optionalAuth(req, res, next) {
 
   try {
     const [rows] = await pool.execute(
-      'SELECT u.id, u.username, u.email, u.role_id, u.status, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?',
+      'SELECT u.id, u.username, u.account_id, u.email, u.role_id, u.status, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?',
       [decoded.userId]
     );
 
@@ -100,6 +101,7 @@ async function optionalAuth(req, res, next) {
       req.user = {
         userId: rows[0].id,
         username: rows[0].username,
+        accountId: rows[0].account_id,
         email: rows[0].email,
         roleId: rows[0].role_id,
         roleName: rows[0].role_name

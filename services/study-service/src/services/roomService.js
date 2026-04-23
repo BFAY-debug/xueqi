@@ -149,7 +149,7 @@ async function leaveRoom(roomId, userId) {
  */
 async function getParticipants(roomId) {
   const [rows] = await db.execute(
-    `SELECT rp.*, u.username, u.nickname, u.avatar_url
+    `SELECT rp.*, u.username, u.username, u.avatar_url
      FROM room_participants rp
      JOIN users u ON u.id = rp.user_id
      WHERE rp.room_id = ? AND rp.is_studying = 1

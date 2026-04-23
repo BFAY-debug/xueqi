@@ -103,8 +103,8 @@ export const useMessageStore = defineStore('message', () => {
   function updateUserStatus(data) {
     if (data.status === 'online') {
       const exists = onlineUsers.value.find(u => u.userId === data.userId)
-      if (!exists && data.nickname) {
-        onlineUsers.value.push({ userId: data.userId, nickname: data.nickname, avatarUrl: data.avatarUrl })
+      if (!exists && data.username) {
+        onlineUsers.value.push({ userId: data.userId, username: data.username, avatarUrl: data.avatarUrl })
       }
     } else {
       onlineUsers.value = onlineUsers.value.filter(u => u.userId !== data.userId)

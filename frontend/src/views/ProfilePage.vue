@@ -20,15 +20,15 @@
               </svg>
               <div class="avatar-inside-ring">
                 <img v-if="userStore.user.avatar_url" :src="userStore.user.avatar_url" alt="avatar" />
-                <div v-else class="avatar-placeholder-lg">{{ userStore.user.nickname?.[0] || '学' }}</div>
+                <div v-else class="avatar-placeholder-lg">{{ userStore.user.username?.[0] || '学' }}</div>
               </div>
             </div>
             <el-button size="small" @click="triggerUpload" class="avatar-upload-btn">更换头像</el-button>
             <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="uploadAvatar" />
           </div>
 
-          <h2 class="profile-name">{{ userStore.user.nickname }}</h2>
-          <p class="profile-username">@{{ userStore.user.username }}</p>
+          <h2 class="profile-name">{{ userStore.user.username }}</h2>
+          <p class="profile-username">@{{ userStore.user.accountId || userStore.user.username }}</p>
 
           <div class="profile-bio" v-if="userStore.user.bio">{{ userStore.user.bio }}</div>
 
@@ -225,8 +225,8 @@
           <div v-if="activeTab === 'following'" class="tab-content">
             <div class="follow-list">
               <div v-for="u in followingList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
-                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
-                <span class="follow-name">{{ u.nickname }}</span>
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="36" />
+                <span class="follow-name">{{ u.username }}</span>
               </div>
             </div>
             <p v-if="!followingList.length" class="empty-text">还没有关注任何人</p>
@@ -236,8 +236,8 @@
           <div v-if="activeTab === 'followers'" class="tab-content">
             <div class="follow-list">
               <div v-for="u in followerList" :key="u.id" class="follow-item card" @click="$router.push('/user/' + u.id)">
-                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.nickname" :size="36" />
-                <span class="follow-name">{{ u.nickname }}</span>
+                <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="36" />
+                <span class="follow-name">{{ u.username }}</span>
               </div>
             </div>
             <p v-if="!followerList.length" class="empty-text">暂无粉丝</p>
@@ -302,8 +302,8 @@
 
     <!-- Edit Dialog -->
     <el-dialog v-model="showEdit" title="编辑资料" width="440px">
-      <el-form label-width="60px">
-        <el-form-item label="昵称"><el-input v-model="editForm.nickname" /></el-form-item>
+      <el-form label-width="80px">
+        <el-form-item label="账号ID"><el-input v-model="editForm.accountId" placeholder="3-20位字母、数字、下划线" /></el-form-item>
         <el-form-item label="邮箱"><el-input v-model="editForm.email" /></el-form-item>
         <el-form-item label="签名"><el-input v-model="editForm.bio" type="textarea" :rows="2" /></el-form-item>
       </el-form>
@@ -365,7 +365,7 @@ const showApplyAdmin = ref(false)
 const applyReason = ref('')
 const fileInput = ref(null)
 
-const editForm = reactive({ nickname: '', email: '', bio: '' })
+const editForm = reactive({ email: '', bio: '', accountId: '' })
 
 // Gamification computed
 const weekDays = ['一', '二', '三', '四', '五', '六', '日']
@@ -503,9 +503,9 @@ function openChatRoom(roomId) {
 
 watch(showEdit, (v) => {
   if (v && userStore.user) {
-    editForm.nickname = userStore.user.nickname || ''
     editForm.email = userStore.user.email || ''
     editForm.bio = userStore.user.bio || ''
+    editForm.accountId = userStore.user.accountId || ''
   }
 })
 

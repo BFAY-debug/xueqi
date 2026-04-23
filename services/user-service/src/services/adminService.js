@@ -9,8 +9,8 @@ async function getUsers({ page = 1, pageSize = 20, search = '', role = '', statu
   const params = [];
 
   if (search) {
-    conditions.push('(u.username LIKE ? OR u.email LIKE ? OR u.nickname LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    conditions.push('(u.username LIKE ? OR u.email LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`);
   }
   if (role) {
     conditions.push('r.name = ?');
@@ -24,7 +24,7 @@ async function getUsers({ page = 1, pageSize = 20, search = '', role = '', statu
   const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
 
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, u.bio,
+    `SELECT u.id, u.username, u.email, u.username, u.avatar_url, u.bio,
             u.role_id, u.status, u.created_at,
             r.name AS role_name,
             us.total_points, us.level_id, l.name AS level_name
@@ -189,8 +189,8 @@ async function getPendingApplications({ page = 1, pageSize = 20 }) {
 
   const [rows] = await db.execute(
     `SELECT a.id, a.reason, a.status, a.created_at, a.reviewed_at,
-            u.id AS user_id, u.username, u.nickname, u.avatar_url,
-            r.nickname AS reviewer_name
+            u.id AS user_id, u.username, u.username, u.avatar_url,
+            r.username AS reviewer_name
      FROM admin_applications a
      JOIN users u ON a.user_id = u.id
      LEFT JOIN users r ON a.reviewer_id = r.id
@@ -255,7 +255,7 @@ async function reviewApplication(applicationId, action, reviewerId) {
  */
 async function getUserDetail(userId) {
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, u.bio,
+    `SELECT u.id, u.username, u.email, u.username, u.avatar_url, u.bio,
             u.status, u.created_at,
             r.name AS role_name,
             us.total_points, us.total_study_minutes, us.total_pomodoros,

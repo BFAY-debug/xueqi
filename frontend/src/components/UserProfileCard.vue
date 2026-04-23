@@ -24,7 +24,7 @@
               <div class="avatar-wrapper">
                 <UserAvatar
                   :avatarUrl="userInfo.avatar_url"
-                  :nickname="userInfo.nickname"
+                  :nickname="userInfo.username"
                   :size="64"
                 />
                 <span
@@ -33,7 +33,7 @@
                   title="在线"
                 ></span>
               </div>
-              <h3 class="profile-nickname">{{ userInfo.nickname }}</h3>
+              <h3 class="profile-nickname">{{ userInfo.username }}</h3>
               <p v-if="userInfo.bio" class="profile-bio">{{ userInfo.bio }}</p>
               <button class="btn-view-page" @click="goToUserPage">查看主页</button>
             </div>

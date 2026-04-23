@@ -53,7 +53,7 @@ async function getMyBookmarks(userId, { page = 1, pageSize = 20 }) {
 
   const [rows] = await db.execute(
     `SELECT p.*, pb.created_at AS bookmarked_at,
-            u.nickname AS author_name, u.avatar_url AS author_avatar
+            u.username AS author_name, u.avatar_url AS author_avatar
      FROM post_bookmarks pb
      JOIN posts p ON p.id = pb.post_id
      JOIN users u ON u.id = p.user_id

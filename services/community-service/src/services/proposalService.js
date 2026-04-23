@@ -54,7 +54,7 @@ async function getProposals({ postId, status, page = 1, pageSize = 20 }) {
 
   const [rows] = await db.execute(
     `SELECT ep.*, p.title AS post_title,
-            u.nickname AS proposer_name, u.avatar_url AS proposer_avatar,
+            u.username AS proposer_name, u.avatar_url AS proposer_avatar,
             l.badge AS proposer_badge
      FROM edit_proposals ep
      JOIN posts p ON p.id = ep.post_id
@@ -81,7 +81,7 @@ async function getProposals({ postId, status, page = 1, pageSize = 20 }) {
 async function getProposalById(id) {
   const [rows] = await db.execute(
     `SELECT ep.*, p.title AS post_title, p.content AS original_content, p.version AS current_version,
-            u.nickname AS proposer_name, u.avatar_url AS proposer_avatar,
+            u.username AS proposer_name, u.avatar_url AS proposer_avatar,
             l.badge AS proposer_badge
      FROM edit_proposals ep
      JOIN posts p ON p.id = ep.post_id

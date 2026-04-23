@@ -23,7 +23,7 @@
           <div v-for="p in pendingPosts" :key="p.id" class="review-item card">
             <div class="review-content">
               <span class="review-badge">[{{ p.category }}]</span>
-              <strong>{{ p.nickname || p.username }}</strong>: {{ p.title }}
+              <strong>{{ p.username }}</strong>: {{ p.title }}
               <p class="review-excerpt">{{ p.content?.slice(0, 150) }}...</p>
             </div>
             <div class="review-actions">
@@ -81,7 +81,7 @@
             <div v-for="c in pendingComments" :key="'p'+c.id" class="review-item card" style="border-left:3px solid var(--color-gold)">
               <div class="review-content">
                 <el-tag type="warning" size="small">待审核</el-tag>
-                <strong style="margin-left:4px">{{ c.nickname || c.username }}</strong> 评论「{{ c.post_title }}」:
+                <strong style="margin-left:4px">{{ c.username }}</strong> 评论「{{ c.post_title }}」:
                 <p class="review-excerpt">{{ c.content }}</p>
               </div>
               <div class="review-actions">
@@ -139,7 +139,7 @@
           <el-table :data="users" stripe>
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="username" label="用户名" width="120" />
-            <el-table-column prop="nickname" label="昵称" width="120" />
+            <el-table-column prop="accountId" label="账号ID" width="120" />
             <el-table-column prop="role_name" label="角色" width="100" />
             <el-table-column prop="status" label="状态" width="80">
               <template #default="{ row }">
@@ -211,7 +211,7 @@
           <div v-for="a in adminApplications" :key="a.id" class="review-item card">
             <div class="review-content">
               <span class="review-badge">[申请]</span>
-              <strong>{{ a.nickname || a.username }}</strong> 申请成为管理员
+              <strong>{{ a.username }}</strong> 申请成为管理员
               <p class="review-excerpt">理由：{{ a.reason }}</p>
               <span class="app-time">{{ a.created_at }}</span>
             </div>
@@ -348,9 +348,9 @@
     <el-dialog v-model="showUserDetailDialog" title="学子详情" width="500px">
       <div v-if="userDetail" class="user-detail">
         <div class="user-detail-header">
-          <UserAvatar :avatar-url="userDetail.avatar_url" :nickname="userDetail.nickname || userDetail.username" :size="64" class="user-detail-avatar" />
+          <UserAvatar :avatar-url="userDetail.avatar_url" :nickname="userDetail.username" :size="64" class="user-detail-avatar" />
           <div>
-            <h3 style="margin:0">{{ userDetail.nickname || userDetail.username }}</h3>
+            <h3 style="margin:0">{{ userDetail.username }}</h3>
             <p style="margin:4px 0 0;font-size:0.85rem;color:var(--color-text-secondary)">@{{ userDetail.username }} · {{ userDetail.role_name }}</p>
           </div>
           <el-tag :type="userDetail.status === 1 ? 'success' : 'danger'" size="small" style="margin-left:auto">{{ userDetail.status === 1 ? '正常' : '禁言' }}</el-tag>

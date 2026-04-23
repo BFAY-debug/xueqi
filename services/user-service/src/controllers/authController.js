@@ -2,13 +2,13 @@ const authService = require('../services/authService');
 
 async function register(req, res, next) {
   try {
-    const { username, email, password, nickname } = req.body;
+    const { username, email, password, accountId } = req.body;
 
     if (!username || !email || !password) {
       return res.error('用户名、邮箱和密码不能为空', 400);
     }
-    if (username.length < 3 || username.length > 50) {
-      return res.error('用户名长度需在 3-50 之间', 400);
+    if (username.length < 2 || username.length > 50) {
+      return res.error('用户名长度需在 2-50 之间', 400);
     }
     if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
       return res.error('用户名只能包含字母、数字、下划线和中文', 400);
@@ -25,11 +25,13 @@ async function register(req, res, next) {
     if (email.length > 100) {
       return res.error('邮箱不能超过 100 字', 400);
     }
-    if (nickname !== undefined && nickname !== null && String(nickname).length > 50) {
-      return res.error('昵称不能超过 50 字', 400);
+    if (accountId !== undefined && accountId !== null && accountId !== '') {
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(accountId)) {
+        return res.error('账号ID只能包含字母、数字、下划线，长度3-20', 400);
+      }
     }
 
-    const result = await authService.register({ username, email, password, nickname });
+    const result = await authService.register({ username, email, password, accountId: accountId || undefined });
     res.success(result, '注册成功', 201);
   } catch (err) {
     next(err);

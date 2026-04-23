@@ -12,10 +12,10 @@
         @click="$emit('select', u)"
       >
         <div class="online-avatar-wrap">
-          <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.nickname" :size="size" />
+          <UserAvatar :avatar-url="u.avatarUrl" :nickname="u.username" :size="size" />
           <span class="online-dot"></span>
         </div>
-        <span class="online-name">{{ u.nickname }}</span>
+        <span class="online-name">{{ u.username }}</span>
       </div>
     </div>
     <div v-else class="online-empty">暂无在线学友</div>

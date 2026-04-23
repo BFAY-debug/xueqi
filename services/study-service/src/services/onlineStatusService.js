@@ -3,11 +3,11 @@ const { redis, logger } = require('xueqi-shared');
 const ONLINE_KEY = 'online:users';
 const ONLINE_INFO_PREFIX = 'online:user:';
 
-async function userOnline(userId, nickname, avatarUrl) {
+async function userOnline(userId, username, avatarUrl) {
   try {
     await redis.sadd(ONLINE_KEY, userId);
     await redis.hset(ONLINE_INFO_PREFIX + userId, {
-      nickname,
+      username,
       avatarUrl: avatarUrl || '',
       lastSeen: Date.now()
     });
@@ -48,10 +48,10 @@ async function getOnlineUsers() {
     const users = [];
     for (let i = 0; i < ids.length; i++) {
       const info = results[i]?.[1];
-      if (info?.nickname) {
+      if (info?.username) {
         users.push({
           userId: parseInt(ids[i], 10),
-          nickname: info.nickname,
+          username: info.username,
           avatarUrl: info.avatarUrl || null
         });
       }

@@ -10,13 +10,13 @@ const onlineStatusService = require('./services/onlineStatusService');
 
 let io = null;
 
-// Track typing users per room: Map<roomId, Map<socketId, { userId, nickname }>>
+// Track typing users per room: Map<roomId, Map<socketId, { userId, username }>>
 const typingUsers = new Map();
 
 // Track user status per room: Map<roomId, Map<userId, status>>
 const roomStatuses = new Map();
 
-// Track online users per room: Map<roomId, Map<userId, { nickname, socketCount }>>
+// Track online users per room: Map<roomId, Map<userId, { username, socketCount }>>
 const roomOnlineUsers = new Map();
 
 // Rate limiting: separate Maps for room chat and private messaging
@@ -24,7 +24,7 @@ const roomLastMessageTime = new Map();
 const pmLastMessageTime = new Map();
 const MESSAGE_COOLDOWN = 2000; // 2 seconds
 
-// Global online users: Map<userId, { nickname, avatarUrl, socketCount, sockets: Set<socketId> }>
+// Global online users: Map<userId, { username, avatarUrl, socketCount, sockets: Set<socketId> }>
 const globalOnlineUsers = new Map();
 
 /**
@@ -48,14 +48,14 @@ function initSocket(httpServer) {
     }
     try {
       const decoded = verifyToken(token);
-      // Enrich with nickname and avatar from DB
+      // Enrich with username and avatar from DB
       const [rows] = await db.execute(
-        'SELECT nickname, avatar_url FROM users WHERE id = ? AND status = 1',
+        'SELECT username, avatar_url FROM users WHERE id = ? AND status = 1',
         [decoded.userId]
       );
       socket.user = {
         ...decoded,
-        nickname: rows[0]?.nickname || decoded.username,
+        username: rows[0]?.username || decoded.username,
         avatar_url: rows[0]?.avatar_url || null
       };
       next();
@@ -68,7 +68,7 @@ function initSocket(httpServer) {
   io.on('connection', (socket) => {
     const user = socket.user;
     const userId = user?.userId || null;
-    const nickname = user?.nickname || user?.username || '未知';
+    const username = user?.username || '未知';
 
     logger.info(`Socket connected: ${socket.id} user=${userId || 'anonymous'}`);
 
@@ -80,7 +80,7 @@ function initSocket(httpServer) {
     if (userId) {
       socket.join(`user:${userId}`);
       const avatarUrl = user?.avatar_url || '';
-      addGlobalOnlineUser(userId, nickname, avatarUrl, socket.id);
+      addGlobalOnlineUser(userId, username, avatarUrl, socket.id);
     }
 
     // ── Room channel management ──────────────────────────
@@ -92,13 +92,13 @@ function initSocket(httpServer) {
 
       // Track online user
       if (userId) {
-        addOnlineUser(roomId, userId, nickname);
+        addOnlineUser(roomId, userId, username);
       }
 
       // Broadcast system message: user joined
       if (userId) {
         try {
-          const msg = await chatService.createSystemMessage(roomId, `${nickname} 加入了书院`);
+          const msg = await chatService.createSystemMessage(roomId, `${username} 加入了书院`);
           io.to(`room:${roomId}`).emit('chat:message', formatMessage(msg));
         } catch (err) {
           logger.warn(`Failed to create join message: ${err.message}`);
@@ -120,7 +120,7 @@ function initSocket(httpServer) {
       // Broadcast system message: user left
       if (userId) {
         try {
-          const msg = await chatService.createSystemMessage(roomId, `${nickname} 离开了书院`);
+          const msg = await chatService.createSystemMessage(roomId, `${username} 离开了书院`);
           io.to(`room:${roomId}`).emit('chat:message', formatMessage(msg));
         } catch (err) {
           logger.warn(`Failed to create leave message: ${err.message}`);
@@ -175,8 +175,8 @@ function initSocket(httpServer) {
 
     socket.on('chat:typing', (roomId) => {
       if (!userId) return;
-      addTypingUser(roomId, socket.id, { userId, nickname });
-      socket.to(`room:${roomId}`).emit('chat:typing', { userId, nickname });
+      addTypingUser(roomId, socket.id, { userId, username });
+      socket.to(`room:${roomId}`).emit('chat:typing', { userId, username });
     });
 
     socket.on('chat:stopTyping', (roomId) => {
@@ -211,7 +211,7 @@ function initSocket(httpServer) {
 
       io.to(`room:${data.roomId}`).emit('status:update', {
         userId,
-        nickname,
+        username,
         status: data.status,
         elapsedSeconds: data.elapsedSeconds || 0
       });
@@ -262,7 +262,7 @@ function initSocket(httpServer) {
           id: msgId,
           conversationId: conv.id,
           senderId: userId,
-          senderName: nickname,
+          senderName: username,
           senderAvatar: user?.avatar_url || null,
           content,
           imageUrl: data.imageUrl || null,
@@ -404,7 +404,7 @@ function formatMessage(msg) {
     id: msg.id,
     roomId: msg.room_id,
     userId: isAnon ? null : msg.user_id,
-    nickname: isAnon ? '匿名学子' : (msg.nickname || msg.username || '系统'),
+    username: isAnon ? '匿名学子' : (msg.username || '系统'),
     avatarUrl: isAnon ? null : msg.avatar_url,
     content: msg.content,
     imageUrl: msg.image_url || null,
@@ -436,7 +436,7 @@ function removeTypingUser(roomId, socketId) {
 
 // ── Online user tracking ──────────────────────────────────
 
-function addOnlineUser(roomId, userId, nickname) {
+function addOnlineUser(roomId, userId, username) {
   if (!roomOnlineUsers.has(roomId)) {
     roomOnlineUsers.set(roomId, new Map());
   }
@@ -445,7 +445,7 @@ function addOnlineUser(roomId, userId, nickname) {
   if (existing) {
     existing.socketCount++;
   } else {
-    roomUsers.set(userId, { nickname, socketCount: 1 });
+    roomUsers.set(userId, { username, socketCount: 1 });
   }
 }
 
@@ -469,7 +469,7 @@ function getOnlineUserList(roomId) {
   if (!roomUsers) return [];
   const users = [];
   roomUsers.forEach((info, uid) => {
-    users.push({ userId: uid, nickname: info.nickname });
+    users.push({ userId: uid, username: info.username });
   });
   return users;
 }
@@ -500,18 +500,18 @@ function getIO() {
 
 // ── Global online user tracking ─────────────────────────
 
-function addGlobalOnlineUser(userId, nickname, avatarUrl, socketId) {
+function addGlobalOnlineUser(userId, username, avatarUrl, socketId) {
   let info = globalOnlineUsers.get(userId);
   if (info) {
     info.socketCount++;
     info.sockets.add(socketId);
   } else {
-    info = { nickname, avatarUrl, socketCount: 1, sockets: new Set([socketId]), lastSeen: Date.now() };
+    info = { username, avatarUrl, socketCount: 1, sockets: new Set([socketId]), lastSeen: Date.now() };
     globalOnlineUsers.set(userId, info);
     // New user online, persist to Redis and broadcast
-    onlineStatusService.userOnline(userId, nickname, avatarUrl).catch(() => {});
+    onlineStatusService.userOnline(userId, username, avatarUrl).catch(() => {});
     if (io) {
-      io.emit('online:statusChange', { userId, nickname, avatarUrl, status: 'online' });
+      io.emit('online:statusChange', { userId, username, avatarUrl, status: 'online' });
     }
   }
 }
@@ -525,7 +525,7 @@ function removeGlobalOnlineUser(userId, socketId) {
     globalOnlineUsers.delete(userId);
     onlineStatusService.userOffline(userId).catch(() => {});
     if (io) {
-      io.emit('online:statusChange', { userId, nickname: info.nickname, status: 'offline' });
+      io.emit('online:statusChange', { userId, username: info.username, status: 'offline' });
     }
   }
 }

@@ -4,9 +4,9 @@
     <div class="chat-page container">
       <div class="chat-header card">
         <BackButton />
-        <UserAvatar v-if="peerInfo" :avatar-url="peerInfo.avatarUrl" :nickname="peerInfo.nickname" :size="36" :clickable="true" :user-id="peerInfo.userId" @user-click="openProfileCard" />
+        <UserAvatar v-if="peerInfo" :avatar-url="peerInfo.avatarUrl" :nickname="peerInfo.username" :size="36" :clickable="true" :user-id="peerInfo.userId" @user-click="openProfileCard" />
         <div class="chat-peer-info" v-if="peerInfo">
-          <span class="chat-peer-name">{{ peerInfo.nickname }}</span>
+          <span class="chat-peer-name">{{ peerInfo.username }}</span>
           <span class="chat-peer-status" :class="{ online: isPeerOnline }">{{ isPeerOnline ? '在线' : '离线' }}</span>
         </div>
         <div class="chat-more-wrap" v-if="peerInfo && peerInfo.userId !== currentUserId">
@@ -126,7 +126,7 @@ const emojis = [
 function findPeerInfo() {
   const conv = messageStore.conversations.find(c => c.id === convId.value)
   if (conv) {
-    peerInfo.value = { nickname: conv.peerNickname, avatarUrl: conv.peerAvatar, userId: conv.peerId }
+    peerInfo.value = { username: conv.peerName, avatarUrl: conv.peerAvatar, userId: conv.peerId }
   }
 }
 

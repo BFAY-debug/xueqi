@@ -54,7 +54,7 @@ async function getPendingRecords(page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
-    `SELECT vr.*, u.username, u.nickname, vt.name AS task_name, vt.reward_penalty, vt.reward_points
+    `SELECT vr.*, u.username, u.username, vt.name AS task_name, vt.reward_penalty, vt.reward_points
      FROM volunteer_records vr
      JOIN users u ON u.id = vr.user_id
      JOIN volunteer_tasks vt ON vt.id = vr.task_id
