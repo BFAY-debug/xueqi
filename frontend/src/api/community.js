@@ -11,7 +11,14 @@ export const postAPI = {
   getUserPosts: (userId, params) => request.get(`/community/users/${userId}/posts`, { params }),
   getVersions: (id) => request.get(`/community/posts/${id}/versions`),
   getVersion: (id, ver) => request.get(`/community/posts/${id}/versions/${ver}`),
-  rollbackVersion: (id, ver) => request.post(`/community/posts/${id}/versions/${ver}/rollback`)
+  rollbackVersion: (id, ver) => request.post(`/community/posts/${id}/versions/${ver}/rollback`),
+  uploadImage: (file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return request.post('/community/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
 }
 
 export const commentAPI = {

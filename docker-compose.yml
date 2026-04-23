@@ -109,6 +109,9 @@ services:
       - REDIS_HOST=xueqi-redis
       - PORT=${COMMUNITY_SERVICE_PORT}
       - USER_SERVICE_URL=http://xueqi-user-service:${USER_SERVICE_PORT}
+      - UPLOAD_DIR=/app/uploads/community
+    volumes:
+      - upload-data:/app/uploads
     ports:
       - "${COMMUNITY_SERVICE_PORT}:${COMMUNITY_SERVICE_PORT}"
     depends_on:

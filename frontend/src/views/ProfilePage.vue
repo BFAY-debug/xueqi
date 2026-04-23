@@ -266,7 +266,7 @@
               <el-button size="small" @click="markAllRead">全部标为已读</el-button>
             </div>
             <div class="notif-list">
-              <div v-for="n in notifications" :key="n.id" class="notif-item" :class="{ unread: !n.is_read }">
+              <div v-for="n in notifications" :key="n.id" class="notif-item" :class="{ unread: !n.is_read, clickable: n.related_id }" @click="handleNotifClick(n)">
                 <div class="notif-title">{{ n.title }}</div>
                 <div class="notif-content">{{ n.content }}</div>
                 <div class="notif-time">{{ formatDate(n.created_at) }}</div>
@@ -326,7 +326,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -342,6 +342,7 @@ import { compressImage } from '@/utils/compressImage'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const chatStore = useChatStore()
 const userId = computed(() => userStore.user?.userId)
@@ -571,6 +572,22 @@ async function markAllRead() {
     userStore.unreadCount = 0
     notifications.value.forEach(n => n.is_read = 1)
   } catch { /* */ }
+}
+
+function handleNotifClick(n) {
+  if (!n.related_id) return
+  // Mark as read
+  if (!n.is_read) {
+    n.is_read = 1
+    notificationAPI.markRead(n.id).catch(() => {})
+    userStore.unreadCount = Math.max(0, (userStore.unreadCount || 0) - 1)
+  }
+  const t = n.related_type
+  if (t === 'post') {
+    router.push(`/community/posts/${n.related_id}`)
+  } else if (t === 'comment' || t === 'mention') {
+    router.push(`/community/posts/${n.related_id}#comment-${n.related_id}`)
+  }
 }
 
 function openProfile(userId) { profileCardUserId.value = userId }
@@ -870,6 +887,8 @@ onMounted(() => {
 .notif-list { display: flex; flex-direction: column; gap: 2px; }
 .notif-item { padding: 12px 16px; border-radius: 6px; transition: background 0.15s; }
 .notif-item.unread { background: var(--color-accent-light); border-left: 3px solid var(--color-accent); }
+.notif-item.clickable { cursor: pointer; }
+.notif-item.clickable:hover { background: var(--color-bg-secondary); }
 .notif-title { font-size: 0.9rem; font-weight: 500; margin-bottom: 2px; }
 .notif-content { font-size: 0.85rem; color: var(--color-text-secondary); }
 .notif-time { font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 2px; }

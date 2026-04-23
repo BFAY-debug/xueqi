@@ -1,19 +1,73 @@
 <template>
-  <div class="md-viewer" v-html="rendered"></div>
+  <div class="md-viewer" v-html="rendered" ref="viewerRef"></div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
-marked.setOptions({ breaks: true, gfm: true })
+const renderer = new marked.Renderer()
+renderer.image = ({ href, title, text }) => {
+  const alt = text || ''
+  const src = href || ''
+  return `<div class="img-wrap"><img src="${src}" alt="${alt}" /><span class="img-resize-handle"></span></div>`
+}
+
+marked.setOptions({ breaks: true, gfm: true, renderer })
 
 const props = defineProps({ content: { type: String, default: '' } })
+const viewerRef = ref(null)
+
 const rendered = computed(() => {
   if (!props.content) return ''
-  const raw = marked.parse(props.content)
-  return DOMPurify.sanitize(raw)
+  let raw = marked.parse(props.content)
+  raw = raw.replace(/@([\w\u4e00-\u9fff]+)/g, (match, username) => {
+    return `<a href="/community?keyword=%40${encodeURIComponent(username)}" class="mention-link">@${username}</a>`
+  })
+  return DOMPurify.sanitize(raw, { ADD_TAGS: ['span'], ADD_ATTR: ['class'] })
+})
+
+// Image resize drag handling
+let dragging = null
+
+function onMouseDown(e) {
+  const handle = e.target.closest('.img-resize-handle')
+  if (!handle) return
+  const wrap = handle.parentElement
+  const img = wrap.querySelector('img')
+  if (!img) return
+  e.preventDefault()
+  dragging = { wrap, img, startX: e.clientX, startW: wrap.offsetWidth }
+  document.body.style.cursor = 'ew-resize'
+  document.body.style.userSelect = 'none'
+}
+
+function onMouseMove(e) {
+  if (!dragging) return
+  const dx = e.clientX - dragging.startX
+  const newW = Math.max(100, Math.min(dragging.startW + dx, viewerRef.value?.offsetWidth || 800))
+  dragging.img.style.width = newW + 'px'
+  dragging.wrap.style.width = newW + 'px'
+}
+
+function onMouseUp() {
+  if (!dragging) return
+  dragging = null
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onMouseDown)
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onMouseDown)
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', onMouseUp)
 })
 </script>
 
@@ -35,5 +89,21 @@ const rendered = computed(() => {
 .md-viewer :deep(a) { color: var(--color-accent); }
 .md-viewer :deep(hr) { border: none; height: 1px; background: var(--color-border); margin: 20px 0; }
 .md-viewer :deep(strong) { color: var(--color-text-primary); }
-.md-viewer :deep(img) { max-width: 100%; border-radius: var(--border-radius-sm); }
+
+.md-viewer :deep(.img-wrap) {
+  display: inline-block; position: relative; max-width: 100%; margin: 16px auto; border-radius: var(--border-radius-sm);
+}
+.md-viewer :deep(.img-wrap img) {
+  display: block; max-width: 80%; width: 80%; border-radius: var(--border-radius-sm);
+}
+.md-viewer :deep(.img-resize-handle) {
+  position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px;
+  cursor: ew-resize; border-radius: 50%; opacity: 0;
+  background: var(--color-accent); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: opacity 0.15s;
+}
+.md-viewer :deep(.img-wrap:hover .img-resize-handle) { opacity: 1; }
+
+.md-viewer :deep(.mention-link) { color: var(--color-accent); font-weight: 600; text-decoration: none; background: var(--color-accent-light); padding: 1px 4px; border-radius: 3px; }
+.md-viewer :deep(.mention-link:hover) { text-decoration: underline; }
 </style>

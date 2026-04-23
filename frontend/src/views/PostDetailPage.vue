@@ -54,7 +54,15 @@
           <div class="comments-section">
             <h3 class="section-title">高论 ({{ post.comment_count }})</h3>
             <div v-if="userStore.isLoggedIn" class="comment-form">
-              <el-input v-model="commentContent" type="textarea" :rows="2" :maxlength="500" show-word-limit :placeholder="replyTo ? `回复 @${replyTo}...` : '写下你的高论...'" />
+              <div class="comment-input-wrap">
+                <el-input v-model="commentContent" type="textarea" :rows="2" :maxlength="500" show-word-limit :placeholder="replyTo ? `回复 @${replyTo}...` : '写下你的高论...（输入 @ 提及用户）'" @keydown="onCommentKeydown" />
+                <div v-if="mentionShow && mentionResults.length" class="mention-dropdown">
+                  <div v-for="u in mentionResults" :key="u.id" class="mention-item" @mousedown.prevent="selectMention(u)">
+                    <UserAvatar :avatar-url="u.avatar_url" :nickname="u.username" :size="24" />
+                    <span class="mention-name">{{ u.username }}</span>
+                  </div>
+                </div>
+              </div>
               <div class="comment-form-actions">
                 <el-checkbox v-model="commentAnonymous">匿名</el-checkbox>
                 <el-button size="small" @click="replyTo = null" v-if="replyTo">取消回复</el-button>
@@ -62,10 +70,10 @@
               </div>
             </div>
             <div class="comment-list">
-              <div v-for="c in topLevelComments" :key="c.id" class="comment-item">
+              <div v-for="c in topLevelComments" :key="c.id" :id="'comment-' + c.id" class="comment-item">
                 <div class="comment-body">
                   <span class="comment-author">{{ c.is_anonymous ? '匿名学子' : (c.author_name || '学子') }}</span>
-                  <span class="comment-text">{{ c.content }}</span>
+                  <span class="comment-text" v-html="renderCommentContent(c)"></span>
                   <span class="comment-time">{{ timeAgo(c.created_at) }}</span>
                   <button class="comment-action" @click="likeComment(c)">❤️ {{ c.like_count }}</button>
                   <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(c, c)">回复</button>
@@ -73,7 +81,7 @@
                 <!-- Nested replies -->
                 <div v-for="r in getReplies(c.id)" :key="r.id" class="comment-reply">
                   <span class="comment-author">{{ r.is_anonymous ? '匿名学子' : (r.author_name || '学子') }}</span>
-                  <span class="comment-text">{{ r.content }}</span>
+                  <span class="comment-text" v-html="renderCommentContent(r)"></span>
                   <span class="comment-time">{{ timeAgo(r.created_at) }}</span>
                   <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(r, c)">回复</button>
                 </div>
@@ -163,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
@@ -171,8 +179,10 @@ import AppFooter from '@/components/AppFooter.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppLoading from '@/components/AppLoading.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { postAPI, commentAPI, proposalAPI, bookmarkAPI } from '@/api/community'
 import { followAPI } from '@/api/follow'
+import { friendAPI } from '@/api/friend'
 import { useUserStore } from '@/stores/user'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 
@@ -201,6 +211,13 @@ const diffTarget = ref(null)
 const showDiffDialog = ref(false)
 const diffData = ref(null)
 const rollbackLoading = ref(false)
+
+// Mention autocomplete state
+const mentionShow = ref(false)
+const mentionResults = ref([])
+const mentionIndex = ref(-1)
+let mentionQuery = ''
+let mentionTimer = null
 
 const canRollback = computed(() => {
   if (!post.value || !viewingVersion.value) return false
@@ -380,11 +397,129 @@ async function toggleFollowAuthor() {
   } catch (err) { ElMessage.error(err.message) }
 }
 
+// @mention autocomplete
+let friendsCache = null
+
+async function loadFriends() {
+  if (friendsCache) return friendsCache
+  try {
+    const res = await friendAPI.getFriends({ pageSize: 100 })
+    friendsCache = (res.data || []).map(f => ({
+      id: f.friend_id,
+      username: f.friend_name || f.username,
+      avatar_url: f.friend_avatar || f.avatar_url
+    }))
+    return friendsCache
+  } catch { return [] }
+}
+
+function onCommentKeydown(e) {
+  if (mentionShow.value && mentionResults.value.length) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      mentionIndex.value = (mentionIndex.value + 1) % mentionResults.value.length
+      return
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      mentionIndex.value = mentionIndex.value <= 0 ? mentionResults.value.length - 1 : mentionIndex.value - 1
+      return
+    } else if (e.key === 'Enter' && mentionIndex.value >= 0) {
+      e.preventDefault()
+      selectMention(mentionResults.value[mentionIndex.value])
+      return
+    } else if (e.key === 'Escape') {
+      mentionShow.value = false
+      return
+    }
+  }
+  if (e.key === '@') {
+    setTimeout(() => triggerMentionSearch(), 0)
+  }
+}
+
+async function triggerMentionSearch() {
+  const text = commentContent.value
+  const before = text.slice(0, text.length)
+  const atIdx = before.lastIndexOf('@')
+  if (atIdx < 0) { mentionShow.value = false; return }
+  mentionQuery = before.slice(atIdx + 1)
+  if (mentionQuery.includes(' ') || mentionQuery.includes('\n')) {
+    mentionShow.value = false; return
+  }
+  clearTimeout(mentionTimer)
+  mentionTimer = setTimeout(async () => {
+    const friends = await loadFriends()
+    if (mentionQuery) {
+      const q = mentionQuery.toLowerCase()
+      const filtered = friends.filter(f => f.username.toLowerCase().includes(q)).slice(0, 6)
+      if (filtered.length) {
+        mentionResults.value = filtered
+      } else {
+        // No friend match, search all users
+        try {
+          const res = await friendAPI.searchUsers(mentionQuery, 1)
+          mentionResults.value = (res.data || []).slice(0, 6)
+        } catch { mentionResults.value = [] }
+      }
+    } else {
+      // No query yet — show friends
+      mentionResults.value = friends.slice(0, 6)
+    }
+    mentionIndex.value = -1
+    mentionShow.value = mentionResults.value.length > 0
+  }, 150)
+}
+
+function selectMention(user) {
+  const text = commentContent.value
+  const atIdx = text.lastIndexOf('@')
+  if (atIdx >= 0) {
+    commentContent.value = text.slice(0, atIdx) + '@' + user.username + ' ' + text.slice(text.length)
+  }
+  mentionShow.value = false
+  mentionResults.value = []
+}
+
+watch(commentContent, () => {
+  if (commentContent.value.includes('@')) {
+    triggerMentionSearch()
+  } else {
+    mentionShow.value = false
+  }
+})
+
+// Render @username in comments as clickable links
+function renderCommentContent(comment) {
+  if (comment.is_anonymous) return escapeHtml(comment.content)
+  const mentionedUsers = comment.mentionedUsers || []
+  const userMap = new Map(mentionedUsers.map(u => [u.username, u.userId]))
+  let text = escapeHtml(comment.content)
+  text = text.replace(/@([\w\u4e00-\u9fff]+)/g, (match, username) => {
+    const userId = userMap.get(username)
+    if (userId) {
+      return `<a href="/user/${userId}" class="mention-link" onclick="event.stopPropagation()">@${username}</a>`
+    }
+    return match
+  })
+  return text
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 onMounted(async () => {
   await fetchPost()
-  fetchComments()
+  await fetchComments()
   fetchProposals()
   fetchVersions()
+  // Scroll to comment anchor if present
+  if (route.hash) {
+    nextTick(() => {
+      const el = document.querySelector(route.hash)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
 })
 </script>
 
@@ -420,7 +555,15 @@ onMounted(async () => {
 .section-title { font-family: var(--font-title); font-size: 1.1rem; margin-bottom: 16px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
 
 .comment-form { margin-bottom: 20px; }
+.comment-input-wrap { position: relative; }
 .comment-form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; }
+
+.mention-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--color-bg-primary); border: 1px solid var(--color-border); border-radius: var(--border-radius-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 100; max-height: 200px; overflow-y: auto; }
+.mention-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.85rem; }
+.mention-item:hover { background: var(--color-accent-light); }
+.mention-name { font-weight: 500; }
+:deep(.mention-link) { color: var(--color-accent); font-weight: 600; text-decoration: none; background: var(--color-accent-light); padding: 1px 4px; border-radius: 3px; cursor: pointer; }
+:deep(.mention-link:hover) { text-decoration: underline; }
 
 .comment-list { display: flex; flex-direction: column; gap: 4px; }
 .comment-item { padding: 12px; border-radius: 6px; background: rgba(255,255,252,0.6); border: 1px solid rgba(196, 185, 154, 0.3); }

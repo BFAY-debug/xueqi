@@ -80,6 +80,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -94,6 +95,7 @@ import { useTimeAgo } from '@/composables/useTimeAgo'
 
 const userStore = useUserStore()
 const friendStore = useFriendStore()
+const route = useRoute()
 const posts = ref([])
 const profileUserId = ref(null)
 const tags = ref([])
@@ -139,7 +141,12 @@ async function fetchTags() {
   } catch { /* ignore */ }
 }
 
-onMounted(() => { fetchPosts(); fetchTags() })
+onMounted(() => {
+  if (route.query.keyword) {
+    keyword.value = route.query.keyword
+  }
+  fetchPosts(); fetchTags()
+})
 </script>
 
 <style scoped>

@@ -1,5 +1,6 @@
 const { db, logger } = require('xueqi-shared');
 const axios = require('axios');
+const mentionService = require('./mentionService');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
@@ -30,6 +31,31 @@ async function getComments(postId, page = 1, pageSize = 50) {
     "SELECT COUNT(*) AS total FROM comments WHERE post_id = ? AND status = 'published'",
     [postId]
   );
+
+  // Enrich with @mention user data for rendering
+  const allMentionNames = [];
+  for (const row of rows) {
+    const names = mentionService.parseMentions(row.content);
+    if (names.length && !row.is_anonymous) {
+      row._mentionNames = names;
+      allMentionNames.push(...names);
+    }
+  }
+  if (allMentionNames.length) {
+    const userMap = await mentionService.batchResolveMentions([...new Set(allMentionNames)]);
+    for (const row of rows) {
+      if (row._mentionNames) {
+        row.mentionedUsers = row._mentionNames
+          .filter(n => userMap.has(n))
+          .map(n => ({ username: n, userId: userMap.get(n) }));
+        delete row._mentionNames;
+      } else {
+        row.mentionedUsers = [];
+      }
+    }
+  } else {
+    rows.forEach(r => { r.mentionedUsers = []; });
+  }
 
   return { data: rows, total: countRows[0].total };
 }
@@ -78,6 +104,20 @@ async function createComment(postId, userId, { content, parentId, isAnonymous })
     }, { headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
     logger.warn(`Failed to award comment points: ${err.message}`);
+  }
+
+  // Process @mentions
+  try {
+    const [userRows] = await db.execute('SELECT username FROM users WHERE id = ?', [userId]);
+    const fromUsername = userRows.length > 0 ? userRows[0].username : '某学子';
+    await mentionService.processMentions(content, {
+      fromUserId: userId,
+      fromUsername,
+      postId,
+      commentId: result.insertId
+    });
+  } catch (err) {
+    logger.warn(`Failed to process comment mentions: ${err.message}`);
   }
 
   return { commentId: result.insertId, status: 'published' };

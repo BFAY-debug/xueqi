@@ -41,4 +41,15 @@ async function markAllAsRead(req, res, next) {
   }
 }
 
-module.exports = { getNotifications, getUnreadCount, markAsRead, markAllAsRead };
+async function createNotification(req, res, next) {
+  try {
+    const { userId, type, title, content, relatedId, relatedType } = req.body;
+    if (!userId || !type || !title) {
+      return res.error('userId, type, title are required', 400);
+    }
+    const id = await notificationService.createNotification({ userId, type, title, content, relatedId, relatedType });
+    res.success({ id }, '通知已创建', 201);
+  } catch (err) { next(err); }
+}
+
+module.exports = { getNotifications, getUnreadCount, markAsRead, markAllAsRead, createNotification };

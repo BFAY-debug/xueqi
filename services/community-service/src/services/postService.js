@@ -1,5 +1,6 @@
 const { db, logger } = require('xueqi-shared');
 const axios = require('axios');
+const mentionService = require('./mentionService');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
@@ -150,6 +151,18 @@ async function createPost(userId, { title, content, summary, category, isAnonymo
     }, { headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
     logger.warn(`Failed to award post points: ${err.message}`);
+  }
+
+  // Process @mentions in post content
+  try {
+    const fromUsername = (await db.execute('SELECT username FROM users WHERE id = ?', [userId]))[0][0]?.username || '某学子';
+    await mentionService.processMentions(content, {
+      fromUserId: userId,
+      fromUsername,
+      postId
+    });
+  } catch (err) {
+    logger.warn(`Failed to process post mentions: ${err.message}`);
   }
 
   return { postId, status: 'published' };
