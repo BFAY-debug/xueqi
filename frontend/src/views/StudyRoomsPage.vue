@@ -400,7 +400,6 @@ async function endStudy() {
   actionLoading.value = true
   try {
     const res = await sessionAPI.end(activeSessionId.value)
-    clearInterval(timerInterval)
     isStudying.value = false
     activeSessionId.value = null
     if (immersiveMode.value) exitImmersive()
@@ -411,7 +410,13 @@ async function endStudy() {
       sock.emit('status:update', { roomId: selectedRoom.value.id, status: 'idle' })
     }
   } catch (err) { ElMessage.error(err.message) }
-  finally { actionLoading.value = false }
+  finally {
+    actionLoading.value = false
+    if (timerInterval) {
+      clearInterval(timerInterval)
+      timerInterval = null
+    }
+  }
 }
 
 function enterImmersive() {
@@ -448,9 +453,13 @@ function openGlobalChat() {
 }
 
 async function startPrivateChat(userId) {
-  const conv = await messageStore.openConversation(userId)
-  if (conv) {
-    router.push(`/messages/${conv.id}`)
+  try {
+    const conv = await messageStore.openConversation(userId)
+    if (conv) {
+      router.push(`/messages/${conv.id}`)
+    }
+  } catch (err) {
+    ElMessage.error('打开会话失败')
   }
 }
 

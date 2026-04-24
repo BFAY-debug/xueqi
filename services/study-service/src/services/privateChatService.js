@@ -143,11 +143,16 @@ async function syncUnreadFromDB(userId, convIds) {
 }
 
 async function markConversationRead(conversationId, userId) {
+  const [conv] = await db.execute(
+    'SELECT id FROM conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+    [conversationId, userId, userId]
+  );
+  if (!conv.length) return 0;
+
   const [result] = await db.execute(
     'UPDATE private_messages SET is_read = 1 WHERE conversation_id = ? AND sender_id != ? AND is_read = 0',
     [conversationId, userId]
   );
-  // Clear Redis unread count
   try {
     await redis.hset(UNREAD_PREFIX + userId, conversationId, 0);
   } catch (e) {

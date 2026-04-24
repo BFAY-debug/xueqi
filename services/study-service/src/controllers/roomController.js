@@ -20,8 +20,9 @@ async function getRoom(req, res, next) {
 
 async function createRoom(req, res, next) {
   try {
+    const { name, description, capacity, type, coverImage } = req.body;
     const room = await roomService.createRoom({
-      ...req.body,
+      name, description, capacity, type, coverImage,
       createdBy: req.user.userId
     });
     res.success(room, '自习室创建成功', 201);
@@ -32,7 +33,10 @@ async function createRoom(req, res, next) {
 
 async function updateRoom(req, res, next) {
   try {
-    const room = await roomService.updateRoom(parseInt(req.params.id, 10), req.body);
+    const { name, description, capacity, type, coverImage, status } = req.body;
+    const room = await roomService.updateRoom(parseInt(req.params.id, 10), {
+      name, description, capacity, type, coverImage, status
+    });
     res.success(room, '自习室更新成功');
   } catch (err) {
     next(err);

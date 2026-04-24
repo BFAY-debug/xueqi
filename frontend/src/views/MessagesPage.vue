@@ -293,6 +293,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  clearTimeout(searchTimer)
   messageStore.removeSocketListeners()
   friendStore.removeSocketListeners()
 })

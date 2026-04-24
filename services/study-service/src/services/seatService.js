@@ -97,7 +97,7 @@ async function batchCreateSeats(locationId, seats) {
 // ── Reservations (预约) ───────────────────────────────
 
 async function reserveSeat(seatId, userId, { reserveDate, startTime, endTime }) {
-  // Check if user is banned
+  // Check if user is banned (outside transaction — user-level check)
   const [statsRows] = await db.execute(
     'SELECT ban_until FROM user_stats WHERE user_id = ?',
     [userId]
@@ -112,74 +112,86 @@ async function reserveSeat(seatId, userId, { reserveDate, startTime, endTime }) 
     }
   }
 
-  // Check if user already has a pending reservation for this date/time
-  const [existing] = await db.execute(
-    `SELECT id FROM seat_reservations
-     WHERE user_id = ? AND reserve_date = ? AND status IN ('pending', 'checked_in')`,
-    [userId, reserveDate]
-  );
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
 
-  if (existing.length > 0) {
-    const error = new Error('该日期已有进行中的预约');
-    error.status = 400;
-    throw error;
+    // Check if user already has a pending reservation for this date
+    const [existing] = await conn.execute(
+      `SELECT id FROM seat_reservations
+       WHERE user_id = ? AND reserve_date = ? AND status IN ('pending', 'checked_in')`,
+      [userId, reserveDate]
+    );
+
+    if (existing.length > 0) {
+      const error = new Error('该日期已有进行中的预约');
+      error.status = 400;
+      throw error;
+    }
+
+    // Check seat availability
+    const [seatRows] = await conn.execute('SELECT * FROM real_seats WHERE id = ?', [seatId]);
+    if (seatRows.length === 0) {
+      const error = new Error('座位不存在');
+      error.status = 404;
+      throw error;
+    }
+
+    if (seatRows[0].status === 'maintenance') {
+      const error = new Error('座位正在维护中');
+      error.status = 400;
+      throw error;
+    }
+
+    // Check time conflict
+    const [conflicts] = await conn.execute(
+      `SELECT id FROM seat_reservations
+       WHERE seat_id = ? AND reserve_date = ? AND status IN ('pending', 'checked_in')
+         AND NOT (end_time <= ? OR start_time >= ?)`,
+      [seatId, reserveDate, startTime, endTime]
+    );
+
+    if (conflicts.length > 0) {
+      const error = new Error('该时段座位已被预约');
+      error.status = 409;
+      throw error;
+    }
+
+    const [result] = await conn.execute(
+      `INSERT INTO seat_reservations (user_id, seat_id, reserve_date, start_time, end_time, status)
+       VALUES (?, ?, ?, ?, ?, 'pending')`,
+      [userId, seatId, reserveDate, startTime, endTime]
+    );
+
+    // Update seat status
+    await conn.execute(
+      "UPDATE real_seats SET status = 'reserved' WHERE id = ?",
+      [seatId]
+    );
+
+    await conn.commit();
+
+    // Broadcast seat update (outside transaction)
+    const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [seatId]);
+    if (seatInfo.length > 0) {
+      const seats = await getSeatsByLocation(seatInfo[0].location_id);
+      broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'reserve', seatId });
+    }
+
+    return {
+      reservationId: result.insertId,
+      seatId,
+      reserveDate,
+      startTime,
+      endTime,
+      status: 'pending'
+    };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
   }
-
-  // Check seat availability
-  const [seatRows] = await db.execute('SELECT * FROM real_seats WHERE id = ?', [seatId]);
-  if (seatRows.length === 0) {
-    const error = new Error('座位不存在');
-    error.status = 404;
-    throw error;
-  }
-
-  if (seatRows[0].status === 'maintenance') {
-    const error = new Error('座位正在维护中');
-    error.status = 400;
-    throw error;
-  }
-
-  // Check time conflict
-  const [conflicts] = await db.execute(
-    `SELECT id FROM seat_reservations
-     WHERE seat_id = ? AND reserve_date = ? AND status IN ('pending', 'checked_in')
-       AND NOT (end_time <= ? OR start_time >= ?)`,
-    [seatId, reserveDate, startTime, endTime]
-  );
-
-  if (conflicts.length > 0) {
-    const error = new Error('该时段座位已被预约');
-    error.status = 409;
-    throw error;
-  }
-
-  const [result] = await db.execute(
-    `INSERT INTO seat_reservations (user_id, seat_id, reserve_date, start_time, end_time, status)
-     VALUES (?, ?, ?, ?, ?, 'pending')`,
-    [userId, seatId, reserveDate, startTime, endTime]
-  );
-
-  // Update seat status
-  await db.execute(
-    "UPDATE real_seats SET status = 'reserved' WHERE id = ?",
-    [seatId]
-  );
-
-  // Broadcast seat update
-  const [seatInfo] = await db.execute('SELECT location_id FROM real_seats WHERE id = ?', [seatId]);
-  if (seatInfo.length > 0) {
-    const seats = await getSeatsByLocation(seatInfo[0].location_id);
-    broadcastSeatUpdate(seatInfo[0].location_id, { seats, action: 'reserve', seatId });
-  }
-
-  return {
-    reservationId: result.insertId,
-    seatId,
-    reserveDate,
-    startTime,
-    endTime,
-    status: 'pending'
-  };
 }
 
 async function checkinReservation(reservationId, userId) {

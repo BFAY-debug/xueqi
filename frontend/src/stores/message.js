@@ -124,6 +124,14 @@ export const useMessageStore = defineStore('message', () => {
     socket.off('online:statusChange', updateUserStatus)
   }
 
+  function resetState() {
+    conversations.value = []
+    currentConversation.value = null
+    currentMessages.value = []
+    unreadTotal.value = 0
+    onlineUsers.value = []
+  }
+
   return {
     conversations,
     currentConversation,
@@ -140,6 +148,7 @@ export const useMessageStore = defineStore('message', () => {
     handleIncomingMessage,
     updateUserStatus,
     setupSocketListeners,
-    removeSocketListeners
+    removeSocketListeners,
+    resetState
   }
 })

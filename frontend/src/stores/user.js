@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI, userAPI, notificationAPI } from '@/api/user'
 import { disconnectSocket } from '@/composables/useSocket'
+import { useChatStore } from './chat'
+import { useMessageStore } from './message'
+import { useFriendStore } from './friend'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -33,7 +36,10 @@ export const useUserStore = defineStore('user', () => {
     return await authAPI.register(data)
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await authAPI.logout({ refreshToken: refreshToken.value })
+    } catch { /* ignore */ }
     token.value = ''
     refreshToken.value = ''
     user.value = null
@@ -41,6 +47,9 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     disconnectSocket()
+    useChatStore().resetState()
+    useMessageStore().resetState()
+    useFriendStore().resetState()
   }
 
   async function fetchProfile() {

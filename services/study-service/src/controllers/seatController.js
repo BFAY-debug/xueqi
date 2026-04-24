@@ -18,7 +18,11 @@ async function getLocation(req, res, next) {
 
 async function createLocation(req, res, next) {
   try {
-    const location = await seatService.createLocation(req.body);
+    const { name, building, floor, openTime, closeTime, totalSeats, description } = req.body;
+    if (!name) return res.error('地点名称不能为空', 400);
+    const location = await seatService.createLocation({
+      name, building, floor, openTime, closeTime, totalSeats, description
+    });
     res.success(location, '地点创建成功', 201);
   } catch (err) { next(err); }
 }
@@ -48,8 +52,15 @@ async function getSeats(req, res, next) {
 
 async function batchCreateSeats(req, res, next) {
   try {
-    const seats = await seatService.batchCreateSeats(parseInt(req.params.id, 10), req.body.seats);
-    res.success(seats, '座位创建成功', 201);
+    const { seats } = req.body;
+    if (!Array.isArray(seats) || seats.length === 0) {
+      return res.error('seats 必须是非空数组', 400);
+    }
+    if (seats.length > 200) {
+      return res.error('单次最多创建 200 个座位', 400);
+    }
+    const result = await seatService.batchCreateSeats(parseInt(req.params.id, 10), seats);
+    res.success(result, '座位创建成功', 201);
   } catch (err) { next(err); }
 }
 

@@ -171,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
@@ -520,6 +520,10 @@ onMounted(async () => {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
   }
+})
+
+onUnmounted(() => {
+  clearTimeout(mentionTimer)
 })
 </script>
 

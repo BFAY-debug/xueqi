@@ -1,7 +1,13 @@
 const bcrypt = require('bcryptjs');
-const { db, jwt } = require('xueqi-shared');
+const crypto = require('crypto');
+const { db, redis, jwt } = require('xueqi-shared');
 
 const SALT_ROUNDS = 10;
+const REFRESH_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+
+function tokenHash(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 /**
  * Generate a unique account_id (6-char alphanumeric)
@@ -95,6 +101,13 @@ async function login({ username, password }) {
   const accessToken = jwt.generateToken(payload);
   const refreshToken = jwt.generateRefreshToken(payload);
 
+  // Store refresh token in Redis whitelist
+  try {
+    await redis.set(`refresh:${tokenHash(refreshToken)}`, String(user.id), 'EX', REFRESH_TTL);
+  } catch (e) {
+    // Redis down — proceed without whitelist (graceful degradation)
+  }
+
   return {
     user: {
       userId: user.id,
@@ -112,12 +125,28 @@ async function login({ username, password }) {
 /**
  * Refresh token
  */
-function refresh(refreshToken) {
-  const decoded = jwt.verifyToken(refreshToken);
+async function refresh(oldRefreshToken) {
+  const decoded = jwt.verifyToken(oldRefreshToken);
   if (!decoded) {
     const error = new Error('Refresh token 无效或已过期');
     error.status = 401;
     throw error;
+  }
+
+  // Verify refresh token is in Redis whitelist
+  const key = `refresh:${tokenHash(oldRefreshToken)}`;
+  try {
+    const stored = await redis.get(key);
+    if (!stored) {
+      const error = new Error('Refresh token 已失效');
+      error.status = 401;
+      throw error;
+    }
+    // Delete old token (rotation)
+    await redis.del(key);
+  } catch (e) {
+    if (e.status === 401) throw e;
+    // Redis down — proceed without whitelist check (graceful degradation)
   }
 
   const payload = {
@@ -130,7 +159,22 @@ function refresh(refreshToken) {
   const accessToken = jwt.generateToken(payload);
   const newRefreshToken = jwt.generateRefreshToken(payload);
 
+  // Store new refresh token
+  try {
+    await redis.set(`refresh:${tokenHash(newRefreshToken)}`, String(decoded.userId), 'EX', REFRESH_TTL);
+  } catch (e) { /* graceful */ }
+
   return { accessToken, refreshToken: newRefreshToken };
 }
 
-module.exports = { register, login, refresh };
+/**
+ * Revoke refresh token (logout)
+ */
+async function revokeRefreshToken(refreshToken) {
+  if (!refreshToken) return;
+  try {
+    await redis.del(`refresh:${tokenHash(refreshToken)}`);
+  } catch (e) { /* graceful */ }
+}
+
+module.exports = { register, login, refresh, revokeRefreshToken };

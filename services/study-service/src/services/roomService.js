@@ -93,35 +93,59 @@ async function updateRoom(roomId, { name, description, capacity, type, coverImag
  * Join a room
  */
 async function joinRoom(roomId, userId) {
-  const room = await getRoomById(roomId);
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
 
-  // Check capacity
-  if (room.current_count >= room.capacity) {
-    const error = new Error('自习室已满');
-    error.status = 400;
-    throw error;
-  }
+    // Lock room row and check capacity atomically
+    const [roomRows] = await conn.execute(
+      `SELECT sr.*,
+              (SELECT COUNT(*) FROM room_participants rp WHERE rp.room_id = sr.id AND rp.is_studying = 1) AS current_count
+       FROM study_rooms sr WHERE sr.id = ? FOR UPDATE`,
+      [roomId]
+    );
 
-  // Check if already in room
-  const [existing] = await db.execute(
-    'SELECT id FROM room_participants WHERE room_id = ? AND user_id = ?',
-    [roomId, userId]
-  );
+    if (roomRows.length === 0) {
+      const error = new Error('自习室不存在');
+      error.status = 404;
+      throw error;
+    }
 
-  if (existing.length > 0) {
-    // Rejoin
-    await db.execute(
-      'UPDATE room_participants SET is_studying = 1, joined_at = NOW() WHERE room_id = ? AND user_id = ?',
+    const room = roomRows[0];
+
+    if (room.current_count >= room.capacity) {
+      const error = new Error('自习室已满');
+      error.status = 400;
+      throw error;
+    }
+
+    // Check if already in room
+    const [existing] = await conn.execute(
+      'SELECT id FROM room_participants WHERE room_id = ? AND user_id = ?',
       [roomId, userId]
     );
-  } else {
-    await db.execute(
-      'INSERT INTO room_participants (room_id, user_id, is_studying) VALUES (?, ?, 1)',
-      [roomId, userId]
-    );
+
+    if (existing.length > 0) {
+      await conn.execute(
+        'UPDATE room_participants SET is_studying = 1, joined_at = NOW() WHERE room_id = ? AND user_id = ?',
+        [roomId, userId]
+      );
+    } else {
+      await conn.execute(
+        'INSERT INTO room_participants (room_id, user_id, is_studying) VALUES (?, ?, 1)',
+        [roomId, userId]
+      );
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
   }
 
-  // Broadcast updated participants
+  // Broadcast updated participants (outside transaction)
   const participants = await getParticipants(roomId);
   broadcastParticipants(roomId, { participants, action: 'join', userId });
 

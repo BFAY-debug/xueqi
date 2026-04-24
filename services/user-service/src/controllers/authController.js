@@ -51,21 +51,22 @@ async function login(req, res, next) {
   }
 }
 
-function refresh(req, res, next) {
+async function refresh(req, res, next) {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
       return res.error('Refresh token 不能为空', 400);
     }
-    const result = authService.refresh(refreshToken);
+    const result = await authService.refresh(refreshToken);
     res.success(result, 'Token 刷新成功');
   } catch (err) {
     next(err);
   }
 }
 
-function logout(req, res) {
-  // Client-side should discard tokens
+async function logout(req, res) {
+  const { refreshToken } = req.body;
+  await authService.revokeRefreshToken(refreshToken);
   res.success(null, '已登出');
 }
 

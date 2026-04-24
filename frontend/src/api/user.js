@@ -3,7 +3,7 @@ import request from './request'
 export const authAPI = {
   register: (data) => request.post('/user/register', data),
   login: (data) => request.post('/user/login', data),
-  logout: () => request.post('/user/logout'),
+  logout: (data) => request.post('/user/logout', data),
   refresh: (refreshToken) => request.post('/user/refresh', { refreshToken })
 }
 

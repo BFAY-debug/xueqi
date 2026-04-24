@@ -150,11 +150,20 @@ export const useFriendStore = defineStore('friend', () => {
     socket.off('friend:accepted', _onFriendAccepted)
   }
 
+  function resetState() {
+    friends.value = []
+    incomingRequests.value = []
+    outgoingRequests.value = []
+    unreadRequestCount.value = 0
+    loading.value = false
+    actionLoading.value = false
+  }
+
   return {
     friends, incomingRequests, outgoingRequests, unreadRequestCount, loading, actionLoading,
     fetchFriends, fetchIncomingRequests, fetchOutgoingRequests,
     fetchUnreadRequestCount, sendRequest, acceptRequest, rejectRequest,
     deleteFriend, blockUser, unblockUser, getFriendStatus,
-    setupSocketListeners, removeSocketListeners
+    setupSocketListeners, removeSocketListeners, resetState
   }
 })

@@ -69,6 +69,16 @@ export const useChatStore = defineStore('chat', () => {
     isOpen.value = false
   }
 
+  function resetState() {
+    chatRoomId.value = null
+    roomInfo.value = null
+    isOpen.value = false
+    unreadCount.value = 0
+    onlineCount.value = 0
+    roomList.value = []
+    onlineUsers.value = []
+  }
+
   function toggleChat() {
     isOpen.value = !isOpen.value
     if (isOpen.value) unreadCount.value = 0
@@ -94,6 +104,6 @@ export const useChatStore = defineStore('chat', () => {
   return {
     chatRoomId, roomInfo, isOpen, unreadCount, onlineCount, roomList, onlineUsers,
     openChat, closeChat, toggleChat, incrementUnread, resetUnread,
-    setOnlineCount, setOnlineUsers, fetchRoomList, exitChat
+    setOnlineCount, setOnlineUsers, fetchRoomList, exitChat, resetState
   }
 })
