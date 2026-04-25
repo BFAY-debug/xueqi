@@ -11,6 +11,11 @@ RUN cd services/community-service && npm install --production
 
 COPY services/community-service/src/ ./services/community-service/src/
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p /app/uploads && chown -R appuser:appgroup /app
+
+RUN apk add --no-cache su-exec
+
 WORKDIR /app/services/community-service
 EXPOSE 3003
-CMD ["node", "src/app.js"]
+CMD ["sh", "-c", "chown -R appuser:appgroup /app/uploads 2>/dev/null; exec su-exec appuser node src/app.js"]

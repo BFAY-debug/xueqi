@@ -5,7 +5,6 @@
   "description": "Shared utilities for XueQi microservices",
   "main": "src/index.js",
   "dependencies": {
-    "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",

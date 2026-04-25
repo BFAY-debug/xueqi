@@ -22,7 +22,14 @@ const app = express();
 const PORT = process.env.STUDY_SERVICE_PORT || 3002;
 
 // Middleware
-app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+    else cb(new Error('CORS not allowed'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

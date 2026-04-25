@@ -1,6 +1,5 @@
 <template>
   <div class="home">
-    <AppNavbar />
 
     <!-- Section 1: Hero (preserved) -->
     <section class="hero-section">
@@ -231,7 +230,6 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'
 import AppEmpty from '@/components/AppEmpty.vue'

@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-leaderboard">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton />
       <div class="page-header-decorated">
@@ -94,7 +93,6 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import gsap from 'gsap'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'

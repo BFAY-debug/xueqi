@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-proposal">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton fallback="/community">返回</BackButton>
       <!-- Create mode -->
@@ -90,7 +89,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'

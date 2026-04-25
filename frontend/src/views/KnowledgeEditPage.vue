@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-edit">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton fallback="/community">返回</BackButton>
       <div class="page-header-decorated">
@@ -65,7 +64,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
@@ -74,7 +72,7 @@ import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
-const isEdit = computed(() => route.name !== undefined && route.path.includes('/edit'))
+const isEdit = computed(() => !!route.params.id)
 const postId = computed(() => route.params.id)
 const submitting = ref(false)
 const tagsInput = ref('')

@@ -136,8 +136,8 @@ function getServiceToken() {
   return generateToken({
     userId: 0,
     username: 'study-service',
-    roleId: 1,
-    roleName: 'super_admin',
+    roleId: 0,
+    roleName: 'service',
     type: 'service'
   });
 }

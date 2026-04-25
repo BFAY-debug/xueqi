@@ -1,6 +1,5 @@
 <template>
   <div class="page">
-    <AppNavbar />
     <div class="page-body container">
       <!-- Header -->
       <div class="messages-header">
@@ -144,7 +143,6 @@ import { useRouter } from 'vue-router'
 import { useMessageStore } from '@/stores/message'
 import { useFriendStore } from '@/stores/friend'
 import { friendAPI } from '@/api/friend'
-import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
 import UserAvatar from '@/components/UserAvatar.vue'

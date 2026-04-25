@@ -18,7 +18,15 @@ const uploadRoutes = require('./routes/upload');
 const app = express();
 const PORT = process.env.COMMUNITY_SERVICE_PORT || 3003;
 
-app.use(cors({ origin: '*', credentials: true }));
+// CORS
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+    else cb(new Error('CORS not allowed'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

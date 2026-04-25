@@ -11,6 +11,7 @@ const { logger } = require('xueqi-shared');
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 const PORT = process.env.GATEWAY_PORT || 3000;
 
 // Service URLs
@@ -19,7 +20,23 @@ const STUDY_SERVICE_URL = process.env.STUDY_SERVICE_URL || 'http://localhost:300
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL || 'http://localhost:3003';
 
 // Middleware
-app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+    else cb(new Error('CORS not allowed'));
+  },
+  credentials: true
+}));
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({

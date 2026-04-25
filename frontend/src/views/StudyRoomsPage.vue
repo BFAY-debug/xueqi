@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-study">
-    <AppNavbar />
 
     <!-- Normal Mode: Room Selection -->
     <div class="page-content container" v-if="!immersiveMode" style="margin-top: var(--nav-height); padding-top: 24px;">
@@ -208,7 +207,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AmbientSoundMixer from '@/components/AmbientSoundMixer.vue'

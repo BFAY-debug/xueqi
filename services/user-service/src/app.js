@@ -20,8 +20,12 @@ const app = express();
 const PORT = process.env.USER_SERVICE_PORT || 3001;
 
 // Middleware
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
 app.use(cors({
-  origin: '*',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+    else cb(new Error('CORS not allowed'));
+  },
   credentials: true
 }));
 app.use(express.json());

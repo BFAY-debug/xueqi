@@ -279,26 +279,28 @@ function handleLogout() {
 .nav-links a {
   text-decoration: none;
   color: var(--color-text-primary);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  font-weight: 500;
   transition: color 0.2s;
   position: relative;
 }
 
 .nav-links a:hover,
-.nav-links a.router-link-active {
+.nav-links a.router-link-exact-active {
   color: var(--color-accent);
+  font-weight: 600;
 }
 
-.nav-links a.router-link-active::after {
+.nav-links a.router-link-exact-active::after {
   content: '';
   position: absolute;
   bottom: -4px;
   left: 50%;
   transform: translateX(-50%);
-  width: 16px;
-  height: 2px;
+  width: 20px;
+  height: 3px;
   background: var(--color-accent);
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
 .nav-msg-link { display: inline-flex; align-items: center; gap: 4px; }
@@ -579,7 +581,7 @@ function handleLogout() {
   transition: all 0.2s;
 }
 .mobile-nav-links a:hover,
-.mobile-nav-links a.router-link-active {
+.mobile-nav-links a.router-link-exact-active {
   background: var(--color-accent-light);
   color: var(--color-accent);
 }

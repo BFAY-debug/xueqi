@@ -1,6 +1,5 @@
 <template>
   <div class="not-found-page">
-    <AppNavbar />
     <div class="not-found-content">
       <!-- Ink wash decoration -->
       <div class="ink-bg">
@@ -20,7 +19,6 @@
 </template>
 
 <script setup>
-import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 </script>
 

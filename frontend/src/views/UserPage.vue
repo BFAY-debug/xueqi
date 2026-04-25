@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton />
 
@@ -138,7 +137,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { userAPI } from '@/api/user'

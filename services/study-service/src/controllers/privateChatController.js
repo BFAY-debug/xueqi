@@ -2,18 +2,18 @@ const privateChatService = require('../services/privateChatService');
 const onlineStatusService = require('../services/onlineStatusService');
 const { logger } = require('xueqi-shared');
 
-async function getConversations(req, res) {
+async function getConversations(req, res, next) {
   try {
     const userId = req.user.userId;
     const conversations = await privateChatService.getUserConversations(userId);
     res.success(conversations);
   } catch (err) {
     logger.error(`Get conversations failed: ${err.message}`);
-    res.error('获取会话列表失败', 500);
+    next(err);
   }
 }
 
-async function createConversation(req, res) {
+async function createConversation(req, res, next) {
   try {
     const userId = req.user.userId;
     const { toUserId } = req.body;
@@ -27,11 +27,11 @@ async function createConversation(req, res) {
     res.success(conv);
   } catch (err) {
     logger.error(`Create conversation failed: ${err.message}`);
-    res.error('创建会话失败', 500);
+    next(err);
   }
 }
 
-async function getMessages(req, res) {
+async function getMessages(req, res, next) {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
@@ -41,11 +41,11 @@ async function getMessages(req, res) {
     res.success(messages);
   } catch (err) {
     logger.error(`Get messages failed: ${err.message}`);
-    res.error('获取消息失败', 500);
+    next(err);
   }
 }
 
-async function markRead(req, res) {
+async function markRead(req, res, next) {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
@@ -53,39 +53,39 @@ async function markRead(req, res) {
     res.success({ marked: count });
   } catch (err) {
     logger.error(`Mark read failed: ${err.message}`);
-    res.error('标记已读失败', 500);
+    next(err);
   }
 }
 
-async function getUnreadCount(req, res) {
+async function getUnreadCount(req, res, next) {
   try {
     const userId = req.user.userId;
     const count = await privateChatService.getTotalUnreadCount(userId);
     res.success({ count });
   } catch (err) {
     logger.error(`Get unread count failed: ${err.message}`);
-    res.error('获取未读数失败', 500);
+    next(err);
   }
 }
 
-async function getUserStatus(req, res) {
+async function getUserStatus(req, res, next) {
   try {
     const { userId } = req.params;
     const online = await onlineStatusService.isOnline(userId);
     res.success({ userId: parseInt(userId, 10), online: !!online });
   } catch (err) {
     logger.error(`Get user status failed: ${err.message}`);
-    res.error('获取用户状态失败', 500);
+    next(err);
   }
 }
 
-async function getOnlineUsersList(req, res) {
+async function getOnlineUsersList(req, res, next) {
   try {
     const users = await onlineStatusService.getOnlineUsers();
     res.success(users);
   } catch (err) {
     logger.error(`Get online users failed: ${err.message}`);
-    res.error('获取在线用户失败', 500);
+    next(err);
   }
 }
 

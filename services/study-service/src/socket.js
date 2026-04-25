@@ -33,8 +33,9 @@ const globalOnlineUsers = new Map();
 function initSocket(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
+      origin: (process.env.CORS_ORIGIN || 'http://localhost').split(','),
+      methods: ['GET', 'POST'],
+      credentials: true
     },
     path: '/socket.io'
   });

@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-seat">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton />
       <div class="page-header-decorated">
@@ -97,7 +96,6 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { locationAPI, reservationAPI } from '@/api/study'

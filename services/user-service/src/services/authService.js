@@ -63,7 +63,7 @@ async function register({ username, email, password, accountId: inputAccountId }
  */
 async function login({ username, password }) {
   const [rows] = await db.execute(
-    `SELECT u.id, u.username, u.account_id, u.email, u.password_hash, u.role_id, u.status,
+    `SELECT u.id, u.username, u.account_id, u.email, u.password_hash, u.role_id, u.status, u.avatar_url,
             r.name AS role_name
      FROM users u JOIN roles r ON u.role_id = r.id
      WHERE u.username = ? OR u.email = ? OR u.account_id = ?`,
@@ -114,6 +114,7 @@ async function login({ username, password }) {
       username: user.username,
       accountId: user.account_id,
       email: user.email,
+      avatar_url: user.avatar_url,
       roleId: user.role_id,
       roleName: user.role_name
     },

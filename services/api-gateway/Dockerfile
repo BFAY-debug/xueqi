@@ -11,6 +11,11 @@ RUN cd services/api-gateway && npm install --production
 
 COPY services/api-gateway/src/ ./services/api-gateway/src/
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
+RUN apk add --no-cache su-exec
+
 WORKDIR /app/services/api-gateway
 EXPOSE 3000
-CMD ["node", "src/app.js"]
+CMD ["su-exec", "appuser", "node", "src/app.js"]

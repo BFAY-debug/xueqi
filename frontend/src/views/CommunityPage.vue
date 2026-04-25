@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-community">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton fallback="/">返回首页</BackButton>
       <div class="page-header-decorated">
@@ -81,7 +80,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppLoading from '@/components/AppLoading.vue'

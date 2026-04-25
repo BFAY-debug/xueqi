@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper theme-post-detail">
-    <AppNavbar />
     <div class="page-content container" style="margin-top: var(--nav-height); padding-top: 24px;">
       <BackButton fallback="/community">返回知识广场</BackButton>
 
@@ -174,7 +173,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
-import AppNavbar from '@/components/AppNavbar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import BackButton from '@/components/BackButton.vue'

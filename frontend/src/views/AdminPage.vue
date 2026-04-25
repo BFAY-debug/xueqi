@@ -1,6 +1,5 @@
 <template>
   <div class="admin-page">
-    <AppNavbar />
     <div class="admin-layout">
       <!-- Sidebar -->
       <div class="admin-sidebar">
@@ -411,7 +410,6 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
-import AppNavbar from '@/components/AppNavbar.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { adminAPI, feedbackAPI } from '@/api/user'
 import { communityAdminAPI, postAPI } from '@/api/community'

@@ -214,5 +214,5 @@ module.exports = {
 
 function getServiceToken() {
   const { jwt: { generateToken } } = require('xueqi-shared');
-  return generateToken({ userId: 0, username: 'community-service', roleId: 1, roleName: 'super_admin', type: 'service' });
+  return generateToken({ userId: 0, username: 'community-service', roleId: 0, roleName: 'service', type: 'service' });
 }

@@ -37,9 +37,9 @@ services:
       - "6380:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -138,9 +138,12 @@ services:
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     depends_on:
-      - xueqi-user-service
-      - xueqi-study-service
-      - xueqi-community-service
+      xueqi-user-service:
+        condition: service_started
+      xueqi-study-service:
+        condition: service_started
+      xueqi-community-service:
+        condition: service_started
     networks:
       - xueqi-net
 

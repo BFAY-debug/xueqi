@@ -1,6 +1,5 @@
 <template>
   <div class="page">
-    <AppNavbar />
     <div class="chat-page container">
       <div class="chat-header card">
         <BackButton />
@@ -91,7 +90,6 @@ import { useFriendStore } from '@/stores/friend'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
 import { compressImage } from '@/utils/compressImage'
-import AppNavbar from '@/components/AppNavbar.vue'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import UserProfileCard from '@/components/UserProfileCard.vue'
