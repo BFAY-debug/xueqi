@@ -126,7 +126,7 @@ function statusTag(s) {
   return { open: 'warning', merged: 'success', rejected: 'danger', closed: 'info' }[s] || 'info'
 }
 function statusText(s) {
-  return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || s
+  return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || '未知'
 }
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
 

@@ -55,10 +55,10 @@ async function refresh(req, res, next) {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-      return res.error('Refresh token 不能为空', 400);
+      return res.error('刷新令牌不能为空', 400);
     }
     const result = await authService.refresh(refreshToken);
-    res.success(result, 'Token 刷新成功');
+    res.success(result, '令牌刷新成功');
   } catch (err) {
     next(err);
   }

@@ -373,7 +373,8 @@ async function getStatsTrend(days = 14) {
   return {
     trend: result,
     roleDistribution: roles.map(r => ({ name: r.name, value: r.cnt })),
-    categoryDistribution: categories.map(c => ({ name: c.category, value: c.cnt }))
+    categoryDistribution: categories.map(c => ({ name: c.category, value: c.cnt })),
+    categoryNames: { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
   };
 }
 

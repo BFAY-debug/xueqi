@@ -27,7 +27,7 @@ async function awardPoints(req, res, next) {
   try {
     const { userId, action, points, description } = req.body;
     if (!userId || !action) {
-      return res.error('userId and action are required', 400);
+      return res.error('缺少必填参数：用户ID和操作类型', 400);
     }
     const result = await pointsService.awardPoints(userId, action, { points, description });
     res.success(result);
@@ -43,7 +43,7 @@ async function updateCheckinStreak(req, res, next) {
   try {
     const { userId } = req.body;
     if (!userId) {
-      return res.error('userId is required', 400);
+      return res.error('缺少用户ID', 400);
     }
     const result = await pointsService.updateCheckinStreak(userId);
     res.success(result);

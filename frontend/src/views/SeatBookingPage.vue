@@ -150,7 +150,7 @@ function statusType(s) {
   return { pending: 'warning', checked_in: 'success', completed: 'info', cancelled: 'info', no_show: 'danger' }[s] || 'info'
 }
 function statusText(s) {
-  return { pending: '待签到', checked_in: '已签到', completed: '已完成', cancelled: '已取消', no_show: '违约' }[s] || s
+  return { pending: '待签到', checked_in: '已签到', completed: '已完成', cancelled: '已取消', no_show: '违约' }[s] || '未知'
 }
 
 async function fetchData() {

@@ -21,7 +21,7 @@
           <h2>文章审核 <el-tag size="small" type="warning">{{ pendingPosts.length }}</el-tag></h2>
           <div v-for="p in pendingPosts" :key="p.id" class="review-item card">
             <div class="review-content">
-              <span class="review-badge">[{{ p.category }}]</span>
+              <span class="review-badge">[{{ categoryMap[p.category] || p.category }}]</span>
               <strong>{{ p.username }}</strong>: {{ p.title }}
               <p class="review-excerpt">{{ p.content?.slice(0, 150) }}...</p>
             </div>
@@ -36,6 +36,23 @@
         <!-- Post Management -->
         <template v-if="activeSection === 'postManage'">
           <h2>文章管理</h2>
+          <div class="filter-bar">
+            <el-select v-model="postFilter.category" placeholder="分类" clearable style="width:120px" @change="fetchAllPosts">
+              <el-option label="修习心得" value="experience" />
+              <el-option label="求学问路" value="question" />
+              <el-option label="典籍推荐" value="resource" />
+              <el-option label="杂谈" value="general" />
+            </el-select>
+            <el-select v-model="postFilter.status" placeholder="状态" clearable style="width:120px" @change="fetchAllPosts">
+              <el-option label="已发布" value="published" />
+              <el-option label="待审核" value="pending" />
+              <el-option label="已拒绝" value="rejected" />
+              <el-option label="已隐藏" value="hidden" />
+            </el-select>
+            <el-input v-model="postFilter.author" placeholder="搜索作者..." clearable style="width:160px" @clear="fetchAllPosts" @keyup.enter="fetchAllPosts" />
+            <el-input v-model="postFilter.keyword" placeholder="搜索标题..." clearable style="width:160px" @clear="fetchAllPosts" @keyup.enter="fetchAllPosts" />
+            <el-button type="primary" size="small" @click="fetchAllPosts">筛选</el-button>
+          </div>
           <el-table :data="allPosts" stripe>
             <el-table-column prop="id" label="ID" width="50" />
             <el-table-column prop="title" label="标题" min-width="200">
@@ -46,7 +63,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="author_name" label="作者" width="100" />
-            <el-table-column prop="category" label="分类" width="80" />
+            <el-table-column prop="category" label="分类" width="80">
+              <template #default="{ row }">{{ categoryMap[row.category] || row.category }}</template>
+            </el-table-column>
             <el-table-column prop="status" label="状态" width="80">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'published' ? 'success' : row.status === 'hidden' ? 'info' : row.status === 'pending' ? 'warning' : 'danger'" size="small">
@@ -421,6 +440,9 @@ const userStore = useUserStore()
 const activeSection = ref('posts')
 const saving = ref(false)
 
+const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
+const postFilter = reactive({ category: '', status: '', author: '', keyword: '' })
+
 const allMenuItems = [
   { key: 'posts', icon: '📝', label: '文章审核', roles: ['admin', 'super_admin'] },
   { key: 'postManage', icon: '📄', label: '文章管理', roles: ['admin', 'super_admin'] },
@@ -485,7 +507,15 @@ async function fetchPendingComments() {
   try { const res = await communityAdminAPI.getPendingComments({ pageSize: 50 }); pendingComments.value = res.data || [] } catch { /* */ }
 }
 async function fetchAllPosts() {
-  try { const res = await communityAdminAPI.getAllPosts({ pageSize: 100 }); allPosts.value = res.data || [] } catch { /* */ }
+  try {
+    const params = { pageSize: 100 }
+    if (postFilter.category) params.category = postFilter.category
+    if (postFilter.status) params.status = postFilter.status
+    if (postFilter.author) params.author = postFilter.author
+    if (postFilter.keyword) params.keyword = postFilter.keyword
+    const res = await communityAdminAPI.getAllPosts(params)
+    allPosts.value = res.data || []
+  } catch { /* */ }
 }
 async function fetchAllComments() {
   try { const res = await communityAdminAPI.getAllComments({ pageSize: 100 }); allComments.value = res.data || [] } catch { /* */ }
@@ -564,7 +594,7 @@ async function renderCharts() {
   }
 
   // Category pie
-  const cd = statsTrend.value.categoryDistribution || []
+  const cd = (statsTrend.value.categoryDistribution || []).map(c => ({ name: categoryMap[c.name] || c.name, value: c.value }))
   const c4 = getChart(chartCategoryRef.value)
   if (c4 && cd.length) {
     c4.setOption({
@@ -903,6 +933,8 @@ onMounted(() => { fetchPendingPosts(); fetchStats() })
 
 .admin-main { flex: 1; padding: 24px; }
 .admin-main h2 { font-family: var(--font-title); font-size: 1.3rem; margin-bottom: 16px; }
+
+.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
 
 .review-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; margin-bottom: 10px; }
 .review-badge { font-size: 0.75rem; padding: 1px 6px; border-radius: 3px; background: rgba(74,107,138,0.1); color: var(--color-blue); margin-right: 8px; }

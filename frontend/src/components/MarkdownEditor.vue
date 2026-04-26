@@ -102,8 +102,15 @@ async function uploadAndInsert(file) {
   insert(placeholder, '')
 
   try {
-    const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85 })
-    const res = await postAPI.uploadImage(compressed)
+    const MAX_SIZE = 5 * 1024 * 1024
+    let uploadFile = file
+    if (file.size > MAX_SIZE) {
+      uploadFile = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85 })
+      if (uploadFile.size > MAX_SIZE) {
+        uploadFile = await compressImage(uploadFile, { maxWidth: 800, maxHeight: 800, quality: 0.6 })
+      }
+    }
+    const res = await postAPI.uploadImage(uploadFile)
     const url = res.data?.url
     if (!url) throw new Error('上传失败')
 

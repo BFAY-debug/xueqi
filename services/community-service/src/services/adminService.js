@@ -213,7 +213,7 @@ async function reviewComment(commentId, adminId, { action, reason }) {
 
 // ── Admin: All Posts & Delete ──────────────────────────
 
-async function getAllPosts({ page = 1, pageSize = 20, status = '' }) {
+async function getAllPosts({ page = 1, pageSize = 20, status = '', category = '', author = '', keyword = '' }) {
   page = parseInt(page, 10) || 1;
   pageSize = parseInt(pageSize, 10) || 20;
   const offset = (page - 1) * pageSize;
@@ -223,6 +223,18 @@ async function getAllPosts({ page = 1, pageSize = 20, status = '' }) {
   if (status) {
     conditions.push('p.status = ?');
     params.push(status);
+  }
+  if (category) {
+    conditions.push('p.category = ?');
+    params.push(category);
+  }
+  if (author) {
+    conditions.push('u.username LIKE ?');
+    params.push(`%${author}%`);
+  }
+  if (keyword) {
+    conditions.push('p.title LIKE ?');
+    params.push(`%${keyword}%`);
   }
 
   const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';

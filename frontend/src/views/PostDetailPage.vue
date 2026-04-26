@@ -97,7 +97,7 @@
             <h4 class="sb-title">编辑提案</h4>
             <div v-for="p in proposals" :key="p.id" class="proposal-item" @click="$router.push('/community/proposals/' + p.id)">
               <el-tag :type="p.status === 'open' ? 'warning' : 'success'" size="small">
-                {{ p.status === 'open' ? '待审核' : p.status === 'merged' ? '已合并' : p.status }}
+                {{ p.status === 'open' ? '待审核' : p.status === 'merged' ? '已合并' : p.status === 'rejected' ? '已拒绝' : '未知' }}
               </el-tag>
               <span class="proposal-name">{{ p.title }}</span>
               <span class="proposal-meta">{{ p.proposer_name }}</span>

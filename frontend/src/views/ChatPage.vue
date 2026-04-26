@@ -197,14 +197,17 @@ function onClickOutsideMore(e) {
 async function handleImageSelect(e) {
   const file = e.target.files[0]
   if (!file) return
-  if (file.size > 10 * 1024 * 1024) {
-    ElMessage.warning('图片大小不能超过10MB')
-    return
-  }
+  const MAX_SIZE = 10 * 1024 * 1024
   sendingImage.value = true
   try {
-    const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
-    const res = await chatAPI.uploadImage(compressed)
+    let uploadFile = file
+    if (file.size > MAX_SIZE) {
+      uploadFile = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
+      if (uploadFile.size > MAX_SIZE) {
+        uploadFile = await compressImage(uploadFile, { maxWidth: 600, maxHeight: 600, quality: 0.5 })
+      }
+    }
+    const res = await chatAPI.uploadImage(uploadFile)
     const socket = getSocket()
     socket.emit('pm:send', {
       toUserId: peerInfo.value.userId,

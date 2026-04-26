@@ -45,7 +45,7 @@ async function createNotification(req, res, next) {
   try {
     const { userId, type, title, content, relatedId, relatedType } = req.body;
     if (!userId || !type || !title) {
-      return res.error('userId, type, title are required', 400);
+      return res.error('缺少必填参数：用户ID、类型、标题', 400);
     }
     const id = await notificationService.createNotification({ userId, type, title, content, relatedId, relatedType });
     res.success({ id }, '通知已创建', 201);

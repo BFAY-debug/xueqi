@@ -140,7 +140,7 @@
                   <span class="act-icon">📝</span>
                   <div class="act-info">
                     <span class="act-title">{{ p.title }}</span>
-                    <span class="act-meta">{{ p.category }} · v{{ p.version }} · {{ timeAgo(p.created_at) }}</span>
+                    <span class="act-meta">{{ categoryMap[p.category] || p.category }} · v{{ p.version }} · {{ timeAgo(p.created_at) }}</span>
                   </div>
                   <span class="act-stats">👀{{ p.view_count }} ❤️{{ p.like_count }}</span>
                 </div>
@@ -173,7 +173,7 @@
                     <span class="pmi-title">{{ p.title }}</span>
                   </div>
                   <div class="pmi-meta">
-                    <span>{{ p.category }}</span>
+                    <span>{{ categoryMap[p.category] || p.category }}</span>
                     <span>v{{ p.version }}</span>
                     <span>👀{{ p.view_count }} ❤️{{ p.like_count }} 💬{{ p.comment_count }}</span>
                     <span>{{ timeAgo(p.created_at) }}</span>
@@ -346,6 +346,7 @@ const chatStore = useChatStore()
 const userId = computed(() => userStore.user?.userId)
 
 const activeTab = ref('overview')
+const categoryMap = { experience: '修习心得', question: '求学问路', resource: '典籍推荐', general: '杂谈' }
 const followingList = ref([])
 const followerList = ref([])
 const profileCardUserId = ref(null)
@@ -469,7 +470,7 @@ const { timeAgo } = useTimeAgo()
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
 
 function proposalTag(s) { return { open: 'warning', merged: 'success', rejected: 'danger', closed: 'info' }[s] || 'info' }
-function proposalText(s) { return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || s }
+function proposalText(s) { return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || '未知' }
 
 async function fetchStats() {
   if (!userId.value) return

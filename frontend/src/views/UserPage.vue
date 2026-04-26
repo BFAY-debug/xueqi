@@ -96,7 +96,7 @@
                 <h4 class="post-title">{{ p.title }}</h4>
                 <p v-if="p.summary" class="post-summary">{{ p.summary }}</p>
                 <div class="post-meta">
-                  <span>{{ p.category }}</span>
+                  <span>{{ categoryMap[p.category] || p.category }}</span>
                   <span>v{{ p.version }}</span>
                   <span>{{ timeAgo(p.created_at) }}</span>
                   <span>👀{{ p.view_count }} ❤️{{ p.like_count }} 💬{{ p.comment_count }}</span>
@@ -157,6 +157,7 @@ const { timeAgo } = useTimeAgo()
 const userId = computed(() => parseInt(route.params.id, 10))
 const isSelf = computed(() => userStore.user?.userId === userId.value)
 
+const categoryMap = { experience: "修习心得", question: "求学问路", resource: "典籍推荐", general: "杂谈" }
 const loading = ref(true)
 const error = ref('')
 const userInfo = ref(null)

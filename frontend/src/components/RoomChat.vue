@@ -47,6 +47,7 @@
         <template v-else>
           <div class="msg-bubble msg-self-bubble">
             <div class="msg-body">
+              <span class="msg-name msg-name-self">{{ msg.username }}</span>
               <div class="msg-text">{{ msg.content }}</div>
               <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
               <span v-if="msg.readCount !== undefined" class="msg-read-count">{{ msg.readCount > 0 ? `已读 ${msg.readCount}` : '未读' }}</span>
@@ -66,6 +67,7 @@
         :title="isAnonymous ? '匿名模式已开启' : '点击开启匿名模式'"
       >🎭</button>
       <button class="img-upload-btn" @click="triggerImageUpload" title="发送图片">📷</button>
+      <button class="img-upload-btn" @click.stop="showEmoji = !showEmoji" title="表情">😊</button>
       <input ref="imageInput" type="file" accept="image/*" style="display:none" @change="handleImageSelect" />
       <div v-if="pendingImage" class="pending-image">
         <img :src="pendingImage.thumb" />
@@ -83,6 +85,9 @@
       />
       <button class="chat-send" @click="sendMessage" :disabled="!inputText.trim() && !pendingImage">发送</button>
     </div>
+    <div v-if="showEmoji" class="emoji-panel" @click.stop>
+      <span v-for="e in emojis" :key="e" class="emoji-item" @click="insertEmoji(e)">{{ e }}</span>
+    </div>
 
     <!-- Image preview overlay -->
     <Transition name="fade">
@@ -99,6 +104,7 @@ import { getSocket } from '@/composables/useSocket'
 import { chatAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
+import { compressImage } from '@/utils/compressImage'
 import UserAvatar from './UserAvatar.vue'
 
 const props = defineProps({
@@ -119,6 +125,13 @@ const isComposing = ref(false)
 const pendingImage = ref(null)
 const imageInput = ref(null)
 const previewUrl = ref(null)
+const showEmoji = ref(false)
+const emojis = [
+  '😊','😂','🤣','❤️','👍','🎉','😘','🤔','😎','😢',
+  '😤','🔥','💪','👋','🙏','😍','🥰','🤗','😴','🤮',
+  '💯','✨','🌟','⭐','🎵','📚','✏️','🎓','🏆','👏',
+  '🤝','💬','📌','🔔','☕','🍕','🌈','🐱','🐶','🦊'
+]
 let typingTimer = null
 let _audioCtx = null
 
@@ -169,12 +182,18 @@ function formatTime(ts) {
 
 function previewImage(url) { previewUrl.value = url }
 
+function insertEmoji(emoji) {
+  inputText.value += emoji
+  showEmoji.value = false
+}
+
+function closeEmojiPanel() { showEmoji.value = false }
+
 function triggerImageUpload() { imageInput.value?.click() }
 
 function handleImageSelect(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  if (file.size > 2 * 1024 * 1024) { alert('图片大小不能超过 2MB'); return }
   const reader = new FileReader()
   reader.onload = (ev) => { pendingImage.value = { file, thumb: ev.target.result } }
   reader.readAsDataURL(file)
@@ -195,7 +214,15 @@ async function sendMessage() {
 
   if (pendingImage.value) {
     try {
-      const res = await chatAPI.uploadImage(pendingImage.value.file)
+      const MAX_SIZE = 10 * 1024 * 1024
+      let uploadFile = pendingImage.value.file
+      if (uploadFile.size > MAX_SIZE) {
+        uploadFile = await compressImage(uploadFile, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
+        if (uploadFile.size > MAX_SIZE) {
+          uploadFile = await compressImage(uploadFile, { maxWidth: 600, maxHeight: 600, quality: 0.5 })
+        }
+      }
+      const res = await chatAPI.uploadImage(uploadFile)
       imageUrl = res.data?.imageUrl || null
     } catch { /* fallback */ }
     clearPendingImage()
@@ -245,7 +272,7 @@ function markRoomRead() {
 
 function onChatMessage(msg) {
   if (msg.roomId !== props.roomId) return
-  if (msg.type !== 'system' && msg.userId === currentUserId.value) {
+  if (msg.type !== 'system') {
     const localIdx = messages.value.findIndex(
       m => String(m.id).startsWith('local-') && m.content === msg.content && m.type === msg.type
     )
@@ -305,6 +332,7 @@ onMounted(() => {
   sock.on('chat:stopTyping', onChatStopTyping)
   sock.on('room:onlineUsers', onOnlineUsers)
   sock.on('chat:readUpdate', onReadUpdate)
+  document.addEventListener('click', closeEmojiPanel)
 })
 
 onUnmounted(() => {
@@ -314,6 +342,7 @@ onUnmounted(() => {
   sock.off('chat:stopTyping', onChatStopTyping)
   sock.off('room:onlineUsers', onOnlineUsers)
   sock.off('chat:readUpdate', onReadUpdate)
+  document.removeEventListener('click', closeEmojiPanel)
   clearTimeout(typingTimer)
 })
 </script>
@@ -471,4 +500,19 @@ onUnmounted(() => {
 }
 .chat-send:hover { opacity: 0.85; }
 .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Emoji panel */
+.emoji-panel {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 14px;
+  border-top: 1px solid var(--chat-border); background: var(--chat-input-bg);
+  max-height: 140px; overflow-y: auto;
+}
+.emoji-item {
+  font-size: 1.2rem; cursor: pointer; padding: 4px;
+  border-radius: 4px; transition: background 0.15s; line-height: 1;
+}
+.emoji-item:hover { background: rgba(255,255,255,0.1); }
+
+/* Self username */
+.msg-name-self { text-align: right; }
 </style>

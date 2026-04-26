@@ -74,8 +74,8 @@ module.exports = {
 
 async function getAllPosts(req, res, next) {
   try {
-    const { page, pageSize, status } = req.query;
-    const result = await adminService.getAllPosts({ page, pageSize, status });
+    const { page, pageSize, status, category, author, keyword } = req.query;
+    const result = await adminService.getAllPosts({ page, pageSize, status, category, author, keyword });
     res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
   } catch (err) { next(err); }
 }

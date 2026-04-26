@@ -25,7 +25,7 @@ async function getMyRooms(req, res, next) {
 async function uploadImage(req, res, next) {
   try {
     if (!req.file) {
-      return res.error('No file uploaded', 400);
+      return res.error('请选择要上传的文件', 400);
     }
     // Return the URL path to the uploaded file
     const imageUrl = `/uploads/chat/${req.file.filename}`;
@@ -38,7 +38,7 @@ async function uploadImage(req, res, next) {
 async function markRead(req, res, next) {
   try {
     const { roomId } = req.body;
-    if (!roomId) return res.error('roomId required', 400);
+    if (!roomId) return res.error('缺少房间ID', 400);
     const count = await chatService.markMessagesRead(roomId, req.user.userId);
     res.success({ marked: count });
   } catch (err) {
