@@ -9,6 +9,7 @@
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.0",
+    "svg-captcha": "^1.4.0",
     "winston": "^3.17.0"
   }
 }

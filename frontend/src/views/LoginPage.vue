@@ -19,6 +19,12 @@
           <el-form-item>
             <el-input v-model="form.password" type="password" placeholder="密码" size="large" prefix-icon="Lock" show-password />
           </el-form-item>
+          <el-form-item>
+            <div class="captcha-row">
+              <input v-model="captchaCode" class="captcha-input" placeholder="验证码" maxlength="4" />
+              <div class="captcha-img" @click="refreshCaptcha" v-html="captchaSvg" title="点击刷新"></div>
+            </div>
+          </el-form-item>
           <el-button type="primary" native-type="submit" :loading="loading" class="submit-btn" size="large">
             登 录
           </el-button>
@@ -34,9 +40,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { authAPI } from '@/api/user'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -45,6 +52,23 @@ const userStore = useUserStore()
 
 const form = ref({ username: '', password: '' })
 const loading = ref(false)
+
+const captchaSvg = ref('')
+const captchaUuid = ref('')
+const captchaCode = ref('')
+
+async function refreshCaptcha() {
+  try {
+    const res = await authAPI.getCaptcha()
+    captchaSvg.value = res.data.svg
+    captchaUuid.value = res.data.uuid
+    captchaCode.value = ''
+  } catch (e) { /* ignore */ }
+}
+
+onMounted(() => {
+  refreshCaptcha()
+})
 
 const redirect = computed(() => route.query.redirect || '/')
 const registerLink = computed(() => `/register?redirect=${encodeURIComponent(redirect.value)}`)
@@ -55,11 +79,16 @@ async function handleLogin() {
   }
   loading.value = true
   try {
-    await userStore.login(form.value)
+    await userStore.login({
+      ...form.value,
+      captchaUuid: captchaUuid.value,
+      captchaCode: captchaCode.value
+    })
     ElMessage.success('登录成功')
     router.push(redirect.value)
   } catch (err) {
     ElMessage.error(err.message || '登录失败')
+    refreshCaptcha()
   } finally {
     loading.value = false
   }
@@ -162,6 +191,42 @@ async function handleLogin() {
 .switch-text a {
   color: var(--color-accent);
   text-decoration: none;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.captcha-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  background: var(--color-bg-primary);
+}
+
+.captcha-input:focus {
+  border-color: var(--color-accent);
+}
+
+.captcha-img {
+  cursor: pointer;
+  height: 40px;
+  min-width: 120px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.captcha-img:hover {
+  opacity: 0.8;
 }
 
 @media (max-width: 768px) {

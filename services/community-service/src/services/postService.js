@@ -1,8 +1,21 @@
-const { db, logger } = require('xueqi-shared');
+const { db, logger, sensitiveFilter } = require('xueqi-shared');
 const axios = require('axios');
+const sanitizeHtml = require('sanitize-html');
 const mentionService = require('./mentionService');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+
+const POST_SANITIZE_OPTIONS = {
+  allowedTags: ['h1','h2','h3','h4','h5','h6','p','code','pre','strong','em','a','ul','ol','li','blockquote','br','hr','img','table','thead','tbody','tr','th','td','sup','sub','del','s'],
+  allowedAttributes: { 'a': ['href','target'], 'img': ['src','alt'], 'code': ['class'] },
+  allowedSchemes: ['http','https','mailto']
+};
+
+const COMMENT_SANITIZE_OPTIONS = {
+  allowedTags: ['p','br','strong','em','code'],
+  allowedAttributes: {},
+  allowedSchemes: ['http','https']
+};
 
 /**
  * List published posts (public)
@@ -106,10 +119,22 @@ async function getPostById(postId) {
  * Create post (user, status=published — direct publish, no review needed)
  */
 async function createPost(userId, { title, content, summary, category, isAnonymous, tags, permission, contentType }) {
+  // Sanitize content first (strip dangerous HTML, keep safe tags)
+  const cleanContent = sanitizeHtml(content, POST_SANITIZE_OPTIONS);
+  const cleanTitle = sanitizeHtml(title, { allowedTags: [], allowedAttributes: {} });
+
+  // Sensitive word check on sanitized text
+  const check = sensitiveFilter.check(cleanTitle + ' ' + cleanContent);
+  if (check.hasSensitive) {
+    const error = new Error(`内容包含敏感词：${check.words.join('、')}`);
+    error.status = 400;
+    throw error;
+  }
+
   const [result] = await db.execute(
     `INSERT INTO posts (user_id, title, content, summary, category, is_anonymous, permission, content_type, version, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'published')`,
-    [userId, title, content, summary || null, category || 'general', isAnonymous ? 1 : 0,
+    [userId, cleanTitle, cleanContent, summary || null, category || 'general', isAnonymous ? 1 : 0,
      permission || 'public', contentType || 'markdown']
   );
 
@@ -186,8 +211,22 @@ async function updatePost(postId, userId, data) {
   const updates = [];
   const params = [];
 
-  if (data.title !== undefined) { updates.push('title = ?'); params.push(data.title); }
-  if (data.content !== undefined) { updates.push('content = ?'); params.push(data.content); }
+  // Sanitize first, then check sensitive words on the clean text
+  const cleanTitle = data.title !== undefined ? sanitizeHtml(data.title, { allowedTags: [], allowedAttributes: {} }) : null;
+  const cleanContent = data.content !== undefined ? sanitizeHtml(data.content, POST_SANITIZE_OPTIONS) : null;
+
+  const checkText = (cleanTitle || '') + ' ' + (cleanContent || '');
+  if (checkText.trim()) {
+    const check = sensitiveFilter.check(checkText);
+    if (check.hasSensitive) {
+      const error = new Error(`内容包含敏感词：${check.words.join('、')}`);
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  if (cleanTitle !== null) { updates.push('title = ?'); params.push(cleanTitle); }
+  if (cleanContent !== null) { updates.push('content = ?'); params.push(cleanContent); }
   if (data.category !== undefined) { updates.push('category = ?'); params.push(data.category); }
 
   if (updates.length === 0) return getPostById(postId);

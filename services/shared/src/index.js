@@ -5,6 +5,9 @@ const logger = require('./logger');
 const responseHandler = require('./responseHandler');
 const errorHandler = require('./errorHandler');
 const { authMiddleware, optionalAuth, requireRole, serviceAuthMiddleware } = require('./auth');
+const sensitiveFilter = require('./sensitiveFilter');
+const rateLimiter = require('./rateLimiter');
+const captcha = require('./captcha');
 
 module.exports = {
   db: pool,
@@ -16,5 +19,8 @@ module.exports = {
   authMiddleware,
   optionalAuth,
   requireRole,
-  serviceAuthMiddleware
+  serviceAuthMiddleware,
+  sensitiveFilter,
+  rateLimiter,
+  captcha
 };

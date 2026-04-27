@@ -147,8 +147,8 @@ function initSocket(httpServer) {
 
     socket.on('chat:message', async (data) => {
       if (!userId || !data.roomId || !data.content?.trim()) return;
-      if (data.content.length > 2000) {
-        socket.emit('chat:error', { message: '消息不能超过 2000 字' });
+      if (data.content.length > 500) {
+        socket.emit('chat:error', { message: '消息不能超过 500 字' });
         return;
       }
 
@@ -222,8 +222,8 @@ function initSocket(httpServer) {
 
     socket.on('pm:send', async (data) => {
       if (!userId || !data.toUserId || (!data.content?.trim() && !data.imageUrl)) return;
-      if (data.content && data.content.length > 2000) {
-        socket.emit('pm:error', { message: '消息不能超过 2000 字' });
+      if (data.content && data.content.length > 500) {
+        socket.emit('pm:error', { message: '消息不能超过 500 字' });
         return;
       }
 

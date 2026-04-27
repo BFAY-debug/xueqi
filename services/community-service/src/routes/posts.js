@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/postController');
 const { authMiddleware, optionalAuth } = require('xueqi-shared');
+const reportController = require('../controllers/reportController');
 
 // Public
 router.get('/posts', optionalAuth, postController.listPosts);
@@ -17,5 +18,8 @@ router.delete('/posts/:id', authMiddleware, postController.deletePost);
 router.post('/posts/:id/like', authMiddleware, postController.likePost);
 router.post('/posts/:id/versions/:version/rollback', authMiddleware, postController.rollbackVersion);
 router.get('/my/posts', authMiddleware, postController.getMyPosts);
+
+// Report
+router.post('/posts/:id/report', authMiddleware, reportController.reportPost);
 
 module.exports = router;

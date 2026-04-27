@@ -14,7 +14,8 @@ COPY services/api-gateway/src/ ./services/api-gateway/src/
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
     chown -R appuser:appgroup /app
 
-RUN apk add --no-cache su-exec
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk add --no-cache su-exec
 
 WORKDIR /app/services/api-gateway
 EXPOSE 3000

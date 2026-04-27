@@ -1,6 +1,13 @@
-const { db, logger } = require('xueqi-shared');
+const { db, logger, sensitiveFilter } = require('xueqi-shared');
 const axios = require('axios');
+const sanitizeHtml = require('sanitize-html');
 const mentionService = require('./mentionService');
+
+const COMMENT_SANITIZE_OPTIONS = {
+  allowedTags: ['p','br','strong','em','code'],
+  allowedAttributes: {},
+  allowedSchemes: ['http','https']
+};
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
@@ -64,6 +71,17 @@ async function getComments(postId, page = 1, pageSize = 50) {
  * Create comment (status=pending)
  */
 async function createComment(postId, userId, { content, parentId, isAnonymous }) {
+  // Sanitize first
+  const cleanContent = sanitizeHtml(content, COMMENT_SANITIZE_OPTIONS);
+
+  // Sensitive word check on sanitized text
+  const check = sensitiveFilter.check(cleanContent);
+  if (check.hasSensitive) {
+    const error = new Error(`内容包含敏感词：${check.words.join('、')}`);
+    error.status = 400;
+    throw error;
+  }
+
   // Verify post exists and is published
   const [posts] = await db.execute("SELECT id FROM posts WHERE id = ? AND status = 'published'", [postId]);
   if (posts.length === 0) {
@@ -85,7 +103,7 @@ async function createComment(postId, userId, { content, parentId, isAnonymous })
   const [result] = await db.execute(
     `INSERT INTO comments (post_id, user_id, parent_id, content, is_anonymous, status)
      VALUES (?, ?, ?, ?, ?, 'published')`,
-    [postId, userId, parentId || null, content, isAnonymous ? 1 : 0]
+    [postId, userId, parentId || null, cleanContent, isAnonymous ? 1 : 0]
   );
 
   // Immediately increment comment count

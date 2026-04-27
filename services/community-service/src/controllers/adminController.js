@@ -69,7 +69,11 @@ module.exports = {
   toggleHidePost, adminEditPost,
   getPendingComments, reviewComment, getReviewLogs,
   getAllPosts, deletePost, getAllComments, deleteComment,
-  getPendingProposals, adminMergeProposal, adminRejectProposal
+  getPendingProposals, adminMergeProposal, adminRejectProposal,
+  // Sensitive words
+  getSensitiveWords, addSensitiveWords, deleteSensitiveWord,
+  // Reports
+  getReports, resolveReport
 };
 
 async function getAllPosts(req, res, next) {
@@ -139,5 +143,55 @@ async function adminRejectProposal(req, res, next) {
     const { reason } = req.body;
     const result = await adminService.adminRejectProposal(parseInt(req.params.id, 10), req.user.userId, reason);
     res.success(result, '提案已拒绝');
+  } catch (err) { next(err); }
+}
+
+// ── Sensitive Words ──────────────────────────────────
+
+async function getSensitiveWords(req, res, next) {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 50;
+    const { data, total } = await adminService.getSensitiveWords(page, pageSize);
+    res.paginate(data, total, page, pageSize);
+  } catch (err) { next(err); }
+}
+
+async function addSensitiveWords(req, res, next) {
+  try {
+    const { words } = req.body;
+    if (!Array.isArray(words) || words.length === 0) {
+      return res.error('请提供敏感词列表', 400);
+    }
+    const result = await adminService.addSensitiveWords(words, req.user.userId);
+    res.success(result, `已添加 ${result.added} 个敏感词`);
+  } catch (err) { next(err); }
+}
+
+async function deleteSensitiveWord(req, res, next) {
+  try {
+    await adminService.deleteSensitiveWord(parseInt(req.params.id, 10));
+    res.success(null, '敏感词已删除');
+  } catch (err) { next(err); }
+}
+
+// ── Reports ──────────────────────────────────────────
+
+async function getReports(req, res, next) {
+  try {
+    const { page, pageSize, status } = req.query;
+    const result = await adminService.getReports({ page, pageSize, status });
+    res.paginate(result.data, result.total, parseInt(page, 10) || 1, parseInt(pageSize, 10) || 20);
+  } catch (err) { next(err); }
+}
+
+async function resolveReport(req, res, next) {
+  try {
+    const { action, note } = req.body;
+    if (!['ignore', 'hide', 'mute'].includes(action)) {
+      return res.error('action 必须为 ignore、hide 或 mute', 400);
+    }
+    const result = await adminService.resolveReport(parseInt(req.params.id, 10), req.user.userId, action, note);
+    res.success(result, '举报已处理');
   } catch (err) { next(err); }
 }

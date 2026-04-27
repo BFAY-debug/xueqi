@@ -1,5 +1,6 @@
-const { db, logger } = require('xueqi-shared');
+const { db, logger, sensitiveFilter } = require('xueqi-shared');
 const axios = require('axios');
+const sanitizeHtml = require('sanitize-html');
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
@@ -112,16 +113,35 @@ async function adminEditPost(postId, adminId, { title, content }) {
   const post = rows[0];
   const newVersion = post.version + 1;
 
+  const finalTitle = title || post.title;
+  const finalContent = content || post.content;
+
+  // Sanitize HTML
+  const cleanTitle = sanitizeHtml(finalTitle, { allowedTags: [], allowedAttributes: {} });
+  const cleanContent = sanitizeHtml(finalContent, {
+    allowedTags: ['h1','h2','h3','h4','h5','h6','p','code','pre','strong','em','a','ul','ol','li','blockquote','br','hr','img','table','thead','tbody','tr','th','td','sup','sub','del','s'],
+    allowedAttributes: { 'a': ['href','target'], 'img': ['src','alt'], 'code': ['class'] },
+    allowedSchemes: ['http','https','mailto']
+  });
+
+  // Sensitive word check
+  const check = sensitiveFilter.check(cleanTitle + ' ' + cleanContent);
+  if (check.hasSensitive) {
+    const error = new Error(`内容包含敏感词：${check.words.join('、')}`);
+    error.status = 400;
+    throw error;
+  }
+
   await db.execute(
     'UPDATE posts SET title = ?, content = ?, version = ? WHERE id = ?',
-    [title || post.title, content || post.content, newVersion, postId]
+    [cleanTitle, cleanContent, newVersion, postId]
   );
 
   // Record version history
   await db.execute(
     `INSERT INTO post_versions (post_id, version, title, content, edit_summary, created_by)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [postId, newVersion, title || post.title, content || post.content, '管理员编辑', adminId]
+    [postId, newVersion, cleanTitle, cleanContent, '管理员编辑', adminId]
   );
 
   return { postId, version: newVersion };
@@ -453,6 +473,158 @@ async function getReviewLogs({ page = 1, pageSize = 20, targetType = '' }) {
   return { data: rows, total: countRows[0].total };
 }
 
+// ── Sensitive Words ──────────────────────────────────
+
+async function getSensitiveWords(page = 1, pageSize = 50) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 50;
+  const offset = (page - 1) * pageSize;
+  const [rows] = await db.execute(
+    `SELECT sw.*, u.username AS created_by_name
+     FROM sensitive_words sw
+     JOIN users u ON u.id = sw.created_by
+     ORDER BY sw.created_at DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    []
+  );
+  const [countRows] = await db.execute('SELECT COUNT(*) AS total FROM sensitive_words');
+  return { data: rows, total: countRows[0].total };
+}
+
+async function addSensitiveWords(words, adminId) {
+  let added = 0;
+  for (const word of words) {
+    const trimmed = word.trim();
+    if (!trimmed || trimmed.length > 100) continue;
+    try {
+      await db.execute('INSERT INTO sensitive_words (word, created_by) VALUES (?, ?)', [trimmed, adminId]);
+      added++;
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') continue; // skip duplicates
+      throw err;
+    }
+  }
+  if (added > 0) {
+    await sensitiveFilter.reload(db);
+  }
+  return { added };
+}
+
+async function deleteSensitiveWord(id) {
+  const [rows] = await db.execute('SELECT id FROM sensitive_words WHERE id = ?', [id]);
+  if (rows.length === 0) {
+    const error = new Error('敏感词不存在');
+    error.status = 404;
+    throw error;
+  }
+  await db.execute('DELETE FROM sensitive_words WHERE id = ?', [id]);
+  await sensitiveFilter.reload(db);
+  return { deleted: true };
+}
+
+// ── Reports ──────────────────────────────────────────
+
+async function getReports({ page = 1, pageSize = 20, status = '' }) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
+  const offset = (page - 1) * pageSize;
+  const conditions = [];
+  const params = [];
+
+  if (status) {
+    conditions.push('r.status = ?');
+    params.push(status);
+  }
+
+  const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
+
+  const [rows] = await db.execute(
+    `SELECT r.*,
+            reporter.username AS reporter_name,
+            admin.username AS admin_name
+     FROM reports r
+     JOIN users reporter ON reporter.id = r.reporter_id
+     LEFT JOIN users admin ON admin.id = r.admin_id
+     WHERE ${where}
+     ORDER BY r.created_at DESC
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
+  );
+
+  const [countRows] = await db.execute(`SELECT COUNT(*) AS total FROM reports r WHERE ${where}`, params);
+
+  // Enrich with target content snippet
+  for (const row of rows) {
+    try {
+      if (row.target_type === 'post') {
+        const [posts] = await db.execute('SELECT title FROM posts WHERE id = ?', [row.target_id]);
+        row.target_title = posts[0]?.title || '(已删除)';
+      } else {
+        const [comments] = await db.execute('SELECT LEFT(content, 100) AS snippet FROM comments WHERE id = ?', [row.target_id]);
+        row.target_title = comments[0]?.snippet || '(已删除)';
+      }
+    } catch { row.target_title = '(已删除)'; }
+  }
+
+  return { data: rows, total: countRows[0].total };
+}
+
+async function resolveReport(reportId, adminId, action, note) {
+  const [rows] = await db.execute('SELECT * FROM reports WHERE id = ?', [reportId]);
+  if (rows.length === 0) {
+    const error = new Error('举报不存在');
+    error.status = 404;
+    throw error;
+  }
+
+  const report = rows[0];
+  if (report.status !== 'pending') {
+    const error = new Error('该举报已处理');
+    error.status = 400;
+    throw error;
+  }
+
+  if (action === 'hide' || action === 'mute') {
+    // Hide the target content
+    if (report.target_type === 'post') {
+      await db.execute("UPDATE posts SET status = 'hidden' WHERE id = ?", [report.target_id]);
+    } else {
+      await db.execute("UPDATE comments SET status = 'rejected' WHERE id = ?", [report.target_id]);
+    }
+  }
+
+  if (action === 'mute') {
+    // Mute the content author
+    let authorId;
+    if (report.target_type === 'post') {
+      const [posts] = await db.execute('SELECT user_id FROM posts WHERE id = ?', [report.target_id]);
+      authorId = posts[0]?.user_id;
+    } else {
+      const [comments] = await db.execute('SELECT user_id FROM comments WHERE id = ?', [report.target_id]);
+      authorId = comments[0]?.user_id;
+    }
+    if (authorId) {
+      try {
+        const token = getServiceToken();
+        await axios.put(`${USER_SERVICE_URL}/api/user/admin/users/${authorId}/status`,
+          { status: 0 },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        logger.warn(`Failed to mute user ${authorId}: ${err.message}`);
+      }
+    }
+  }
+
+  const status = action === 'ignore' ? 'ignored' : 'resolved';
+  await db.execute(
+    'UPDATE reports SET status = ?, admin_id = ?, admin_note = ?, resolved_at = NOW() WHERE id = ?',
+    [status, adminId, note || null, reportId]
+  );
+
+  return { reportId, status, action };
+}
+
 function getServiceToken() {
   const { jwt: { generateToken } } = require('xueqi-shared');
   return generateToken({ userId: 0, username: 'community-service', roleId: 0, roleName: 'service', type: 'service' });
@@ -463,5 +635,9 @@ module.exports = {
   getPendingComments, reviewComment,
   getReviewLogs,
   getAllPosts, deletePost, getAllComments, deleteComment,
-  getPendingProposals, adminMergeProposal, adminRejectProposal
+  getPendingProposals, adminMergeProposal, adminRejectProposal,
+  // Sensitive words
+  getSensitiveWords, addSensitiveWords, deleteSensitiveWord,
+  // Reports
+  getReports, resolveReport
 };

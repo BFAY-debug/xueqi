@@ -1,8 +1,16 @@
 const authService = require('../services/authService');
+const { captcha, redis } = require('xueqi-shared');
+
+async function getCaptcha(req, res, next) {
+  try {
+    const result = await captcha.generate(redis);
+    res.success(result);
+  } catch (err) { next(err); }
+}
 
 async function register(req, res, next) {
   try {
-    const { username, email, password, accountId } = req.body;
+    const { username, email, password, accountId, captchaUuid, captchaCode } = req.body;
 
     if (!username || !email || !password) {
       return res.error('用户名、邮箱和密码不能为空', 400);
@@ -31,6 +39,15 @@ async function register(req, res, next) {
       }
     }
 
+    // Verify captcha after parameter validation
+    if (!captchaUuid || !captchaCode) {
+      return res.error('请输入验证码', 400);
+    }
+    const valid = await captcha.verify(redis, captchaUuid, captchaCode);
+    if (!valid) {
+      return res.error('验证码错误或已过期', 400);
+    }
+
     const result = await authService.register({ username, email, password, accountId: accountId || undefined });
     res.success(result, '注册成功', 201);
   } catch (err) {
@@ -40,10 +57,21 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const { username, password } = req.body;
+    const { username, password, captchaUuid, captchaCode } = req.body;
+
     if (!username || !password) {
       return res.error('用户名和密码不能为空', 400);
     }
+
+    // Verify captcha after parameter validation
+    if (!captchaUuid || !captchaCode) {
+      return res.error('请输入验证码', 400);
+    }
+    const valid = await captcha.verify(redis, captchaUuid, captchaCode);
+    if (!valid) {
+      return res.error('验证码错误或已过期', 400);
+    }
+
     const result = await authService.login({ username, password });
     res.success(result, '登录成功');
   } catch (err) {
@@ -70,4 +98,4 @@ async function logout(req, res) {
   res.success(null, '已登出');
 }
 
-module.exports = { register, login, refresh, logout };
+module.exports = { getCaptcha, register, login, refresh, logout };

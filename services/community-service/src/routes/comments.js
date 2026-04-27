@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const commentController = require('../controllers/commentController');
 const { authMiddleware, optionalAuth } = require('xueqi-shared');
+const reportController = require('../controllers/reportController');
 
 // Public
 router.get('/posts/:postId/comments', optionalAuth, commentController.getComments);
@@ -11,5 +12,8 @@ router.post('/posts/:postId/comments', authMiddleware, commentController.createC
 router.delete('/comments/:id', authMiddleware, commentController.deleteComment);
 router.post('/comments/:id/like', authMiddleware, commentController.likeComment);
 router.get('/my/comments', authMiddleware, commentController.getMyComments);
+
+// Report
+router.post('/comments/:id/report', authMiddleware, reportController.reportComment);
 
 module.exports = router;

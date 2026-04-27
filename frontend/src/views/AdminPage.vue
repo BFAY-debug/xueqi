@@ -346,6 +346,68 @@
           </div>
           <p v-if="!feedbackList.length" class="empty-text">暂无反馈</p>
         </template>
+
+        <!-- Sensitive Words Management -->
+        <template v-if="activeSection === 'sensitiveWords'">
+          <h2>敏感词管理</h2>
+          <div style="display:flex;gap:12px;margin-bottom:16px;align-items:flex-start">
+            <el-input v-model="newSensitiveWords" type="textarea" :rows="3" placeholder="每行一个敏感词" style="width:360px" />
+            <el-button type="primary" @click="addSensitiveWords" :loading="saving">添加</el-button>
+          </div>
+          <el-table :data="sensitiveWords" stripe>
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column prop="word" label="敏感词" min-width="200" />
+            <el-table-column prop="added_by_name" label="添加人" width="120" />
+            <el-table-column prop="created_at" label="添加时间" width="160" />
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button size="small" type="danger" @click="deleteSensitiveWord(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p v-if="!sensitiveWords.length" class="empty-text">暂无敏感词</p>
+        </template>
+
+        <!-- Reports Management -->
+        <template v-if="activeSection === 'reports'">
+          <h2>举报管理</h2>
+          <el-tabs v-model="reportStatus" @tab-change="fetchReports">
+            <el-tab-pane label="待处理" name="pending" />
+            <el-tab-pane label="已处理" name="resolved" />
+            <el-tab-pane label="已忽略" name="ignored" />
+          </el-tabs>
+          <el-table :data="reports" stripe style="margin-top:12px">
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column prop="reporter_name" label="举报人" width="100" />
+            <el-table-column prop="target_type" label="目标类型" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.target_type === 'post' ? 'primary' : 'success'" size="small">{{ row.target_type === 'post' ? '帖子' : '评论' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="target_title" label="目标摘要" min-width="200">
+              <template #default="{ row }">
+                <span>{{ row.target_title?.length > 60 ? row.target_title.slice(0, 60) + '...' : row.target_title }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reason" label="原因" width="100">
+              <template #default="{ row }">
+                <el-tag type="warning" size="small">{{ reportReasonMap[row.reason] || row.reason }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="时间" width="160" />
+            <el-table-column label="操作" width="240">
+              <template #default="{ row }">
+                <template v-if="row.status === 'pending'">
+                  <el-button size="small" @click="resolveReport(row.id, 'ignore')">忽略</el-button>
+                  <el-button size="small" type="warning" @click="resolveReport(row.id, 'hide')">隐藏内容</el-button>
+                  <el-button size="small" type="danger" @click="resolveReport(row.id, 'mute')">隐藏+禁言</el-button>
+                </template>
+                <el-tag v-else type="info" size="small">已处理</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p v-if="!reports.length" class="empty-text">暂无举报</p>
+        </template>
       </div>
     </div>
 
@@ -454,7 +516,9 @@ const allMenuItems = [
   { key: 'volunteer', icon: '🤝', label: '志愿审核', roles: ['admin', 'super_admin'] },
   { key: 'logs', icon: '📋', label: '审核日志', roles: ['admin', 'super_admin'] },
   { key: 'stats', icon: '📈', label: '系统统计', roles: ['super_admin'] },
-  { key: 'feedback', icon: '📬', label: '用户反馈', roles: ['super_admin'] }
+  { key: 'feedback', icon: '📬', label: '用户反馈', roles: ['super_admin'] },
+  { key: 'sensitiveWords', icon: '🚫', label: '敏感词管理', roles: ['admin', 'super_admin'] },
+  { key: 'reports', icon: '🔔', label: '举报管理', roles: ['admin', 'super_admin'] }
 ]
 
 const filteredMenu = computed(() => {
@@ -479,6 +543,15 @@ const chartCategoryRef = ref(null)
 const adminApplications = ref([])
 const feedbackList = ref([])
 const feedbackFilter = ref('pending')
+
+// Sensitive words state
+const sensitiveWords = ref([])
+const newSensitiveWords = ref('')
+
+// Reports state
+const reports = ref([])
+const reportStatus = ref('pending')
+const reportReasonMap = { spam: '垃圾信息', abuse: '人身攻击', inappropriate: '不当内容', other: '其他' }
 
 // Seat management state
 const locations = ref([])
@@ -629,6 +702,55 @@ async function ignoreFeedback(id) {
     ElMessage.success('已忽略')
     fetchFeedback()
   } catch { /* cancelled */ }
+}
+
+async function fetchSensitiveWords() {
+  try { const res = await communityAdminAPI.getSensitiveWords(); sensitiveWords.value = res.data || [] } catch { /* */ }
+}
+
+async function addSensitiveWords() {
+  const text = newSensitiveWords.value.trim()
+  if (!text) return ElMessage.warning('请输入敏感词')
+  const words = text.split('\n').map(w => w.trim()).filter(w => w)
+  if (!words.length) return ElMessage.warning('请输入有效敏感词')
+  saving.value = true
+  try {
+    await communityAdminAPI.addSensitiveWords(words)
+    ElMessage.success(`已添加 ${words.length} 个敏感词`)
+    newSensitiveWords.value = ''
+    fetchSensitiveWords()
+  } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
+}
+
+async function deleteSensitiveWord(id) {
+  try {
+    await ElMessageBox.confirm('确认删除该敏感词？', '删除确认', { type: 'warning' })
+    await communityAdminAPI.deleteSensitiveWord(id)
+    ElMessage.success('已删除')
+    fetchSensitiveWords()
+  } catch { /* cancelled */ }
+}
+
+async function fetchReports() {
+  try {
+    const res = await communityAdminAPI.getReports({ page: 1, pageSize: 50, status: reportStatus.value })
+    reports.value = res.data || []
+  } catch { /* */ }
+}
+
+async function resolveReport(id, action) {
+  if (action === 'mute') {
+    try {
+      await ElMessageBox.confirm('确认隐藏内容并将该用户禁言？', '操作确认', { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' })
+    } catch { return }
+  }
+  try {
+    await communityAdminAPI.resolveReport(id, { action, note: '' })
+    const actionText = { ignore: '已忽略', hide: '内容已隐藏', mute: '已隐藏并禁言' }
+    ElMessage.success(actionText[action] || '已处理')
+    fetchReports()
+  } catch (err) { ElMessage.error(err.message) }
 }
 async function fetchLocations() {
   try { const res = await locationAPI.getList(); locations.value = res.data || [] } catch { /* */ }
@@ -907,7 +1029,8 @@ watch(activeSection, (val) => {
     comments: () => { fetchAllComments(); fetchPendingComments() },
     proposals: fetchPendingProposals,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
-    volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats, feedback: fetchFeedback
+    volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats, feedback: fetchFeedback,
+    sensitiveWords: fetchSensitiveWords, reports: fetchReports
   }
   fetchers[val]?.()
 })

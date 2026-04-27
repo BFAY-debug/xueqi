@@ -4,7 +4,7 @@ require('dotenv').config({ path: path.join(rootDir, '.env.local') });
 require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
 const cors = require('cors');
-const { responseHandler, errorHandler, logger } = require('xueqi-shared');
+const { responseHandler, errorHandler, logger, db, sensitiveFilter } = require('xueqi-shared');
 
 const fs = require('fs');
 const postRoutes = require('./routes/posts');
@@ -51,8 +51,15 @@ app.use('/api/community', uploadRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`Community service running on port ${PORT}`);
+  // Load sensitive words into memory
+  try {
+    await sensitiveFilter.loadFromDB(db);
+    logger.info('Sensitive word filter loaded');
+  } catch (err) {
+    logger.warn(`Failed to load sensitive words: ${err.message}`);
+  }
 });
 
 module.exports = app;

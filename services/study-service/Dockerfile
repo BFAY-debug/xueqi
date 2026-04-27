@@ -14,7 +14,8 @@ COPY services/study-service/src/ ./services/study-service/src/
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
     mkdir -p /app/uploads && chown -R appuser:appgroup /app
 
-RUN apk add --no-cache su-exec
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk add --no-cache su-exec
 
 WORKDIR /app/services/study-service
 EXPOSE 3002

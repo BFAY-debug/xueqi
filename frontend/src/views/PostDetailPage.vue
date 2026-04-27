@@ -47,6 +47,15 @@
               :to="'/community/posts/' + post.id + '/edit'" class="action-btn">
               📝 编辑
             </router-link>
+            <button v-if="userStore.user?.userId === post.user_id"
+              class="action-btn delete-btn" @click="handleDeletePost">
+              🗑 删除
+            </button>
+            <span v-if="reportedIds.has('post-' + post.id)" class="action-btn reported-tag">已举报</span>
+            <button v-else-if="userStore.isLoggedIn && userStore.user?.userId !== post.user_id"
+              class="action-btn" @click="openReport('post', post.id)">
+              🚩 举报
+            </button>
           </div>
 
           <!-- Comments -->
@@ -76,6 +85,8 @@
                   <span class="comment-time">{{ timeAgo(c.created_at) }}</span>
                   <button class="comment-action" @click="likeComment(c)">❤️ {{ c.like_count }}</button>
                   <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(c, c)">回复</button>
+                  <span v-if="reportedIds.has('comment-' + c.id)" class="comment-action reported-tag">已举报</span>
+                  <button v-else-if="userStore.isLoggedIn" class="comment-action" @click="openReport('comment', c.id)">举报</button>
                 </div>
                 <!-- Nested replies -->
                 <div v-for="r in getReplies(c.id)" :key="r.id" class="comment-reply">
@@ -83,6 +94,8 @@
                   <span class="comment-text" v-html="renderCommentContent(r)"></span>
                   <span class="comment-time">{{ timeAgo(r.created_at) }}</span>
                   <button v-if="userStore.isLoggedIn" class="comment-action" @click="setReply(r, c)">回复</button>
+                  <span v-if="reportedIds.has('comment-' + r.id)" class="comment-action reported-tag">已举报</span>
+                  <button v-else-if="userStore.isLoggedIn" class="comment-action" @click="openReport('comment', r.id)">举报</button>
                 </div>
               </div>
               <p v-if="!comments.length" class="empty-text">暂无评论</p>
@@ -166,13 +179,32 @@
         <el-button @click="showDiffDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- Report Dialog -->
+    <el-dialog v-model="showReportDialog" title="举报" width="420px">
+      <div class="report-form">
+        <div class="report-label">举报原因</div>
+        <el-radio-group v-model="reportReason">
+          <el-radio value="spam">垃圾信息</el-radio>
+          <el-radio value="abuse">人身攻击</el-radio>
+          <el-radio value="inappropriate">不当内容</el-radio>
+          <el-radio value="other">其他</el-radio>
+        </el-radio-group>
+        <div class="report-label" style="margin-top: 16px;">补充说明（可选）</div>
+        <el-input v-model="reportDescription" type="textarea" :rows="3" :maxlength="200" show-word-limit placeholder="请描述具体情况..." />
+      </div>
+      <template #footer>
+        <el-button @click="showReportDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitReport" :loading="reportLoading">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/components/AppFooter.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import BackButton from '@/components/BackButton.vue'
@@ -185,6 +217,7 @@ import { useUserStore } from '@/stores/user'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const postId = route.params.id
 
@@ -201,6 +234,14 @@ const commentLoading = ref(false)
 const replyTo = ref(null)
 const replyParentId = ref(null)
 const isFollowingAuthor = ref(false)
+
+// Report state
+const showReportDialog = ref(false)
+const reportReason = ref('spam')
+const reportDescription = ref('')
+const reportLoading = ref(false)
+const reportTarget = ref({ type: '', id: null })
+const reportedIds = ref(new Set())
 
 // Version control
 const showVersionDialog = ref(false)
@@ -395,6 +436,52 @@ async function toggleFollowAuthor() {
   } catch (err) { ElMessage.error(err.message) }
 }
 
+// Delete post
+async function handleDeletePost() {
+  try {
+    await ElMessageBox.confirm('确定要删除这篇文章吗？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await postAPI.delete(post.value.id)
+    ElMessage.success('文章已删除')
+    router.push('/community')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e.message || '删除失败')
+  }
+}
+
+// Report
+function openReport(type, id) {
+  if (!userStore.isLoggedIn) return ElMessage.warning('请先登录')
+  reportTarget.value = { type, id }
+  reportReason.value = 'spam'
+  reportDescription.value = ''
+  showReportDialog.value = true
+}
+
+async function submitReport() {
+  if (!reportReason.value) return ElMessage.warning('请选择举报原因')
+  reportLoading.value = true
+  try {
+    const data = { reason: reportReason.value, description: reportDescription.value }
+    const { type, id } = reportTarget.value
+    if (type === 'post') {
+      await postAPI.report(id, data)
+    } else {
+      await commentAPI.report(id, data)
+    }
+    reportedIds.value.add(type + '-' + id)
+    ElMessage.success('举报已提交，感谢你的反馈')
+    showReportDialog.value = false
+  } catch (err) {
+    ElMessage.error(err.message || '举报提交失败')
+  } finally {
+    reportLoading.value = false
+  }
+}
+
 // @mention autocomplete
 let friendsCache = null
 
@@ -552,6 +639,8 @@ onUnmounted(() => {
 .action-btn.active { background: var(--color-accent-light); color: var(--color-accent); border-color: var(--color-accent); }
 .proposal-btn { background: var(--color-accent); color: #fff !important; border-color: var(--color-accent); }
 .proposal-btn:hover { opacity: 0.9; }
+.delete-btn { color: #e74c3c !important; border-color: #e74c3c; }
+.delete-btn:hover { background: #e74c3c; color: #fff !important; }
 
 .comments-section { background: rgba(139, 37, 0, 0.04); border: 1px solid rgba(139, 37, 0, 0.12); border-radius: var(--border-radius); padding: 20px; }
 .section-title { font-family: var(--font-title); font-size: 1.1rem; margin-bottom: 16px; padding-left: 8px; border-left: 3px solid var(--color-accent); }
@@ -621,6 +710,13 @@ onUnmounted(() => {
 .sidebar-tag { font-size: 0.8rem; padding: 3px 10px; background: var(--color-bg-secondary); border-radius: 12px; }
 
 .empty-text { text-align: center; color: var(--color-text-secondary); padding: 20px; font-size: 0.9rem; }
+
+/* Report */
+.reported-tag { color: var(--color-text-secondary) !important; opacity: 0.5; cursor: default !important; }
+.reported-tag:hover { border-color: var(--color-border) !important; color: var(--color-text-secondary) !important; }
+.report-form { display: flex; flex-direction: column; gap: 8px; }
+.report-label { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+.report-form .el-radio-group { display: flex; flex-direction: column; gap: 8px; }
 
 @media (max-width: 768px) {
   .detail-layout { flex-direction: column; }

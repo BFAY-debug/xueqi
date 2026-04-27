@@ -4,6 +4,8 @@ const { db, redis, jwt } = require('xueqi-shared');
 
 const SALT_ROUNDS = 10;
 const REFRESH_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const MAX_LOGIN_FAILURES = 5;
+const LOCKOUT_SECONDS = 900; // 15 minutes
 
 function tokenHash(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -62,6 +64,21 @@ async function register({ username, email, password, accountId: inputAccountId }
  * Login
  */
 async function login({ username, password }) {
+  // Check if account is locked due to too many failed attempts
+  const lockKey = `login_fail:${username}`;
+  let failCount = 0;
+  try {
+    failCount = parseInt(await redis.get(lockKey), 10) || 0;
+  } catch (e) { /* Redis down, skip check */ }
+
+  if (failCount >= MAX_LOGIN_FAILURES) {
+    const ttl = await redis.ttl(lockKey).catch(() => LOCKOUT_SECONDS);
+    const minutes = Math.ceil(Math.max(ttl, 0) / 60) || 15;
+    const error = new Error(`账号已被锁定，请${minutes}分钟后重试`);
+    error.status = 429;
+    throw error;
+  }
+
   const [rows] = await db.execute(
     `SELECT u.id, u.username, u.account_id, u.email, u.password_hash, u.role_id, u.status, u.avatar_url,
             r.name AS role_name
@@ -86,10 +103,27 @@ async function login({ username, password }) {
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
+    // Increment failure count
+    try {
+      const count = await redis.incr(lockKey);
+      if (count === 1) await redis.expire(lockKey, LOCKOUT_SECONDS);
+      if (count >= MAX_LOGIN_FAILURES) {
+        // Refresh TTL when lockout triggers to ensure full 15-min window
+        await redis.expire(lockKey, LOCKOUT_SECONDS);
+        const error = new Error('账号已被锁定，请15分钟后重试');
+        error.status = 429;
+        throw error;
+      }
+    } catch (e) {
+      if (e.status === 429) throw e;
+    }
     const error = new Error('用户名或密码错误');
     error.status = 401;
     throw error;
   }
+
+  // Login success — clear failure count
+  try { await redis.del(lockKey); } catch (e) { /* ignore */ }
 
   const payload = {
     userId: user.id,

@@ -1,6 +1,7 @@
 import request from './request'
 
 export const authAPI = {
+  getCaptcha: () => request.get('/user/captcha'),
   register: (data) => request.post('/user/register', data),
   login: (data) => request.post('/user/login', data),
   logout: (data) => request.post('/user/logout', data),

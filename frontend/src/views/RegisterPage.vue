@@ -28,6 +28,12 @@
           <el-form-item>
             <el-input v-model="form.accountId" placeholder="账号ID（选填）" size="large" />
           </el-form-item>
+          <el-form-item>
+            <div class="captcha-row">
+              <input v-model="captchaCode" class="captcha-input" placeholder="验证码" maxlength="4" />
+              <div class="captcha-img" @click="refreshCaptcha" v-html="captchaSvg" title="点击刷新"></div>
+            </div>
+          </el-form-item>
           <el-button type="primary" native-type="submit" :loading="loading" class="submit-btn" size="large">
             注 册
           </el-button>
@@ -43,9 +49,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { authAPI } from '@/api/user'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -53,6 +60,23 @@ const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref(null)
 const loading = ref(false)
+
+const captchaSvg = ref('')
+const captchaUuid = ref('')
+const captchaCode = ref('')
+
+async function refreshCaptcha() {
+  try {
+    const res = await authAPI.getCaptcha()
+    captchaSvg.value = res.data.svg
+    captchaUuid.value = res.data.uuid
+    captchaCode.value = ''
+  } catch (e) { /* ignore */ }
+}
+
+onMounted(() => {
+  refreshCaptcha()
+})
 
 const form = ref({
   username: '',
@@ -102,7 +126,9 @@ async function handleRegister() {
       username: form.value.username,
       email: form.value.email,
       password: form.value.password,
-      accountId: form.value.accountId || undefined
+      accountId: form.value.accountId || undefined,
+      captchaUuid: captchaUuid.value,
+      captchaCode: captchaCode.value
     })
     const accountId = res.data?.accountId
     if (accountId) {
@@ -113,6 +139,7 @@ async function handleRegister() {
     router.push(`/login?redirect=${encodeURIComponent(redirect.value)}`)
   } catch (err) {
     ElMessage.error(err.message || '注册失败')
+    refreshCaptcha()
   } finally {
     loading.value = false
   }
@@ -210,6 +237,42 @@ async function handleRegister() {
 .switch-text a {
   color: var(--color-accent);
   text-decoration: none;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.captcha-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  background: var(--color-bg-primary);
+}
+
+.captcha-input:focus {
+  border-color: var(--color-accent);
+}
+
+.captcha-img {
+  cursor: pointer;
+  height: 40px;
+  min-width: 120px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.captcha-img:hover {
+  opacity: 0.8;
 }
 
 @media (max-width: 768px) {

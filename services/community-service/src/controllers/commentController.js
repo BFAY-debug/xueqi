@@ -1,4 +1,5 @@
 const commentService = require('../services/commentService');
+const { rateLimiter, redis } = require('xueqi-shared');
 
 async function getComments(req, res, next) {
   try {
@@ -11,6 +12,10 @@ async function getComments(req, res, next) {
 
 async function createComment(req, res, next) {
   try {
+    // Pre-check rate limit (read-only, does not increment)
+    await rateLimiter.checkUserRate(redis, 'comment_min', req.user.userId, 5, 60);
+    await rateLimiter.checkUserRate(redis, 'comment_day', req.user.userId, 50, 86400);
+
     const { content, parentId, isAnonymous } = req.body;
     if (!content) {
       return res.error('评论内容不能为空', 400);
@@ -22,6 +27,11 @@ async function createComment(req, res, next) {
       parseInt(req.params.postId, 10), req.user.userId,
       { content, parentId, isAnonymous }
     );
+
+    // Increment counter only on success
+    await rateLimiter.incrementUserRate(redis, 'comment_min', req.user.userId, 60);
+    await rateLimiter.incrementUserRate(redis, 'comment_day', req.user.userId, 86400);
+
     res.success(result, '评论发表成功', 201);
   } catch (err) { next(err); }
 }

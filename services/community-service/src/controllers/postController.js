@@ -1,4 +1,5 @@
 const postService = require('../services/postService');
+const { rateLimiter, redis } = require('xueqi-shared');
 
 async function listPosts(req, res, next) {
   try {
@@ -17,6 +18,10 @@ async function getPost(req, res, next) {
 
 async function createPost(req, res, next) {
   try {
+    // Pre-check rate limit (read-only, does not increment)
+    await rateLimiter.checkUserRate(redis, 'post_min', req.user.userId, 2, 60);
+    await rateLimiter.checkUserRate(redis, 'post_day', req.user.userId, 20, 86400);
+
     const { title, content, summary, category, isAnonymous, tags, permission, contentType } = req.body;
     if (!title || !content) {
       return res.error('标题和内容不能为空', 400);
@@ -24,8 +29,8 @@ async function createPost(req, res, next) {
     if (title.length > 200) {
       return res.error('标题不能超过 200 字', 400);
     }
-    if (content.length > 500000) {
-      return res.error('内容不能超过 500000 字', 400);
+    if (content.length > 50000) {
+      return res.error('内容不能超过 50000 字', 400);
     }
     const validCategories = ['general', 'study', 'life', 'tech', 'resource', 'question'];
     if (category && !validCategories.includes(category)) {
@@ -40,12 +45,30 @@ async function createPost(req, res, next) {
     }
     const result = await postService.createPost(req.user.userId,
       { title, content, summary, category, isAnonymous, tags, permission, contentType });
+
+    // Increment counter only on success
+    await rateLimiter.incrementUserRate(redis, 'post_min', req.user.userId, 60);
+    await rateLimiter.incrementUserRate(redis, 'post_day', req.user.userId, 86400);
+
     res.success(result, '文章已发布', 201);
   } catch (err) { next(err); }
 }
 
 async function updatePost(req, res, next) {
   try {
+    const { title, content } = req.body;
+    if (title !== undefined && !title.trim()) {
+      return res.error('标题不能为空', 400);
+    }
+    if (content !== undefined && !content.trim()) {
+      return res.error('内容不能为空', 400);
+    }
+    if (title !== undefined && title.length > 200) {
+      return res.error('标题不能超过 200 字', 400);
+    }
+    if (content !== undefined && content.length > 50000) {
+      return res.error('内容不能超过 50000 字', 400);
+    }
     const result = await postService.updatePost(parseInt(req.params.id, 10), req.user.userId, req.body);
     res.success(result, '文章已更新');
   } catch (err) { next(err); }

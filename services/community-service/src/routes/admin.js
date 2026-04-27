@@ -30,4 +30,13 @@ router.put('/proposals/:id/reject', adminController.adminRejectProposal);
 // Review logs
 router.get('/review-logs', adminController.getReviewLogs);
 
+// Sensitive words
+router.get('/sensitive-words', adminController.getSensitiveWords);
+router.post('/sensitive-words', adminController.addSensitiveWords);
+router.delete('/sensitive-words/:id', adminController.deleteSensitiveWord);
+
+// Reports
+router.get('/reports', adminController.getReports);
+router.put('/reports/:id', adminController.resolveReport);
+
 module.exports = router;

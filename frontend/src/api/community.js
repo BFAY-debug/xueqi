@@ -12,6 +12,7 @@ export const postAPI = {
   getVersions: (id) => request.get(`/community/posts/${id}/versions`),
   getVersion: (id, ver) => request.get(`/community/posts/${id}/versions/${ver}`),
   rollbackVersion: (id, ver) => request.post(`/community/posts/${id}/versions/${ver}/rollback`),
+  report: (id, data) => request.post(`/community/posts/${id}/report`, data),
   uploadImage: (file) => {
     const formData = new FormData()
     formData.append('image', file)
@@ -26,7 +27,8 @@ export const commentAPI = {
   create: (postId, data) => request.post(`/community/posts/${postId}/comments`, data),
   delete: (id) => request.delete(`/community/comments/${id}`),
   like: (id) => request.post(`/community/comments/${id}/like`),
-  getMy: (params) => request.get('/community/my/comments', { params })
+  getMy: (params) => request.get('/community/my/comments', { params }),
+  report: (id, data) => request.post(`/community/comments/${id}/report`, data)
 }
 
 export const tagAPI = {
@@ -64,5 +66,12 @@ export const communityAdminAPI = {
   getReviewLogs: (params) => request.get('/community/admin/review-logs', { params }),
   getPendingProposals: (params) => request.get('/community/admin/proposals/pending', { params }),
   mergeProposal: (id) => request.put(`/community/admin/proposals/${id}/merge`),
-  rejectProposal: (id, data) => request.put(`/community/admin/proposals/${id}/reject`, data)
+  rejectProposal: (id, data) => request.put(`/community/admin/proposals/${id}/reject`, data),
+  // Sensitive words
+  getSensitiveWords: (params) => request.get('/community/admin/sensitive-words', { params }),
+  addSensitiveWords: (words) => request.post('/community/admin/sensitive-words', { words }),
+  deleteSensitiveWord: (id) => request.delete(`/community/admin/sensitive-words/${id}`),
+  // Reports
+  getReports: (params) => request.get('/community/admin/reports', { params }),
+  resolveReport: (id, data) => request.put(`/community/admin/reports/${id}`, data)
 }
