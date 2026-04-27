@@ -88,7 +88,7 @@ import { useUserStore } from '@/stores/user'
 import { useMessageStore } from '@/stores/message'
 import { useFriendStore } from '@/stores/friend'
 import { getSocket } from '@/composables/useSocket'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { compressImage } from '@/utils/compressImage'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -172,15 +172,19 @@ function openProfileCard(userId) {
 }
 
 async function handleDeleteFriend() {
-  if (!confirm('确定删除好友？聊天记录将保留。')) return
-  await friendStore.deleteFriend(peerInfo.value.userId)
-  showMore.value = false
+  try {
+    await ElMessageBox.confirm('确定删除好友？聊天记录将保留。', '删除好友', { type: 'warning' })
+    await friendStore.deleteFriend(peerInfo.value.userId)
+    showMore.value = false
+  } catch { /* cancelled */ }
 }
 
 async function handleBlockUser() {
-  if (!confirm('确定拉黑该用户？')) return
-  await friendStore.blockUser(peerInfo.value.userId)
-  showMore.value = false
+  try {
+    await ElMessageBox.confirm('确定拉黑该用户？', '拉黑用户', { type: 'warning' })
+    await friendStore.blockUser(peerInfo.value.userId)
+    showMore.value = false
+  } catch { /* cancelled */ }
 }
 
 function onClickOutsideMore(e) {
