@@ -1,11 +1,13 @@
 <template>
-  <AppNavbar v-if="showNavbar" />
-  <router-view v-slot="{ Component }">
-    <Transition name="page-fade" mode="out-in">
-      <component :is="Component" />
-    </Transition>
-  </router-view>
-  <GlobalChat v-if="userStore.isLoggedIn" />
+  <el-config-provider :locale="zhCn">
+    <AppNavbar v-if="showNavbar" />
+    <router-view v-slot="{ Component }">
+      <Transition name="page-fade" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </router-view>
+    <GlobalChat v-if="userStore.isLoggedIn" />
+  </el-config-provider>
 </template>
 
 <script setup>
@@ -14,6 +16,7 @@ import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AppNavbar from '@/components/AppNavbar.vue'
 import GlobalChat from '@/components/GlobalChat.vue'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 const route = useRoute()
 const userStore = useUserStore()
