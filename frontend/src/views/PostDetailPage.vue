@@ -215,10 +215,12 @@ import { followAPI } from '@/api/follow'
 import { friendAPI } from '@/api/friend'
 import { useUserStore } from '@/stores/user'
 import { useTimeAgo } from '@/composables/useTimeAgo'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { formatDate } = useFormatDate()
 const postId = route.params.id
 
 const post = ref(null)
@@ -314,7 +316,7 @@ async function fetchVersions() {
   } catch { /* ignore */ }
 }
 
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
 
 async function viewVersion(v) {
   try {

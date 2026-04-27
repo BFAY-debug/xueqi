@@ -338,10 +338,12 @@ import { useChatStore } from '@/stores/chat'
 import { useTimeAgo } from '@/composables/useTimeAgo'
 import { compressImage } from '@/utils/compressImage'
 import { ElMessage } from 'element-plus'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { formatDate } = useFormatDate()
 const chatStore = useChatStore()
 const userId = computed(() => userStore.user?.userId)
 
@@ -467,7 +469,7 @@ watch(() => route.query.tab, (tab) => {
 
 const { timeAgo } = useTimeAgo()
 
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
 
 function proposalTag(s) { return { open: 'warning', merged: 'success', rejected: 'danger', closed: 'info' }[s] || 'info' }
 function proposalText(s) { return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || '未知' }

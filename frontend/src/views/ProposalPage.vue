@@ -96,10 +96,12 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { postAPI, proposalAPI } from '@/api/community'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { formatDate } = useFormatDate()
 const isCreate = computed(() => !!route.params.postId)
 const proposalId = computed(() => route.params.id)
 
@@ -128,7 +130,7 @@ function statusTag(s) {
 function statusText(s) {
   return { open: '待审核', merged: '已合并', rejected: '已拒绝', closed: '已关闭' }[s] || '未知'
 }
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
 
 onMounted(async () => {
   if (isCreate.value) {

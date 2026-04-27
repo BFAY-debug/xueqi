@@ -102,8 +102,10 @@ import { locationAPI, reservationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { getSocket } from '@/composables/useSocket'
 import { ElMessage } from 'element-plus'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const userStore = useUserStore()
+const { formatDate } = useFormatDate()
 const locations = ref([])
 const selectedLocation = ref(null)
 const seats = ref([])
@@ -135,7 +137,7 @@ watch(selectedLocation, (loc) => {
   if (loc) joinSeatChannel(loc.id)
 })
 
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
 function seatClass(seat) {
   const rsv = seat.current_reservation_status
   if (seat.status === 'maintenance') return 'maintenance'

@@ -497,8 +497,10 @@ import { communityAdminAPI, postAPI } from '@/api/community'
 import { volunteerAPI, locationAPI } from '@/api/study'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const userStore = useUserStore()
+const { formatDate } = useFormatDate()
 const activeSection = ref('posts')
 const saving = ref(false)
 
@@ -571,7 +573,7 @@ const editPostForm = reactive({ id: null, title: '', content: '' })
 const showUserDetailDialog = ref(false)
 const userDetail = ref(null)
 
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
+
 
 async function fetchPendingPosts() {
   try { const res = await communityAdminAPI.getPendingPosts({ pageSize: 50 }); pendingPosts.value = res.data || [] } catch { /* */ }
