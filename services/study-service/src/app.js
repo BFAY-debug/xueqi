@@ -4,7 +4,7 @@ require('dotenv').config({ path: path.join(rootDir, '.env.local') });
 require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
 const cors = require('cors');
-const { responseHandler, errorHandler, logger } = require('xueqi-shared');
+const { responseHandler, errorHandler, logger, db, sensitiveFilter } = require('xueqi-shared');
 
 const roomRoutes = require('./routes/rooms');
 const sessionRoutes = require('./routes/sessions');
@@ -61,10 +61,17 @@ app.use(errorHandler);
 const server = http.createServer(app);
 initSocket(server);
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   logger.info(`Study service running on port ${PORT}`);
   // Start automatic no-show checker
   seatService.startNoShowChecker();
+  // Load sensitive words into memory
+  try {
+    await sensitiveFilter.loadFromDB(db);
+    logger.info('Sensitive word filter loaded');
+  } catch (err) {
+    logger.warn(`Failed to load sensitive words: ${err.message}`);
+  }
 });
 
 // Expose broadcast functions for use in controllers/services

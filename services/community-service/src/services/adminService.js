@@ -498,27 +498,25 @@ async function addSensitiveWords(words, adminId) {
     if (!trimmed || trimmed.length > 100) continue;
     try {
       await db.execute('INSERT INTO sensitive_words (word, created_by) VALUES (?, ?)', [trimmed, adminId]);
+      sensitiveFilter.addWord(trimmed);
       added++;
     } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') continue; // skip duplicates
+      if (err.code === 'ER_DUP_ENTRY') continue;
       throw err;
     }
-  }
-  if (added > 0) {
-    await sensitiveFilter.reload(db);
   }
   return { added };
 }
 
 async function deleteSensitiveWord(id) {
-  const [rows] = await db.execute('SELECT id FROM sensitive_words WHERE id = ?', [id]);
+  const [rows] = await db.execute('SELECT id, word FROM sensitive_words WHERE id = ?', [id]);
   if (rows.length === 0) {
     const error = new Error('敏感词不存在');
     error.status = 404;
     throw error;
   }
   await db.execute('DELETE FROM sensitive_words WHERE id = ?', [id]);
-  await sensitiveFilter.reload(db);
+  sensitiveFilter.removeWord(rows[0].word);
   return { deleted: true };
 }
 

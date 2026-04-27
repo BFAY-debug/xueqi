@@ -1,5 +1,5 @@
 const authService = require('../services/authService');
-const { captcha, redis } = require('xueqi-shared');
+const { captcha, redis, sensitiveFilter } = require('xueqi-shared');
 
 async function getCaptcha(req, res, next) {
   try {
@@ -46,6 +46,12 @@ async function register(req, res, next) {
     const valid = await captcha.verify(redis, captchaUuid, captchaCode);
     if (!valid) {
       return res.error('验证码错误或已过期', 400);
+    }
+
+    // Check username for sensitive words
+    const usernameCheck = sensitiveFilter.check(username);
+    if (usernameCheck.hasSensitive) {
+      return res.error('用户名包含敏感词，请修改', 400);
     }
 
     const result = await authService.register({ username, email, password, accountId: accountId || undefined });

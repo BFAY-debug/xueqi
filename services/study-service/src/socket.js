@@ -3,7 +3,7 @@
  * Handles study room participants, seat status, chat messages, private messaging, and online status.
  */
 const { Server } = require('socket.io');
-const { logger, jwt: { verifyToken }, db, redis } = require('xueqi-shared');
+const { logger, jwt: { verifyToken }, db, redis, sensitiveFilter } = require('xueqi-shared');
 const chatService = require('./services/chatService');
 const privateChatService = require('./services/privateChatService');
 const onlineStatusService = require('./services/onlineStatusService');
@@ -163,7 +163,8 @@ function initSocket(httpServer) {
 
       try {
         const msgType = data.anonymous ? 'anonymous' : 'user';
-        const msg = await chatService.createMessage(data.roomId, userId, data.content.trim(), msgType, data.imageUrl || null);
+        const filteredContent = sensitiveFilter.filter(data.content.trim());
+        const msg = await chatService.createMessage(data.roomId, userId, filteredContent, msgType, data.imageUrl || null);
         const formatted = formatMessage(msg);
         io.to(`room:${data.roomId}`).emit('chat:message', formatted);
 
@@ -256,7 +257,8 @@ function initSocket(httpServer) {
 
       try {
         const conv = await privateChatService.getOrCreateConversation(userId, data.toUserId);
-        const content = (data.content || '').trim() || '[图片]';
+        const rawContent = (data.content || '').trim() || '[图片]';
+        const content = sensitiveFilter.filter(rawContent);
         const msgId = await privateChatService.sendMessage(conv.id, userId, content, data.imageUrl || null);
 
         const msgData = {

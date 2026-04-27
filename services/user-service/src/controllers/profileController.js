@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const { sensitiveFilter } = require('xueqi-shared');
 
 async function getMyProfile(req, res, next) {
   try {
@@ -26,6 +27,13 @@ async function updateMyProfile(req, res, next) {
     if (accountId !== undefined && accountId !== null) {
       if (!/^[a-zA-Z0-9_]{3,20}$/.test(accountId)) {
         return res.error('账号ID只能包含字母、数字、下划线，长度3-20', 400);
+      }
+    }
+    // Check bio for sensitive words
+    if (bio !== undefined && bio !== null && typeof bio === 'string' && bio.trim()) {
+      const bioCheck = sensitiveFilter.check(bio);
+      if (bioCheck.hasSensitive) {
+        return res.error('签名包含敏感词，请修改', 400);
       }
     }
     const profile = await userService.updateProfile(req.user.userId, { bio, email, accountId });
