@@ -147,10 +147,14 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppEmpty from '@/components/AppEmpty.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import UserProfileCard from '@/components/UserProfileCard.vue'
+import { useTimeAgo } from '@/composables/useTimeAgo'
+import { useFormatDate } from '@/composables/useFormatDate'
 
 const messageStore = useMessageStore()
 const friendStore = useFriendStore()
 const router = useRouter()
+const { timeAgo } = useTimeAgo()
+const { formatDate } = useFormatDate()
 
 const activeTab = ref('messages')
 const reqSubTab = ref('incoming')
@@ -173,13 +177,9 @@ const filteredFriends = computed(() => {
 
 function formatTime(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now - d
-  if (diffMs < 60000) return '刚刚'
-  if (diffMs < 3600000) return Math.floor(diffMs / 60000) + '分钟前'
-  if (diffMs < 86400000) return Math.floor(diffMs / 3600000) + '小时前'
-  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  if (diffMs < 86400000) return timeAgo(dateStr)
+  return formatDate(dateStr)
 }
 
 function openChat(conv) {
