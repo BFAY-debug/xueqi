@@ -1,6 +1,24 @@
 const authService = require('../services/authService');
 const { captcha, redis, sensitiveFilter } = require('xueqi-shared');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+function setRefreshCookie(res, refreshToken) {
+  if (!isProduction) return;
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    path: '/api/user',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+}
+
+function clearRefreshCookie(res) {
+  if (!isProduction) return;
+  res.clearCookie('refreshToken', { path: '/api/user' });
+}
+
 async function getCaptcha(req, res, next) {
   try {
     const result = await captcha.generate(redis);
@@ -79,6 +97,7 @@ async function login(req, res, next) {
     }
 
     const result = await authService.login({ username, password });
+    setRefreshCookie(res, result.refreshToken);
     res.success(result, '登录成功');
   } catch (err) {
     next(err);
@@ -87,11 +106,12 @@ async function login(req, res, next) {
 
 async function refresh(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.body.refreshToken || (req.cookies && req.cookies.refreshToken);
     if (!refreshToken) {
       return res.error('刷新令牌不能为空', 400);
     }
     const result = await authService.refresh(refreshToken);
+    setRefreshCookie(res, result.refreshToken);
     res.success(result, '令牌刷新成功');
   } catch (err) {
     next(err);
@@ -99,8 +119,9 @@ async function refresh(req, res, next) {
 }
 
 async function logout(req, res) {
-  const { refreshToken } = req.body;
+  const refreshToken = req.body.refreshToken || (req.cookies && req.cookies.refreshToken);
   await authService.revokeRefreshToken(refreshToken);
+  clearRefreshCookie(res);
   res.success(null, '已登出');
 }
 

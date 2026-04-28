@@ -7,6 +7,8 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001'
 // ── Post Review ───────────────────────────────────────
 
 async function getPendingPosts(page = 1, pageSize = 20) {
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
   const offset = (page - 1) * pageSize;
 
   const [rows] = await db.execute(
@@ -161,8 +163,7 @@ async function getPendingComments(page = 1, pageSize = 20) {
      JOIN posts p ON p.id = c.post_id
      WHERE c.status = 'pending'
      ORDER BY c.created_at ASC
-     LIMIT ${pageSize} OFFSET ${offset}`,
-    []
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
   const [countRows] = await db.execute("SELECT COUNT(*) AS total FROM comments WHERE status = 'pending'");
@@ -484,8 +485,7 @@ async function getSensitiveWords(page = 1, pageSize = 50) {
      FROM sensitive_words sw
      JOIN users u ON u.id = sw.created_by
      ORDER BY sw.created_at DESC
-     LIMIT ${pageSize} OFFSET ${offset}`,
-    []
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
   const [countRows] = await db.execute('SELECT COUNT(*) AS total FROM sensitive_words');
   return { data: rows, total: countRows[0].total };

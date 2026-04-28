@@ -48,6 +48,8 @@ async function getConversationMessages(conversationId, userId, limit = 50, befor
     return [];
   }
 
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
+
   let query = `SELECT pm.id, pm.sender_id AS senderId, pm.content, pm.image_url AS imageUrl, pm.is_read, pm.created_at,
                       u.username AS senderName, u.avatar_url AS senderAvatar
                FROM private_messages pm
@@ -59,8 +61,7 @@ async function getConversationMessages(conversationId, userId, limit = 50, befor
     query += ' AND pm.id < ?';
     params.push(beforeId);
   }
-  query += ' ORDER BY pm.created_at DESC LIMIT ?';
-  params.push(String(limit));
+  query += ` ORDER BY pm.created_at DESC LIMIT ${safeLimit}`;
 
   const [rows] = await db.execute(query, params);
   return rows.reverse();

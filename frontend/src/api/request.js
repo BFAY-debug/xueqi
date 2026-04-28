@@ -4,7 +4,8 @@ import router from '@/router'
 
 const request = axios.create({
   baseURL: '/api',
-  timeout: 15000
+  timeout: 15000,
+  withCredentials: true
 })
 
 // Request interceptor: attach token
@@ -43,12 +44,14 @@ request.interceptors.response.use(
 
       const userStore = useUserStore()
       // Try refresh token — deduplicate with shared promise
-      if (userStore.refreshToken && !error.config._retry) {
+      // In production, refresh token is sent via httpOnly cookie automatically
+      if (!error.config._retry && (userStore.refreshToken || import.meta.env.PROD)) {
         error.config._retry = true
         try {
           if (!window.__refreshPromise) {
-            window.__refreshPromise = axios.post('/api/user/refresh', {
-              refreshToken: userStore.refreshToken
+            const payload = import.meta.env.PROD ? {} : { refreshToken: userStore.refreshToken }
+            window.__refreshPromise = axios.post('/api/user/refresh', payload, {
+              withCredentials: true
             }).finally(() => { window.__refreshPromise = null })
           }
           const res = await window.__refreshPromise

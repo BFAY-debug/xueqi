@@ -1,0 +1,53 @@
+version: '3.8'
+
+# Production overrides — use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# This file removes host port mappings for internal services and upgrades Redis.
+
+services:
+  xueqi-mysql:
+    ports: []  # No host access in production
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=caching_sha2_password
+      --init-connect='SET NAMES utf8mb4'
+      --skip-character-set-client-handshake
+
+  xueqi-redis:
+    ports: []  # No host access in production
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli -a \"$REDIS_PASSWORD\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  xueqi-user-service:
+    ports: []  # Only accessible via Docker network
+    environment:
+      - NODE_ENV=production
+
+  xueqi-study-service:
+    ports: []  # Only accessible via Docker network
+    environment:
+      - NODE_ENV=production
+
+  xueqi-community-service:
+    ports: []  # Only accessible via Docker network
+    environment:
+      - NODE_ENV=production
+
+  xueqi-gateway:
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+
+  xueqi-frontend:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - upload-data:/usr/share/nginx/uploads:ro

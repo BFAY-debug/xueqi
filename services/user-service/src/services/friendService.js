@@ -457,7 +457,7 @@ async function getFriendRequests(userId, type = 'incoming', page = 1, pageSize =
   pageSize = Math.max(1, Math.min(parseInt(pageSize, 10) || 20, 100));
   const offset = (page - 1) * pageSize;
 
-  let dataQuery, countQuery, params;
+  let dataQuery, countQuery, queryParams, countParams;
 
   if (type === 'incoming') {
     dataQuery = `SELECT fr.id, fr.sender_id, fr.message, fr.status, fr.created_at,
@@ -468,7 +468,8 @@ async function getFriendRequests(userId, type = 'incoming', page = 1, pageSize =
                  ORDER BY fr.created_at DESC
                  LIMIT ${pageSize} OFFSET ${offset}`;
     countQuery = "SELECT COUNT(*) AS total FROM friend_requests WHERE receiver_id = ? AND status = 'pending'";
-    params = [userId];
+    queryParams = [userId];
+    countParams = [userId];
   } else {
     // outgoing: pending + rejected
     dataQuery = `SELECT fr.id, fr.receiver_id, fr.message, fr.status, fr.created_at,
@@ -479,11 +480,12 @@ async function getFriendRequests(userId, type = 'incoming', page = 1, pageSize =
                  ORDER BY fr.created_at DESC
                  LIMIT ${pageSize} OFFSET ${offset}`;
     countQuery = "SELECT COUNT(*) AS total FROM friend_requests WHERE sender_id = ? AND status IN ('pending', 'rejected')";
-    params = [userId];
+    queryParams = [userId];
+    countParams = [userId];
   }
 
-  const [rows] = await db.execute(dataQuery, params);
-  const [countRows] = await db.execute(countQuery, params);
+  const [rows] = await db.execute(dataQuery, queryParams);
+  const [countRows] = await db.execute(countQuery, countParams);
 
   return { data: rows, total: countRows[0].total };
 }

@@ -6,9 +6,11 @@ import { useChatStore } from './chat'
 import { useMessageStore } from './message'
 import { useFriendStore } from './friend'
 
+const isProd = import.meta.env.PROD
+
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
-  const refreshToken = ref(localStorage.getItem('refreshToken') || '')
+  const refreshToken = ref(isProd ? '' : (localStorage.getItem('refreshToken') || ''))
   const user = ref(null)
   const unreadCount = ref(0)
 
@@ -20,7 +22,9 @@ export const useUserStore = defineStore('user', () => {
     token.value = accessToken
     refreshToken.value = refToken
     localStorage.setItem('token', accessToken)
-    localStorage.setItem('refreshToken', refToken)
+    if (!isProd) {
+      localStorage.setItem('refreshToken', refToken)
+    }
   }
 
   async function login(credentials) {
@@ -45,7 +49,9 @@ export const useUserStore = defineStore('user', () => {
     user.value = null
     unreadCount.value = 0
     localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
+    if (!isProd) {
+      localStorage.removeItem('refreshToken')
+    }
     disconnectSocket()
     useChatStore().resetState()
     useMessageStore().resetState()

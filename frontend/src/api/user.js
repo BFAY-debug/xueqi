@@ -3,9 +3,9 @@ import request from './request'
 export const authAPI = {
   getCaptcha: () => request.get('/user/captcha'),
   register: (data) => request.post('/user/register', data),
-  login: (data) => request.post('/user/login', data),
-  logout: (data) => request.post('/user/logout', data),
-  refresh: (refreshToken) => request.post('/user/refresh', { refreshToken })
+  login: (data) => request.post('/user/login', data, { withCredentials: true }),
+  logout: (data) => request.post('/user/logout', data, { withCredentials: true }),
+  refresh: (refreshToken) => request.post('/user/refresh', { refreshToken }, { withCredentials: true })
 }
 
 export const userAPI = {

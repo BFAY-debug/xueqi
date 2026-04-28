@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(rootDir, '.env.local') });
 require('dotenv').config({ path: path.join(rootDir, '.env') });
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { responseHandler, errorHandler, logger, db, sensitiveFilter } = require('xueqi-shared');
 
 const authRoutes = require('./routes/auth');
@@ -30,6 +31,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));

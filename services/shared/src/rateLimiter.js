@@ -26,7 +26,10 @@ async function checkUserRate(redis, action, userId, maxCount, windowSeconds) {
     }
   } catch (e) {
     if (e.status === 429) throw e;
-    // Redis down — fail open
+    // Redis unavailable — fail closed for security
+    const error = new Error('服务暂时不可用，请稍后重试');
+    error.status = 503;
+    throw error;
   }
 }
 

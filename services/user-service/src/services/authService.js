@@ -69,7 +69,12 @@ async function login({ username, password }) {
   let failCount = 0;
   try {
     failCount = parseInt(await redis.get(lockKey), 10) || 0;
-  } catch (e) { /* Redis down, skip check */ }
+  } catch (e) {
+    // Redis unavailable — fail closed for security
+    const error = new Error('服务暂时不可用，请稍后重试');
+    error.status = 503;
+    throw error;
+  }
 
   if (failCount >= MAX_LOGIN_FAILURES) {
     const ttl = await redis.ttl(lockKey).catch(() => LOCKOUT_SECONDS);
@@ -135,11 +140,13 @@ async function login({ username, password }) {
   const accessToken = jwt.generateToken(payload);
   const refreshToken = jwt.generateRefreshToken(payload);
 
-  // Store refresh token in Redis whitelist
+  // Store refresh token in Redis whitelist (fail-closed)
   try {
     await redis.set(`refresh:${tokenHash(refreshToken)}`, String(user.id), 'EX', REFRESH_TTL);
   } catch (e) {
-    // Redis down — proceed without whitelist (graceful degradation)
+    const error = new Error('服务暂时不可用，请稍后重试');
+    error.status = 503;
+    throw error;
   }
 
   return {
@@ -168,7 +175,7 @@ async function refresh(oldRefreshToken) {
     throw error;
   }
 
-  // Verify refresh token is in Redis whitelist
+  // Verify refresh token is in Redis whitelist (fail-closed)
   const key = `refresh:${tokenHash(oldRefreshToken)}`;
   try {
     const stored = await redis.get(key);
@@ -181,7 +188,10 @@ async function refresh(oldRefreshToken) {
     await redis.del(key);
   } catch (e) {
     if (e.status === 401) throw e;
-    // Redis down — proceed without whitelist check (graceful degradation)
+    // Redis unavailable — fail closed
+    const error = new Error('服务暂时不可用，请稍后重试');
+    error.status = 503;
+    throw error;
   }
 
   const payload = {
@@ -194,10 +204,14 @@ async function refresh(oldRefreshToken) {
   const accessToken = jwt.generateToken(payload);
   const newRefreshToken = jwt.generateRefreshToken(payload);
 
-  // Store new refresh token
+  // Store new refresh token (fail-closed)
   try {
     await redis.set(`refresh:${tokenHash(newRefreshToken)}`, String(decoded.userId), 'EX', REFRESH_TTL);
-  } catch (e) { /* graceful */ }
+  } catch (e) {
+    const error = new Error('服务暂时不可用，请稍后重试');
+    error.status = 503;
+    throw error;
+  }
 
   return { accessToken, refreshToken: newRefreshToken };
 }
