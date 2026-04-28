@@ -399,11 +399,29 @@ const checkedToday = computed(() => {
 })
 
 const checkedDays = computed(() => {
-  // Only show check-in days within the current week (Mon-Sun), capped by streak
   const streak = stats.value.checkin_streak || 0
+  if (streak === 0) return []
+
   const todayIndex = (new Date().getDay() + 6) % 7 // Monday=0
-  const daysThisWeek = Math.min(streak, todayIndex + 1)
-  return Array.from({ length: daysThisWeek }, (_, i) => todayIndex - i)
+
+  if (checkedToday.value) {
+    const count = Math.min(streak, todayIndex + 1)
+    return Array.from({ length: count }, (_, i) => todayIndex - i)
+  }
+
+  // Not checked in today — verify streak is still valid (last check-in was yesterday)
+  const lastDate = stats.value.last_study_date
+  if (!lastDate) return []
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const last = new Date(lastDate); last.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((today - last) / (86400000))
+  if (diffDays > 1) return [] // Stale streak (gap > 1 day), don't show dots
+
+  // Streak ends yesterday
+  const yesterdayIndex = todayIndex - 1
+  if (yesterdayIndex < 0) return []
+  const count = Math.min(streak, yesterdayIndex + 1)
+  return Array.from({ length: count }, (_, i) => yesterdayIndex - i)
 })
 
 const streakClass = computed(() => {
