@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS user_follows (
   FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS follower_count INT DEFAULT 0;
-ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS following_count INT DEFAULT 0;
+ALTER TABLE user_stats ADD COLUMN follower_count INT DEFAULT 0;
+ALTER TABLE user_stats ADD COLUMN following_count INT DEFAULT 0;

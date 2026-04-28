@@ -31,6 +31,8 @@ export const useUserStore = defineStore('user', () => {
     const res = await authAPI.login(credentials)
     setToken(res.data.accessToken, res.data.refreshToken)
     user.value = res.data.user
+    // Disconnect socket so next getSocket() creates a fresh one with the new token
+    disconnectSocket()
     // Defer non-critical requests so they don't block navigation
     fetchUnreadCount().catch(() => {})
     return res.data
