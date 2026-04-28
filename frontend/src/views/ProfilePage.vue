@@ -399,14 +399,11 @@ const checkedToday = computed(() => {
 })
 
 const checkedDays = computed(() => {
-  // Simple: if streak > 0, mark recent days. For now, mark today and previous based on streak.
+  // Only show check-in days within the current week (Mon-Sun), capped by streak
   const streak = stats.value.checkin_streak || 0
-  const today = (new Date().getDay() + 6) % 7 // Monday=0
-  const days = []
-  for (let i = 0; i < Math.min(streak, 7); i++) {
-    days.push((today - i + 7) % 7)
-  }
-  return days
+  const todayIndex = (new Date().getDay() + 6) % 7 // Monday=0
+  const daysThisWeek = Math.min(streak, todayIndex + 1)
+  return Array.from({ length: daysThisWeek }, (_, i) => todayIndex - i)
 })
 
 const streakClass = computed(() => {
