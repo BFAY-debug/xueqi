@@ -17,6 +17,11 @@ const routes = [
     component: () => import('@/views/RegisterPage.vue')
   },
   {
+    path: '/BFAY',
+    name: 'AdminLogin',
+    component: () => import('@/views/AdminLoginPage.vue')
+  },
+  {
     path: '/study-rooms',
     component: () => import('@/views/StudyRoomsPage.vue')
   },

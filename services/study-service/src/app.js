@@ -21,12 +21,21 @@ const { initSocket, broadcastParticipants, broadcastSeatUpdate } = require('./so
 const app = express();
 const PORT = process.env.STUDY_SERVICE_PORT || 3002;
 
-// Middleware
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+// Middleware — hostname-based CORS (handles http/https and www/non-www)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
-    else cb(new Error('CORS not allowed'));
+    if (!origin) return cb(null, true);
+    try {
+      const o = new URL(origin);
+      const allowed = allowedOrigins.some(a => {
+        const u = new URL(a.trim());
+        return u.hostname.replace(/^www\./, '') === o.hostname.replace(/^www\./, '');
+      });
+      return cb(null, allowed);
+    } catch {
+      return cb(null, allowedOrigins.includes(origin));
+    }
   },
   credentials: true
 }));

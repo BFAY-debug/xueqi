@@ -1,0 +1,10 @@
+version: '3.8'
+
+# Local test overlay for production config with self-signed certs
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.test.yml up -d --build
+
+services:
+  xueqi-frontend:
+    volumes:
+      - ./ssl:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro

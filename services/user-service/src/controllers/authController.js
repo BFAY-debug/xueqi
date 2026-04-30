@@ -125,4 +125,57 @@ async function logout(req, res) {
   res.success(null, '已登出');
 }
 
-module.exports = { getCaptcha, register, login, refresh, logout };
+async function adminLogin(req, res, next) {
+  try {
+    const { username, password, captchaUuid, captchaCode } = req.body;
+
+    if (!username || !password) {
+      return res.error('用户名和密码不能为空', 400);
+    }
+
+    if (!captchaUuid || !captchaCode) {
+      return res.error('请输入验证码', 400);
+    }
+    const valid = await captcha.verify(redis, captchaUuid, captchaCode);
+    if (!valid) {
+      return res.error('验证码错误或已过期', 400);
+    }
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || req.headers['x-real-ip']
+      || req.ip;
+    const userAgent = req.headers['user-agent'] || '';
+
+    const result = await authService.adminLogin({ username, password }, ip, userAgent);
+    setRefreshCookie(res, result.refreshToken);
+    res.success(result, '管理员登录成功');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getAdminLoginLogs(req, res, next) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 20;
+    const result = await authService.getAdminLoginLogs({ page, pageSize });
+    res.success(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function changePassword(req, res, next) {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.error('请填写原密码和新密码', 400);
+    }
+    await authService.changePassword(req.user.userId, oldPassword, newPassword);
+    res.success(null, '密码修改成功');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getCaptcha, register, login, adminLogin, getAdminLoginLogs, changePassword, refresh, logout };

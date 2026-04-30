@@ -4,8 +4,10 @@ export const authAPI = {
   getCaptcha: () => request.get('/user/captcha'),
   register: (data) => request.post('/user/register', data),
   login: (data) => request.post('/user/login', data, { withCredentials: true }),
+  adminLogin: (data) => request.post('/user/admin/login', data, { withCredentials: true }),
   logout: (data) => request.post('/user/logout', data, { withCredentials: true }),
-  refresh: (refreshToken) => request.post('/user/refresh', { refreshToken }, { withCredentials: true })
+  refresh: (refreshToken) => request.post('/user/refresh', { refreshToken }, { withCredentials: true }),
+  changePassword: (data) => request.put('/user/change-password', data)
 }
 
 export const userAPI = {
@@ -45,6 +47,7 @@ export const notificationAPI = {
 }
 
 export const adminAPI = {
+  getLoginLogs: (params) => request.get('/user/admin/login-logs', { params }),
   getUsers: (params) => request.get('/user/admin/users', { params }),
   getUserDetail: (id) => request.get(`/user/admin/users/${id}`),
   changeRole: (id, roleId) => request.put(`/user/admin/users/${id}/role`, { roleId }),

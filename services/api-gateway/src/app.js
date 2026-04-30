@@ -19,12 +19,21 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001'
 const STUDY_SERVICE_URL = process.env.STUDY_SERVICE_URL || 'http://localhost:3002';
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL || 'http://localhost:3003';
 
-// Middleware
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+// Middleware — hostname-based CORS (handles http/https and www/non-www)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
-    else cb(new Error('CORS not allowed'));
+    if (!origin) return cb(null, true);
+    try {
+      const o = new URL(origin);
+      const allowed = allowedOrigins.some(a => {
+        const u = new URL(a.trim());
+        return u.hostname.replace(/^www\./, '') === o.hostname.replace(/^www\./, '');
+      });
+      return cb(null, allowed);
+    } catch {
+      return cb(null, allowedOrigins.includes(origin));
+    }
   },
   credentials: true
 }));
@@ -67,6 +76,7 @@ app.get('/health', (req, res) => {
 // Auth rate limiting (before proxy)
 app.use('/api/user/register', authLimiter);
 app.use('/api/user/login', authLimiter);
+app.use('/api/user/admin/login', authLimiter);
 
 // ── Proxy to User Service ─────────────────────────────
 app.use('/api/user', createProxyMiddleware({

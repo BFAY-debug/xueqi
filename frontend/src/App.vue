@@ -20,7 +20,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 const route = useRoute()
 const userStore = useUserStore()
-const showNavbar = computed(() => !['Login', 'Register'].includes(route.name))
+const showNavbar = computed(() => !['Login', 'Register', 'AdminLogin'].includes(route.name))
 </script>
 
 <style>

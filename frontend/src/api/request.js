@@ -65,6 +65,11 @@ request.interceptors.response.use(
         }
       }
       userStore.logout()
+      // Don't redirect for background profile checks (e.g., navigation guard)
+      // to avoid flashing pages that don't require auth
+      if (error.config.url?.includes('/user/profile')) {
+        return Promise.reject(new Error('登录已过期'))
+      }
       if (router.currentRoute.value.path !== '/login') {
         router.push(`/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
       }

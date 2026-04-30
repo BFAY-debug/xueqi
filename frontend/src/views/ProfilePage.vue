@@ -74,6 +74,7 @@
 
           <div class="profile-actions">
             <el-button size="small" @click="showEdit = true">编辑资料</el-button>
+            <el-button size="small" @click="showChangePwd = true">修改密码</el-button>
             <el-button v-if="userStore.user?.roleName === 'user'" size="small" type="warning" @click="showApplyAdmin = true">申请管理员</el-button>
           </div>
 
@@ -320,6 +321,25 @@
         <el-button type="primary" @click="submitApplyAdmin" :loading="saving">提交申请</el-button>
       </template>
     </el-dialog>
+
+    <!-- Change Password Dialog -->
+    <el-dialog v-model="showChangePwd" title="修改密码" width="440px">
+      <el-form :model="pwdForm" label-width="80px">
+        <el-form-item label="原密码">
+          <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="输入当前密码" />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="6-128位" />
+        </el-form-item>
+        <el-form-item label="确认密码">
+          <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showChangePwd = false">取消</el-button>
+        <el-button type="primary" @click="submitChangePwd" :loading="saving">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -329,7 +349,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BackButton from '@/components/BackButton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import UserProfileCard from '@/components/UserProfileCard.vue'
-import { userAPI, pointsAPI, notificationAPI, adminAPI } from '@/api/user'
+import { authAPI, userAPI, pointsAPI, notificationAPI, adminAPI } from '@/api/user'
 import { postAPI, bookmarkAPI, proposalAPI } from '@/api/community'
 import { followAPI } from '@/api/follow'
 import { reservationAPI, chatAPI } from '@/api/study'
@@ -365,6 +385,8 @@ const checkinLoading = ref(false)
 const showEdit = ref(false)
 const showApplyAdmin = ref(false)
 const applyReason = ref('')
+const showChangePwd = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const fileInput = ref(null)
 
 const editForm = reactive({ email: '', bio: '', accountId: '' })
@@ -578,6 +600,24 @@ async function submitApplyAdmin() {
     await adminAPI.applyAdmin(applyReason.value)
     ElMessage.success('申请已提交')
     showApplyAdmin.value = false
+  } catch (err) { ElMessage.error(err.message) }
+  finally { saving.value = false }
+}
+
+async function submitChangePwd() {
+  if (!pwdForm.oldPassword || !pwdForm.newPassword) return ElMessage.warning('请填写完整')
+  if (pwdForm.newPassword.length < 6) return ElMessage.warning('新密码至少6位')
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) return ElMessage.warning('两次密码不一致')
+  saving.value = true
+  try {
+    await authAPI.changePassword({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
+    ElMessage.success('密码修改成功，请重新登录')
+    showChangePwd.value = false
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    await userStore.logout()
+    router.push('/login')
   } catch (err) { ElMessage.error(err.message) }
   finally { saving.value = false }
 }

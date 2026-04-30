@@ -2,7 +2,9 @@
   <div class="login-page">
     <div class="login-left">
       <div class="deco-content">
-        <img src="@/assets/textures/bamboo.svg" class="bamboo-deco" alt="" />
+        <router-link to="/BFAY" class="bamboo-link">
+          <img src="@/assets/textures/bamboo.svg" class="bamboo-deco" alt="" />
+        </router-link>
         <div class="vertical-text quote">学而时习之</div>
         <div class="vertical-text sub-quote">不亦说乎</div>
       </div>
@@ -191,6 +193,15 @@ async function handleLogin() {
 .switch-text a {
   color: var(--color-accent);
   text-decoration: none;
+}
+
+.bamboo-link {
+  display: block;
+  cursor: default;
+}
+
+.bamboo-link .bamboo-deco {
+  cursor: default;
 }
 
 .captcha-row {

@@ -18,12 +18,21 @@ const uploadRoutes = require('./routes/upload');
 const app = express();
 const PORT = process.env.COMMUNITY_SERVICE_PORT || 3003;
 
-// CORS
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',');
+// CORS — hostname-based (handles http/https and www/non-www)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
-    else cb(new Error('CORS not allowed'));
+    if (!origin) return cb(null, true);
+    try {
+      const o = new URL(origin);
+      const allowed = allowedOrigins.some(a => {
+        const u = new URL(a.trim());
+        return u.hostname.replace(/^www\./, '') === o.hostname.replace(/^www\./, '');
+      });
+      return cb(null, allowed);
+    } catch {
+      return cb(null, allowedOrigins.includes(origin));
+    }
   },
   credentials: true
 }));

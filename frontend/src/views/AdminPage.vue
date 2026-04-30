@@ -408,6 +408,33 @@
           </el-table>
           <p v-if="!reports.length" class="empty-text">暂无举报</p>
         </template>
+
+        <!-- Admin Login Logs (super_admin) -->
+        <template v-if="activeSection === 'loginLogs'">
+          <h2>管理员登录日志</h2>
+          <el-table :data="loginLogs" stripe>
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column prop="username" label="用户名" width="120" />
+            <el-table-column prop="ip" label="IP 地址" width="140" />
+            <el-table-column prop="user_agent" label="User Agent" min-width="200">
+              <template #default="{ row }">
+                <span style="font-size:0.8rem">{{ row.user_agent?.length > 60 ? row.user_agent.slice(0, 60) + '...' : row.user_agent }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="success" label="结果" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="failure_reason" label="失败原因" width="160">
+              <template #default="{ row }">
+                <span style="font-size:0.8rem;color:var(--color-text-secondary)">{{ row.failure_reason || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="时间" width="160" />
+          </el-table>
+          <p v-if="!loginLogs.length" class="empty-text">暂无登录记录</p>
+        </template>
       </div>
     </div>
 
@@ -520,7 +547,8 @@ const allMenuItems = [
   { key: 'stats', icon: '📈', label: '系统统计', roles: ['super_admin'] },
   { key: 'feedback', icon: '📬', label: '用户反馈', roles: ['super_admin'] },
   { key: 'sensitiveWords', icon: '🚫', label: '敏感词管理', roles: ['admin', 'super_admin'] },
-  { key: 'reports', icon: '🔔', label: '举报管理', roles: ['admin', 'super_admin'] }
+  { key: 'reports', icon: '🔔', label: '举报管理', roles: ['admin', 'super_admin'] },
+  { key: 'loginLogs', icon: '🔐', label: '登录日志', roles: ['super_admin'] }
 ]
 
 const filteredMenu = computed(() => {
@@ -554,6 +582,9 @@ const newSensitiveWords = ref('')
 const reports = ref([])
 const reportStatus = ref('pending')
 const reportReasonMap = { spam: '垃圾信息', abuse: '人身攻击', inappropriate: '不当内容', other: '其他' }
+
+// Login logs state
+const loginLogs = ref([])
 
 // Seat management state
 const locations = ref([])
@@ -739,6 +770,10 @@ async function fetchReports() {
     const res = await communityAdminAPI.getReports({ page: 1, pageSize: 50, status: reportStatus.value })
     reports.value = res.data || []
   } catch { /* */ }
+}
+
+async function fetchLoginLogs() {
+  try { const res = await adminAPI.getLoginLogs({ page: 1, pageSize: 50 }); loginLogs.value = res.data?.logs || [] } catch { /* */ }
 }
 
 async function resolveReport(id, action) {
@@ -1032,7 +1067,7 @@ watch(activeSection, (val) => {
     proposals: fetchPendingProposals,
     users: fetchUsers, seats: fetchLocations, applications: fetchApplications,
     volunteer: fetchVolunteer, logs: fetchLogs, stats: fetchStats, feedback: fetchFeedback,
-    sensitiveWords: fetchSensitiveWords, reports: fetchReports
+    sensitiveWords: fetchSensitiveWords, reports: fetchReports, loginLogs: fetchLoginLogs
   }
   fetchers[val]?.()
 })

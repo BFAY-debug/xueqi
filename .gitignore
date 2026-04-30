@@ -29,4 +29,14 @@ Thumbs.db
 # Database
 mysql-data/
 redis-data/
-D:/web/.superpowers/brainstorm/
+
+# Claude Code / Superpowers
+.claude/
+.superpowers/
+
+# Archives
+*.zip
+
+# SSL certificates (server-only)
+certbot/
+ssl/

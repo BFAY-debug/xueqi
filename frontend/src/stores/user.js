@@ -42,6 +42,15 @@ export const useUserStore = defineStore('user', () => {
     return await authAPI.register(data)
   }
 
+  async function adminLogin(credentials) {
+    const res = await authAPI.adminLogin(credentials)
+    setToken(res.data.accessToken, res.data.refreshToken)
+    user.value = res.data.user
+    disconnectSocket()
+    fetchUnreadCount().catch(() => {})
+    return res.data
+  }
+
   async function logout() {
     try {
       await authAPI.logout({ refreshToken: refreshToken.value })
@@ -83,6 +92,6 @@ export const useUserStore = defineStore('user', () => {
   return {
     token, refreshToken, user, unreadCount,
     isLoggedIn, isAdmin, isSuperAdmin,
-    setToken, login, register, logout, fetchProfile, fetchUnreadCount
+    setToken, login, adminLogin, register, logout, fetchProfile, fetchUnreadCount
   }
 })
