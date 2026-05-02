@@ -34,7 +34,7 @@ redis-data/
 .claude/
 .superpowers/
 
-# Markdown (README.md is tracked via git mv, other docs are local-only)
+# Markdown (only README.md goes to GitHub)
 技术文档.md
 部署指南.md
 docs/
