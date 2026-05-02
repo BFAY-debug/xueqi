@@ -70,4 +70,25 @@ async function getParticipants(req, res, next) {
   }
 }
 
-module.exports = { listRooms, getRoom, createRoom, updateRoom, joinRoom, leaveRoom, getParticipants };
+async function joinByCode(req, res, next) {
+  try {
+    const { code } = req.body;
+    const num = parseInt(code, 10);
+    if (!num || num <= 0 || num > 99999) return res.error('请输入 1-99999 的房间号', 400);
+    const room = await roomService.findOrCreateByCode(num, req.user.userId);
+    res.success(room);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteRoom(req, res, next) {
+  try {
+    const result = await roomService.deleteRoom(parseInt(req.params.id, 10), req.user.userId);
+    res.success(result, '房间已删除');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listRooms, getRoom, createRoom, updateRoom, joinRoom, leaveRoom, getParticipants, joinByCode, deleteRoom };

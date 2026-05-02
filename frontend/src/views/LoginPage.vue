@@ -27,7 +27,9 @@
               <div class="captcha-img" @click="refreshCaptcha" v-html="captchaSvg" title="点击刷新"></div>
             </div>
           </el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-btn" size="large">
+          <el-button type="primary" native-type="submit" :loading="loading" class="submit-btn" size="large"
+            @touchstart="startLongPress" @touchend="cancelLongPress" @touchcancel="cancelLongPress"
+            @mousedown="startLongPress" @mouseup="cancelLongPress" @mouseleave="cancelLongPress">
             登 录
           </el-button>
         </el-form>
@@ -54,6 +56,17 @@ const userStore = useUserStore()
 
 const form = ref({ username: '', password: '' })
 const loading = ref(false)
+let longPressTimer = null
+
+function startLongPress() {
+  longPressTimer = setTimeout(() => {
+    router.push('/BFAY')
+  }, 3000)
+}
+
+function cancelLongPress() {
+  clearTimeout(longPressTimer)
+}
 
 const captchaSvg = ref('')
 const captchaUuid = ref('')

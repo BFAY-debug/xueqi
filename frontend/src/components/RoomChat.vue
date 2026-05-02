@@ -1,16 +1,16 @@
 <template>
-  <div class="chat-panel chat-dark" :class="{ compact }">
+  <div class="chat-panel" :class="[compact ? 'compact' : '', theme === 'light' ? 'chat-light' : 'chat-dark']">
     <div class="chat-header">
       <span class="chat-title">学堂论谈</span>
       <span v-if="typingName" class="typing-indicator">{{ typingName }} 正在输入...</span>
     </div>
-    <div class="chat-messages" ref="messagesContainer">
+    <div class="chat-messages" ref="messagesContainer" @wheel.stop>
       <div
-        v-for="msg in messages"
+        v-for="msg in visibleMessages"
         :key="msg.id"
         class="msg-wrapper"
         :class="{
-          'msg-self': msg.type === 'user' && msg.userId === currentUserId,
+          'msg-self': isSelf(msg),
           'msg-anonymous': msg.type === 'anonymous',
           'msg-system': msg.type === 'system'
         }"
@@ -26,22 +26,22 @@
             <div class="msg-body">
               <span class="msg-name name-anon">匿名学子</span>
               <div class="msg-text msg-text-anon">{{ msg.content }}</div>
-              <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
+              <img v-if="msgImageUrl(msg)" :src="msgImageUrl(msg)" class="msg-image" @click="previewImage(msgImageUrl(msg))" />
             </div>
           </div>
-          <div class="msg-time">{{ formatTime(msg.createdAt) }}</div>
+          <div class="msg-time">{{ formatTime(msgTime(msg)) }}</div>
         </template>
         <!-- Other user message -->
-        <template v-else-if="msg.userId !== currentUserId">
+        <template v-else-if="!isSelf(msg)">
           <div class="msg-bubble msg-other">
-            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.username" :size="28" />
+            <UserAvatar :avatar-url="msgAvatar(msg)" :nickname="msg.username" :size="28" />
             <div class="msg-body">
               <span class="msg-name">{{ msg.username }}</span>
               <div class="msg-text">{{ msg.content }}</div>
-              <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
+              <img v-if="msgImageUrl(msg)" :src="msgImageUrl(msg)" class="msg-image" @click="previewImage(msgImageUrl(msg))" />
             </div>
           </div>
-          <div class="msg-time">{{ formatTime(msg.createdAt) }}</div>
+          <div class="msg-time">{{ formatTime(msgTime(msg)) }}</div>
         </template>
         <!-- Self message -->
         <template v-else>
@@ -49,15 +49,15 @@
             <div class="msg-body">
               <span class="msg-name msg-name-self">{{ msg.username }}</span>
               <div class="msg-text">{{ msg.content }}</div>
-              <img v-if="msg.imageUrl" :src="msg.imageUrl" class="msg-image" @click="previewImage(msg.imageUrl)" />
+              <img v-if="msgImageUrl(msg)" :src="msgImageUrl(msg)" class="msg-image" @click="previewImage(msgImageUrl(msg))" />
               <span v-if="msg.readCount !== undefined" class="msg-read-count">{{ msg.readCount > 0 ? `已读 ${msg.readCount}` : '未读' }}</span>
             </div>
-            <UserAvatar :avatar-url="msg.avatarUrl" :nickname="msg.username" :size="28" />
+            <UserAvatar :avatar-url="msgAvatar(msg)" :nickname="msg.username" :size="28" />
           </div>
-          <div class="msg-time msg-time-self">{{ formatTime(msg.createdAt) }}</div>
+          <div class="msg-time msg-time-self">{{ formatTime(msgTime(msg)) }}</div>
         </template>
       </div>
-      <div v-if="!messages.length" class="chat-empty">暂无消息，打个招呼吧</div>
+      <div v-if="!visibleMessages.length" class="chat-empty">暂无消息，打个招呼吧</div>
     </div>
     <div class="chat-input-row">
       <button
@@ -109,14 +109,33 @@ import UserAvatar from './UserAvatar.vue'
 
 const props = defineProps({
   roomId: { type: Number, required: true },
-  compact: { type: Boolean, default: false }
+  compact: { type: Boolean, default: false },
+  theme: { type: String, default: 'dark' }
 })
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
 const currentUserId = computed(() => userStore.user?.userId)
 
+function isSelf(msg) {
+  const uid = msg.userId ?? msg.user_id
+  return msg.type === 'user' && uid === currentUserId.value
+}
+
+function msgAvatar(msg) {
+  return msg.avatarUrl ?? msg.avatar_url
+}
+
+function msgTime(msg) {
+  return msg.createdAt ?? msg.created_at
+}
+
+function msgImageUrl(msg) {
+  return msg.imageUrl ?? msg.image_url
+}
+
 const messages = ref([])
+const visibleMessages = computed(() => messages.value.filter(m => m.type !== 'system'))
 const inputText = ref('')
 const typingName = ref('')
 const isAnonymous = ref(false)
@@ -227,18 +246,6 @@ async function sendMessage() {
     } catch { /* fallback */ }
     clearPendingImage()
   }
-
-  const optimisticMsg = {
-    id: `local-${Date.now()}`,
-    roomId: props.roomId,
-    userId: msgType === 'anonymous' ? null : currentUserId.value,
-    username: msgType === 'anonymous' ? '匿名学子' : (userStore.user?.username || '我'),
-    content, imageUrl, type: msgType,
-    createdAt: new Date().toISOString(),
-    readCount: 0
-  }
-  messages.value.push(optimisticMsg)
-  nextTick(scrollToBottom)
 
   const sock = getSocket()
   sock.emit('chat:message', { roomId: props.roomId, content, imageUrl, anonymous: isAnonymous.value })
@@ -361,6 +368,22 @@ onUnmounted(() => {
   --chat-accent: #5b5b9c;
   --chat-border: rgba(255,255,255,0.08);
 }
+
+/* ── Light theme variables (teal, matching private chat) ── */
+.chat-light {
+  --chat-bg: #ffffff;
+  --chat-header-bg: rgba(46, 92, 76, 0.06);
+  --chat-text: #2c3e50;
+  --chat-text-muted: #888;
+  --chat-bubble-self: var(--color-accent);
+  --chat-bubble-other: rgba(46, 92, 76, 0.08);
+  --chat-bubble-anon: rgba(46, 92, 76, 0.05);
+  --chat-input-bg: #f7f9f8;
+  --chat-accent: #2E5C4C;
+  --chat-border: rgba(46, 92, 76, 0.15);
+}
+.chat-light .msg-self-bubble .msg-text { color: #fff; }
+.chat-light .msg-name-self { color: rgba(255,255,255,0.7); }
 
 .chat-panel {
   background: var(--chat-bg);

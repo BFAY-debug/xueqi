@@ -14,6 +14,7 @@ const volunteerRoutes = require('./routes/volunteer');
 const chatRoutes = require('./routes/chat');
 const privateChatRoutes = require('./routes/privateChat');
 const seatService = require('./services/seatService');
+const roomService = require('./services/roomService');
 
 const http = require('http');
 const { initSocket, broadcastParticipants, broadcastSeatUpdate } = require('./socket');
@@ -74,6 +75,9 @@ server.listen(PORT, async () => {
   logger.info(`Study service running on port ${PORT}`);
   // Start automatic no-show checker
   seatService.startNoShowChecker();
+  // Start stale face-to-face room cleaner
+  roomService.startStaleRoomCleaner();
+  roomService.startIdleParticipantCleaner();
   // Load sensitive words into memory
   try {
     await sensitiveFilter.loadFromDB(db);

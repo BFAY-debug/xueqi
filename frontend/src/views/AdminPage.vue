@@ -273,7 +273,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="reason" label="原因" />
-            <el-table-column prop="created_at" label="时间" width="160" />
+            <el-table-column prop="created_at" label="时间" width="160">
+              <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+            </el-table-column>
           </el-table>
         </template>
 
@@ -358,7 +360,9 @@
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="word" label="敏感词" min-width="200" />
             <el-table-column prop="added_by_name" label="添加人" width="120" />
-            <el-table-column prop="created_at" label="添加时间" width="160" />
+            <el-table-column prop="created_at" label="添加时间" width="160">
+              <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column label="操作" width="100">
               <template #default="{ row }">
                 <el-button size="small" type="danger" @click="deleteSensitiveWord(row.id)">删除</el-button>
@@ -394,7 +398,9 @@
                 <el-tag type="warning" size="small">{{ reportReasonMap[row.reason] || row.reason }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="160" />
+            <el-table-column prop="created_at" label="时间" width="160">
+              <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column label="操作" width="240">
               <template #default="{ row }">
                 <template v-if="row.status === 'pending'">
@@ -431,7 +437,11 @@
                 <span style="font-size:0.8rem;color:var(--color-text-secondary)">{{ row.failure_reason || '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="160" />
+            <el-table-column prop="created_at" label="时间" width="160">
+              <template #default="{ row }">
+                {{ formatTime(row.created_at) }}
+              </template>
+            </el-table-column>
           </el-table>
           <p v-if="!loginLogs.length" class="empty-text">暂无登录记录</p>
         </template>
@@ -528,6 +538,14 @@ import { useFormatDate } from '@/composables/useFormatDate'
 
 const userStore = useUserStore()
 const { formatDate } = useFormatDate()
+
+function formatTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const activeSection = ref('posts')
 const saving = ref(false)
 

@@ -5,6 +5,7 @@ const { authMiddleware, optionalAuth, requireRole } = require('xueqi-shared');
 
 // Public
 router.get('/', optionalAuth, roomController.listRooms);
+router.post('/join-by-code', authMiddleware, roomController.joinByCode);
 router.get('/:id', optionalAuth, roomController.getRoom);
 router.get('/:id/participants', optionalAuth, roomController.getParticipants);
 
@@ -15,5 +16,6 @@ router.put('/:id', authMiddleware, requireRole('admin', 'super_admin'), roomCont
 // User
 router.post('/:id/join', authMiddleware, roomController.joinRoom);
 router.post('/:id/leave', authMiddleware, roomController.leaveRoom);
+router.delete('/:id', authMiddleware, roomController.deleteRoom);
 
 module.exports = router;

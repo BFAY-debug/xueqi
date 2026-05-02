@@ -29,25 +29,51 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Chat Room Sidebar -->
-        <div class="chat-sidebar" v-if="userStore.isLoggedIn">
-          <div class="chat-sidebar-title">
-            <span>💬 论谈房间</span>
-          </div>
-          <div v-if="chatStore.roomList.length" class="chat-sidebar-list">
-            <div
-              v-for="room in chatStore.roomList"
-              :key="room.id"
-              class="chat-sidebar-item"
-              @click="chatStore.openChat(room.id)"
-            >
-              <span class="csi-name">🏮 {{ room.name }}</span>
-              <span class="csi-meta">{{ room.capacity }}人</span>
+          <!-- Face-to-face Chat -->
+          <div class="adhoc-section" v-if="userStore.isLoggedIn">
+            <div class="adhoc-label">🤝 面对面聊天</div>
+            <div class="adhoc-input-row">
+              <input v-model="adhocCode" placeholder="输入房间号..." class="adhoc-input" inputmode="numeric" maxlength="5" @keydown.enter="joinByCode" />
+              <button class="adhoc-join-btn" @click="joinByCode" :disabled="!adhocCode.trim()">加入</button>
+            </div>
+            <div v-if="adhocRooms.length" class="adhoc-list">
+              <div
+                v-for="room in adhocRooms" :key="room.id"
+                class="room-item card"
+                :class="{ active: selectedRoom?.id === room.id }"
+                @click="selectRoom(room)"
+              >
+                <div class="room-icon">💬</div>
+                <div class="room-info">
+                  <h3>{{ room.name }}</h3>
+                  <div class="room-progress">
+                    <span>{{ room.current_count || 0 }}/{{ room.capacity }}人</span>
+                  </div>
+                </div>
+                <button v-if="room.created_by === userStore.user?.userId" class="adhoc-del-btn" @click.stop="deleteAdhocRoom(room)" title="删除房间">✕</button>
+              </div>
             </div>
           </div>
-          <div v-else class="chat-sidebar-empty">暂无聊天房间</div>
+
+          <!-- Chat Room Sidebar -->
+          <div class="chat-sidebar" v-if="userStore.isLoggedIn">
+            <div class="chat-sidebar-title">
+              <span>💬 论谈房间</span>
+            </div>
+            <div v-if="chatStore.roomList.length" class="chat-sidebar-list">
+              <div
+                v-for="room in chatStore.roomList"
+                :key="room.id"
+                class="chat-sidebar-item"
+                @click="chatStore.openChat(room.id)"
+              >
+                <span class="csi-name">🏮 {{ room.name }}</span>
+                <span class="csi-meta">{{ room.capacity }}人</span>
+              </div>
+            </div>
+            <div v-else class="chat-sidebar-empty">暂无聊天房间</div>
+          </div>
         </div>
 
         <!-- Room Detail -->
@@ -82,50 +108,53 @@
             <p v-else class="empty-text">暂无学子修习</p>
           </div>
 
-          <!-- Study Timer -->
-          <div class="section-block">
-            <h3 class="section-title">修习计时</h3>
-            <div class="timer-card glass-card">
-              <div class="timer-display">
-                <span class="timer-value">{{ timerDisplay }}</span>
-              </div>
-              <div class="timer-type">
-                <el-radio-group v-model="sessionType" size="small" :disabled="isStudying">
-                  <el-radio-button value="free">自由学习</el-radio-button>
-                  <el-radio-button value="pomodoro">番茄钟</el-radio-button>
-                </el-radio-group>
-              </div>
-              <div class="timer-actions">
-                <button v-if="!isStudying" class="btn-primary" @click="startStudy" :disabled="actionLoading">
-                  {{ actionLoading ? '...' : '开始修习' }}
-                </button>
-                <template v-else>
-                  <button class="btn-primary" style="background: var(--color-accent-bright);" @click="enterImmersive">
-                    沉浸模式
-                  </button>
-                  <button class="btn-outline" style="border-color: var(--color-accent-bright); color: var(--color-accent-bright);" @click="endStudy" :disabled="actionLoading">
-                    {{ actionLoading ? '...' : '结束修习' }}
-                  </button>
-                </template>
-              </div>
-            </div>
-          </div>
-
-          <!-- Open chat (only when joined) -->
-          <div class="section-block" v-if="hasJoined && selectedRoom">
-            <button class="btn-primary chat-open-btn" @click="openGlobalChat">
-              🏮 打开论谈
-            </button>
-          </div>
-
           <!-- Actions -->
           <div class="detail-actions">
-            <button v-if="!hasJoined" class="btn-primary" @click="joinRoom" :disabled="actionLoading">
+            <template v-if="hasJoined">
+              <button class="btn-outline" @click="leaveRoom" :disabled="actionLoading">
+                {{ actionLoading ? '...' : '离开书院' }}
+              </button>
+              <button class="btn-primary chat-open-btn" @click="showRoomChat = !showRoomChat">
+                {{ showRoomChat ? '收起论谈' : '🏮 打开论谈' }}
+              </button>
+            </template>
+            <button v-else class="btn-primary" @click="joinRoom" :disabled="actionLoading">
               {{ actionLoading ? '...' : '入斋' }}
             </button>
-            <button v-else class="btn-outline" @click="leaveRoom" :disabled="actionLoading">
-              {{ actionLoading ? '...' : '离开书院' }}
-            </button>
+          </div>
+
+          <!-- Inline Chat Panel -->
+          <div v-if="showRoomChat" class="rcp-body">
+            <RoomChat :roomId="selectedRoom.id" theme="light" />
+          </div>
+        </div>
+
+        <!-- Study Timer (independent right column) -->
+        <div class="timer-column" v-if="userStore.isLoggedIn">
+          <h3 class="section-title">⏱ 修习计时</h3>
+          <div class="timer-card glass-card">
+            <div class="timer-display">
+              <span class="timer-value">{{ timerDisplay }}</span>
+            </div>
+            <div class="timer-type">
+              <el-radio-group v-model="sessionType" size="small" :disabled="isStudying">
+                <el-radio-button value="free">自由学习</el-radio-button>
+                <el-radio-button value="pomodoro">番茄钟</el-radio-button>
+              </el-radio-group>
+            </div>
+            <div class="timer-actions">
+              <button v-if="!isStudying" class="btn-primary" @click="startStudy" :disabled="actionLoading">
+                {{ actionLoading ? '...' : '开始修习' }}
+              </button>
+              <template v-else>
+                <button class="btn-primary" style="background: var(--color-accent-bright);" @click="enterImmersive">
+                  沉浸模式
+                </button>
+                <button class="btn-outline" style="border-color: var(--color-accent-bright); color: var(--color-accent-bright);" @click="endStudy" :disabled="actionLoading">
+                  {{ actionLoading ? '...' : '结束修习' }}
+                </button>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -200,6 +229,7 @@
     </Transition>
 
     <AppFooter v-if="!immersiveMode" />
+
     <UserProfileCard v-if="profileUserId" :user-id="profileUserId" :visible="!!profileUserId" @close="profileUserId = null" />
   </div>
 </template>
@@ -275,6 +305,9 @@ const isMobile = ref(window.innerWidth < 768)
 const showImmersiveChat = ref(false)
 const participantStatuses = ref({})
 const profileUserId = ref(null)
+const adhocCode = ref('')
+const adhocRooms = ref([])
+const showRoomChat = ref(false)
 let timerInterval = null
 
 // Socket.IO for real-time participant updates
@@ -363,6 +396,7 @@ async function leaveRoom() {
   try {
     await roomAPI.leave(selectedRoom.value.id)
     if (isStudying.value) await endStudy()
+    showRoomChat.value = false
     ElMessage.success('已离开书院')
     await selectRoom(selectedRoom.value)
   } catch (err) { ElMessage.error(err.message) }
@@ -446,7 +480,7 @@ function openProfileCard(userId) { profileUserId.value = userId }
 
 function openGlobalChat() {
   if (selectedRoom.value) {
-    chatStore.openChat(selectedRoom.value.id)
+    showRoomChat.value = true
   }
 }
 
@@ -458,6 +492,35 @@ async function startPrivateChat(userId) {
     }
   } catch (err) {
     ElMessage.error('打开会话失败')
+  }
+}
+
+async function joinByCode() {
+  const code = adhocCode.value.trim()
+  if (!code) return
+  try {
+    const res = await roomAPI.joinByCode(code)
+    const room = res.data
+    if (!adhocRooms.value.find(r => r.id === room.id)) {
+      adhocRooms.value.push(room)
+    }
+    selectRoom(room)
+    adhocCode.value = ''
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '加入失败')
+  }
+}
+
+async function deleteAdhocRoom(room) {
+  try {
+    await roomAPI.deleteRoom(room.id)
+    adhocRooms.value = adhocRooms.value.filter(r => r.id !== room.id)
+    if (selectedRoom.value?.id === room.id) {
+      selectedRoom.value = rooms.value[0] || null
+    }
+    ElMessage.success('房间已删除')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '删除失败')
   }
 }
 
@@ -512,11 +575,26 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ── Inline Room Chat Panel ── */
+.rcp-body {
+  height: 50vh; max-height: 500px; display: flex; flex-direction: column;
+  border: 1px solid var(--color-border-light); border-radius: 10px;
+  overflow: hidden; margin-top: 16px;
+}
+
+.room-detail { display: flex; flex-direction: column; }
+
 .page-wrapper { min-height: 100vh; background: var(--color-bg-primary); }
 .page-title { font-family: var(--font-title); font-size: 1.8rem; margin-bottom: 24px; text-align: center; }
 
-.rooms-layout { display: flex; gap: 24px; }
+.rooms-layout { display: flex; gap: 24px; align-items: flex-start; }
 .room-list { flex: 0 0 280px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Timer column (right) */
+.timer-column {
+  flex: 0 0 260px; position: sticky; top: calc(var(--nav-height) + 24px);
+}
+.timer-column .section-title { margin-bottom: 12px; }
 
 /* Chat sidebar */
 .chat-sidebar {
@@ -538,6 +616,42 @@ onUnmounted(() => {
 .csi-name { color: var(--color-text-primary); }
 .csi-meta { font-size: 0.75rem; color: var(--color-text-secondary); }
 .chat-sidebar-empty { text-align: center; color: var(--color-text-secondary); padding: 16px 0; font-size: 0.85rem; }
+
+/* Face-to-face Chat */
+.adhoc-section {
+  margin-top: 16px; padding-top: 12px;
+  border-top: 1px dashed var(--color-border-light);
+}
+.adhoc-label {
+  font-family: var(--font-title); font-size: 0.85rem;
+  color: var(--color-text-secondary); margin-bottom: 8px;
+}
+.adhoc-input-row {
+  display: flex; gap: 8px; margin-bottom: 10px;
+}
+.adhoc-input {
+  flex: 1; padding: 8px 12px;
+  border: 1px solid var(--color-border-light); border-radius: 6px;
+  background: var(--glass-bg-card); color: var(--color-text-primary);
+  font-family: var(--font-body); font-size: 0.85rem; outline: none;
+  -moz-appearance: textfield;
+}
+.adhoc-input::-webkit-inner-spin-button,
+.adhoc-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.adhoc-input:focus { border-color: var(--color-accent); }
+.adhoc-join-btn {
+  padding: 8px 16px; background: var(--color-accent); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+  white-space: nowrap;
+}
+.adhoc-join-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.adhoc-list { display: flex; flex-direction: column; gap: 8px; }
+.adhoc-del-btn {
+  background: none; border: none; color: var(--color-text-secondary);
+  cursor: pointer; font-size: 0.8rem; padding: 4px 6px; border-radius: 4px;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.adhoc-del-btn:hover { color: #e74c3c; background: rgba(231,76,60,0.1); }
 
 .room-item {
   display: flex; align-items: center; gap: 12px; padding: 16px;
@@ -572,7 +686,7 @@ onUnmounted(() => {
 .timer-value { font-family: var(--font-mono); font-size: 3rem; font-weight: 700; color: var(--color-accent); }
 .timer-type { margin-bottom: 20px; }
 .timer-actions { display: flex; justify-content: center; gap: 12px; }
-.detail-actions { text-align: center; margin-top: 16px; }
+.detail-actions { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
 .chat-open-btn {
   width: 100%;
   background: var(--color-blue);
@@ -902,6 +1016,7 @@ onUnmounted(() => {
   .rooms-layout { flex-direction: column; }
   .room-list { flex: none; flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
   .room-item { min-width: 200px; }
+  .timer-column { flex: none; position: static; }
 
   .panel-timer { top: 16px; left: 16px; padding: 12px; }
   .immersive-timer { font-size: 2.5rem; }

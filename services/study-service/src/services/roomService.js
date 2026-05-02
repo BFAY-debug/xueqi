@@ -184,6 +184,128 @@ async function getParticipants(roomId) {
   return rows;
 }
 
+/**
+ * Find or create a room by face-to-face code
+ */
+async function findOrCreateByCode(code, userId) {
+  const roomName = `面对面 #${code}`;
+  const [rows] = await db.execute(
+    'SELECT sr.*, (SELECT COUNT(*) FROM room_participants rp WHERE rp.room_id = sr.id AND rp.is_studying = 1) AS current_count FROM study_rooms sr WHERE sr.name = ? AND sr.status = 1',
+    [roomName]
+  );
+  if (rows.length) return rows[0];
+  const [result] = await db.execute(
+    `INSERT INTO study_rooms (name, capacity, type, created_by) VALUES (?, 50, 'virtual', ?)`,
+    [roomName, userId]
+  );
+  return getRoomById(result.insertId);
+}
+
+/**
+ * Delete a face-to-face room (creator only)
+ */
+async function deleteRoom(roomId, userId) {
+  const [rows] = await db.execute('SELECT * FROM study_rooms WHERE id = ? AND status = 1', [roomId]);
+  if (!rows.length) {
+    const error = new Error('房间不存在');
+    error.status = 404;
+    throw error;
+  }
+  const room = rows[0];
+  if (!room.name.startsWith('面对面 #')) {
+    const error = new Error('只能删除面对面房间');
+    error.status = 403;
+    throw error;
+  }
+  if (room.created_by !== userId) {
+    const error = new Error('只有创建者可以删除');
+    error.status = 403;
+    throw error;
+  }
+  await db.execute('DELETE FROM room_participants WHERE room_id = ?', [roomId]);
+  await db.execute('DELETE FROM room_messages WHERE room_id = ?', [roomId]);
+  await db.execute('DELETE FROM study_rooms WHERE id = ?', [roomId]);
+  return { roomId, deleted: true };
+}
+
+/**
+ * Auto-cleanup face-to-face rooms empty for over 5 minutes
+ */
+async function cleanupStaleRooms() {
+  const [rows] = await db.execute(
+    `SELECT sr.id FROM study_rooms sr
+     WHERE sr.name LIKE '面对面 #%'
+     AND sr.status = 1
+     AND sr.created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+     AND (SELECT COUNT(*) FROM room_participants rp WHERE rp.room_id = sr.id AND rp.is_studying = 1) = 0`
+  );
+  if (!rows.length) return;
+  const ids = rows.map(r => r.id);
+  const placeholders = ids.map(() => '?').join(',');
+  await db.execute(`DELETE FROM room_participants WHERE room_id IN (${placeholders})`, ids);
+  await db.execute(`DELETE FROM room_messages WHERE room_id IN (${placeholders})`, ids);
+  await db.execute(`DELETE FROM study_rooms WHERE id IN (${placeholders})`, ids);
+  logger.info(`Cleaned up ${ids.length} stale face-to-face room(s): ${ids.join(',')}`);
+}
+
+function startStaleRoomCleaner() {
+  const interval = setInterval(async () => {
+    try {
+      await cleanupStaleRooms();
+    } catch (err) {
+      logger.warn(`Stale room cleanup failed: ${err.message}`);
+    }
+  }, 60 * 1000);
+  return interval;
+}
+
+/**
+ * Auto-kick participants who haven't sent a message in 10 minutes
+ */
+async function cleanupIdleParticipants() {
+  const [idle] = await db.execute(
+    `SELECT rp.room_id, rp.user_id
+     FROM room_participants rp
+     WHERE rp.is_studying = 1
+       AND rp.joined_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+       AND NOT EXISTS (
+         SELECT 1 FROM room_messages rm
+         WHERE rm.room_id = rp.room_id
+           AND rm.user_id = rp.user_id
+           AND rm.type = 'user'
+           AND rm.created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+       )`
+  );
+  if (!idle.length) return;
+
+  const affectedRooms = new Set();
+  for (const { room_id, user_id } of idle) {
+    await db.execute(
+      'UPDATE room_participants SET is_studying = 0 WHERE room_id = ? AND user_id = ?',
+      [room_id, user_id]
+    );
+    affectedRooms.add(room_id);
+  }
+
+  for (const roomId of affectedRooms) {
+    const participants = await getParticipants(roomId);
+    broadcastParticipants(roomId, { participants, action: 'idle-kick' });
+  }
+
+  logger.info(`Kicked ${idle.length} idle participant(s) from ${affectedRooms.size} room(s)`);
+}
+
+function startIdleParticipantCleaner() {
+  const interval = setInterval(async () => {
+    try {
+      await cleanupIdleParticipants();
+    } catch (err) {
+      logger.warn(`Idle participant cleanup failed: ${err.message}`);
+    }
+  }, 60 * 1000);
+  return interval;
+}
+
 module.exports = {
   getRooms,
   getRoomById,
@@ -191,5 +313,9 @@ module.exports = {
   updateRoom,
   joinRoom,
   leaveRoom,
-  getParticipants
+  getParticipants,
+  findOrCreateByCode,
+  deleteRoom,
+  startStaleRoomCleaner,
+  startIdleParticipantCleaner
 };

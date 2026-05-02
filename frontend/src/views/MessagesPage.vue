@@ -187,27 +187,25 @@ function openChat(conv) {
 }
 
 async function switchToFriends() {
-  if (!friendStore.friends.length) {
-    await friendStore.fetchFriends()
-  }
   activeTab.value = 'friends'
+  if (!friendStore.friends.length) {
+    friendStore.fetchFriends()
+  }
 }
 
 async function switchToRequests() {
-  if (!friendStore.incomingRequests.length && !friendStore.outgoingRequests.length) {
-    await Promise.all([
-      friendStore.fetchIncomingRequests(),
-      friendStore.fetchOutgoingRequests()
-    ])
-  }
   activeTab.value = 'requests'
+  if (!friendStore.incomingRequests.length && !friendStore.outgoingRequests.length) {
+    friendStore.fetchIncomingRequests()
+    friendStore.fetchOutgoingRequests()
+  }
 }
 
 async function switchToOutgoing() {
-  if (!friendStore.outgoingRequests.length) {
-    await friendStore.fetchOutgoingRequests()
-  }
   reqSubTab.value = 'outgoing'
+  if (!friendStore.outgoingRequests.length) {
+    friendStore.fetchOutgoingRequests()
+  }
 }
 
 async function handleAccept(req) {
@@ -331,13 +329,14 @@ onUnmounted(() => {
   transition: color 0.2s;
   font-family: var(--font-body);
   user-select: none;
+  flex: 1;
+  text-align: center;
 }
 .msg-tab:hover {
   color: var(--color-text-primary);
 }
 .msg-tab.active {
   color: var(--color-accent);
-  font-weight: 600;
 }
 .msg-tab.active::after {
   content: '';

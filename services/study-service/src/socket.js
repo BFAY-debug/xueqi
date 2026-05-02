@@ -146,8 +146,9 @@ function initSocket(httpServer) {
     // ── Chat messages ────────────────────────────────────
 
     socket.on('chat:message', async (data) => {
-      if (!userId || !data.roomId || !data.content?.trim()) return;
-      if (data.content.length > 500) {
+      if (!userId || !data.roomId || (!data.content?.trim() && !data.imageUrl)) return;
+      const content = (data.content || '').trim();
+      if (content.length > 500) {
         socket.emit('chat:error', { message: '消息不能超过 500 字' });
         return;
       }
@@ -163,7 +164,7 @@ function initSocket(httpServer) {
 
       try {
         const msgType = data.anonymous ? 'anonymous' : 'user';
-        const filteredContent = sensitiveFilter.filter(data.content.trim());
+        const filteredContent = content ? sensitiveFilter.filter(content) : '[图片]';
         const msg = await chatService.createMessage(data.roomId, userId, filteredContent, msgType, data.imageUrl || null);
         const formatted = formatMessage(msg);
         io.to(`room:${data.roomId}`).emit('chat:message', formatted);

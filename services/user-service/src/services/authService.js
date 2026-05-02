@@ -296,15 +296,17 @@ async function adminLogin({ username, password }, ip, userAgent) {
  */
 async function getAdminLoginLogs({ page = 1, pageSize = 20 }) {
   const offset = (page - 1) * pageSize;
+  const limit = parseInt(pageSize) || 20;
+  const skip = parseInt(offset) || 0;
   const [[{ total }], [rows]] = await Promise.all([
     db.execute('SELECT COUNT(*) as total FROM admin_login_logs'),
-    db.execute(
+    db.query(
       `SELECT l.id, l.user_id, u.username, l.ip, l.user_agent, l.success, l.failure_reason, l.created_at
        FROM admin_login_logs l LEFT JOIN users u ON l.user_id = u.id
        ORDER BY l.created_at DESC LIMIT ? OFFSET ?`,
-      [parseInt(pageSize) || 20, parseInt(offset) || 0])
+      [limit, skip])
   ]);
-  return { logs: rows, total, page, pageSize };
+  return { logs: rows, total: Number(total), page, pageSize };
 }
 
 /**

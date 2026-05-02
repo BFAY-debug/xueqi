@@ -7,7 +7,9 @@ export const roomAPI = {
   update: (id, data) => request.put(`/study/rooms/${id}`, data),
   join: (id) => request.post(`/study/rooms/${id}/join`),
   leave: (id) => request.post(`/study/rooms/${id}/leave`),
-  getParticipants: (id) => request.get(`/study/rooms/${id}/participants`)
+  getParticipants: (id) => request.get(`/study/rooms/${id}/participants`),
+  joinByCode: (code) => request.post('/study/rooms/join-by-code', { code }),
+  deleteRoom: (id) => request.delete(`/study/rooms/${id}`)
 }
 
 export const sessionAPI = {
