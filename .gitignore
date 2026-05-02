@@ -34,8 +34,10 @@ redis-data/
 .claude/
 .superpowers/
 
-# Archives
-*.zip
+# Markdown (README.md is tracked via git mv, other docs are local-only)
+技术文档.md
+部署指南.md
+docs/
 
 # SSL certificates (server-only)
 certbot/

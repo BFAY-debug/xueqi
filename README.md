@@ -1,6 +1,6 @@
 # 「学栖」校园学习社区平台 — 技术文档
 
-> 版本：v4.1.0 | 最后更新：2026-05-02
+> 版本：v4.2.0 | 最后更新：2026-05-02
 
 ---
 
@@ -12,7 +12,7 @@
 
 | 模块         | 功能点                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **书院**     | 虚拟自习室、实时群聊（含匿名/表情/图片）、番茄钟、学习计时、状态同步、沉浸模式、环境音混合器                                              |
+| **书院**     | 虚拟自习室、面对面聊天（输入房间号自动创建临时房间）、实时群聊（含匿名/表情/图片）、番茄钟、学习计时、状态同步、沉浸模式、环境音混合器、空闲用户自动踢出 |
 | **云占座**   | 实体座位预约、座位图可视化、签到、违约惩罚（20 分钟超时自动释放）、志愿任务减免                                                           |
 | **知识广场** | 帖子/评论、Markdown 编辑器（图片上传/拖拽/粘贴）、@提及自动补全、匿名发布、点赞/收藏、编辑提案、版本管理                                  |
 | **金榜**     | 积分/学习时长/签到/周榜/月榜 五维排行                                                                                                     |
@@ -86,6 +86,8 @@
 ```
 D:\web\
 ├── docker-compose.yml          # 容器编排 (7 容器)
+├── docker-compose.prod.yml     # 生产环境覆盖（HTTPS、隐藏端口、NODE_ENV）
+├── docker-compose.test.yml     # 本地模拟测试覆盖（自签名证书）
 ├── .env                        # 生产环境变量
 ├── .env.example                # 环境变量模板
 ├── .dockerignore               # Docker 构建排除
@@ -669,6 +671,10 @@ errorHandler(err, req, res, next) {
 | GET  | `/rooms/:id/participants` | 可选   | 参与者列表 |
 | POST | `/rooms`                  | admin+ | 创建       |
 | PUT  | `/rooms/:id`              | admin+ | 编辑       |
+| POST | `/rooms/join-by-code`     | 需要   | 面对面聊天：输入房间号加入（自动创建） |
+| POST | `/rooms/:id/join`         | 需要   | 加入房间   |
+| POST | `/rooms/:id/leave`        | 需要   | 离开房间   |
+| DELETE | `/rooms/:id`            | 需要   | 删除面对面房间（仅创建者） |
 
 #### 学习记录
 | 方法   | 路径                | 认证 | 说明                                |
@@ -935,7 +941,7 @@ user-service                          study-service
 | `AppNavbar`         | 全局导航栏（毛玻璃、路由精确匹配高亮、通知铃铛、用户下拉菜单、主题切换、移动端抽屉） |
 | `AppFooter`         | 全局页脚（云纹装饰）                                                                 |
 | `GlobalChat`        | 全局聊天浮窗（已登录时显示，可最小化）                                               |
-| `RoomChat`          | 自习室群聊面板（匿名模式、表情面板、图片上传压缩、乐观更新 + 去重）                  |
+| `RoomChat`          | 自习室群聊面板（匿名模式、表情面板、图片上传压缩、乐观更新 + 去重、亮/暗主题、过滤系统消息） |
 | `UserProfileCard`   | 用户资料卡弹窗（加好友/发消息/拉黑）                                                 |
 | `AmbientSoundMixer` | 环境音混合器（雨声/蝉鸣/古琴/风声，多轨混合）                                        |
 | `MarkdownEditor`    | Markdown 编辑器（图片上传/拖拽/粘贴、@提及自动补全、表格按钮）                       |
@@ -952,7 +958,7 @@ user-service                          study-service
 | 页面                         | 复杂度 | 说明                                                   |
 | ---------------------------- | ------ | ------------------------------------------------------ |
 | `HomePage`                   | 30KB   | GSAP 长翻页动画、书院推荐、统计展示                    |
-| `StudyRoomsPage`             | 31KB   | 自习室列表、沉浸模式、群聊、环境音、番茄钟             |
+| `StudyRoomsPage`             | 31KB   | 自习室列表、沉浸模式、群聊、环境音、番茄钟、面对面聊天（输入房间号加入） |
 | `AdminPage`                  | 47KB   | 左侧边栏 + 右侧内容区、12 个管理模块、ECharts 图表     |
 | `ProfilePage`                | 41KB   | 多 Tab（概览/帖子/收藏/提案/关注/粉丝/通知）、资料编辑、修改密码 |
 | `AdminLoginPage`             | —      | 管理员独立登录页（深色主题、验证码）                   |
@@ -1008,6 +1014,32 @@ user-service                          study-service
 前端收到回传 → 检查 local- 前缀消息（不依赖 userId 匹配，兼容匿名）
             → 替换乐观消息为服务端消息
             → 非自身消息播放通知音 + 增加未读数
+```
+
+**聊天面板**: 房间详情下方展开（不替换），支持亮色/暗色主题切换，自动过滤加入/退出系统消息。纯图片消息以 `[图片]` 作为内容持久化，前端通过 `msgImageUrl()` 兼容 Socket 广播的 camelCase 和 API 历史的 snake_case。
+
+### 面对面聊天
+
+```
+用户输入房间号（1-99999） → POST /api/study/rooms/join-by-code
+  → roomService.findOrCreateByCode(code, userId)
+    → 查找 name='面对面 #{code}' 的活跃房间
+    → 不存在则自动创建（type=virtual, capacity=50）
+  → 返回房间信息 → 前端选中该房间 → 复用现有聊天/消息机制
+```
+
+**房间清理**: 空闲超过 5 分钟的面对面房间由 `startStaleRoomCleaner()` 自动删除（每 60 秒检查）。
+
+### 空闲用户自动踢出
+
+```
+每 60 秒定时检查:
+  → 查找满足以下条件的参与者:
+    - is_studying = 1
+    - 加入超过 10 分钟
+    - 10 分钟内无 'user' 类型消息
+  → 设置 is_studying = 0
+  → Socket 广播 idle-kick 事件通知房间内其他用户
 ```
 
 ### @提及功能
@@ -1199,7 +1231,15 @@ MAX_FILE_SIZE=5242880                  # 5MB
 **生产额外**: Strict-Transport-Security (HSTS), Content-Security-Policy (CSP)
 **其他**: gzip (text/css/json/js/xml/svg, ≥256B)、charset utf-8、client_max_body_size 15MB
 
-### 本地开发 vs 生产环境
+### 三种测试环境
+
+| 方式 | 命令 | 适用场景 |
+|------|------|----------|
+| **1. 本地开发测试** | `docker compose up --build -d` | 日常开发调试，HTTP，所有端口映射到宿主机 |
+| **2. 本地模拟服务器** | `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.test.yml up -d --build` | 本地验证生产配置（HTTPS、隐藏端口、生产 Nginx），使用自签名证书 |
+| **3. 真实服务器部署** | 服务器上 `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` | 正式上线，Let's Encrypt 真实证书，无内部端口暴露 |
+
+**本地开发 vs 生产环境差异**:
 
 | 维度 | 本地开发 (`docker-compose.yml`) | 生产 (`docker-compose.yml` + `docker-compose.prod.yml`) |
 |------|------|------|
@@ -1213,9 +1253,12 @@ MAX_FILE_SIZE=5242880                  # 5MB
 | CORS_ORIGIN | `http://localhost,http://localhost:80` | `https://你的域名.com` |
 | Redis | 基础 healthcheck | 密码验证 healthcheck |
 
+**方式 2 说明**: `docker-compose.test.yml` 覆盖 SSL 证书路径为本地 `./ssl/` 目录（自签名），无需真实域名即可在本地验证 HTTPS 重定向、生产 Nginx 配置、安全头等行为。浏览器访问 `https://localhost` 会提示证书不受信任，点击"继续访问"即可正常测试。
+
 ### 常用命令
 
 ```bash
+# === 方式 1：本地开发测试 ===
 # 全量启动（首次或数据库变更后）
 docker compose up --build -d
 
@@ -1228,6 +1271,10 @@ docker compose build xueqi-user-service && docker compose up -d xueqi-user-servi
 # 重建所有服务
 docker compose build && docker compose up -d
 
+# === 方式 2：本地模拟服务器 ===
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.test.yml up -d --build
+
+# === 通用命令 ===
 # 查看日志
 docker compose logs -f xueqi-gateway
 
@@ -1239,9 +1286,12 @@ docker exec xueqi-redis redis-cli -a redis123 ping
 
 # 验证非 root 运行
 docker exec xueqi-user-service ps aux | grep node
+
+# 停止所有容器
+docker compose down
 ```
 
-### 本地开发
+### 本地开发（非 Docker）
 
 ```bash
 # 安装所有依赖
@@ -1303,3 +1353,7 @@ npm run dev:full
 | 27  | 管理员登录审计日志                                   | 追溯异常登录行为，IP + UA + 成功/失败全记录        |
 | 28  | 修改密码需重新登录                                   | 密码变更后强制重新认证，使所有已发 token 失效       |
 | 29  | 未实施 MySQL 读写分离                                | 单机部署无实际收益，实现/运维成本高，当前架构已满足校园场景 |
+| 30  | docker-compose 三层配置（base + prod + test）       | 开发/模拟/生产三套环境共用基础配置，prod 覆盖安全加固，test 用自签名证书本地验证 HTTPS |
+| 31  | 面对面房间按需创建（name 字段标识）                  | 避免预创建大量空房间，用户输入号码时才创建，5 分钟空闲自动清理 |
+| 32  | 空闲 10 分钟无消息自动踢出                           | 防止用户占位不退出，释放房间容量给活跃用户 |
+| 33  | 聊天面板与房间详情并存（下方展开，不替换）           | 用户可同时查看房间信息和聊天，不丢失上下文 |
