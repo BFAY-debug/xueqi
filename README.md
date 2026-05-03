@@ -82,6 +82,42 @@ docker compose up -d --build
 └── frontend/                   # Vue 3 前端（18 个页面、15 个组件）
 ```
 
+## 第三方库许可证
+
+本项目共使用 26 个第三方运行时依赖，许可证分布如下：
+
+| 许可证类型 | 数量 | 说明 |
+|-----------|------|------|
+| MIT | 24 | 可自由使用、修改和分发 |
+| Apache-2.0 | 1 | 可商用，需保留版权声明 |
+| BSD-2-Clause | 1 | 可商用，需保留版权声明 |
+| BSD-3-Clause | 1 | 可商用，需保留版权声明 |
+| MPL-2.0 OR Apache-2.0 | 1 | 可商用，修改的文件需开源 |
+| GSAP Standard License | 1 | 非开源，校园项目可免费使用 |
+
+<details>
+<summary>完整依赖列表</summary>
+
+**MIT License (24)**
+axios, bcryptjs, cookie-parser, cors, element-plus, express, express-rate-limit, http-proxy-middleware, ioredis, jsonwebtoken, marked, multer, mysql2, pinia, sanitize-html, socket.io, socket.io-client, svg-captcha, vue, vue-router, winston
+
+**Apache-2.0 (1)**
+echarts
+
+**BSD-2-Clause (1)**
+dotenv
+
+**BSD-3-Clause (1)**
+highlight.js
+
+**MPL-2.0 OR Apache-2.0 (1)**
+dompurify
+
+**GSAP Standard License (1)**
+gsap — https://gsap.com/standard-license/
+
+</details>
+
 ## License
 
-MIT
+[MIT](LICENSE)

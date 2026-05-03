@@ -38,6 +38,8 @@ redis-data/
 技术文档.md
 部署指南.md
 docs/
+要求.txt
+benchmark.mjs
 
 # SSL certificates (server-only)
 certbot/
