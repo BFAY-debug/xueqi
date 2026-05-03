@@ -6,7 +6,7 @@ version: '3.8'
 services:
   xueqi-mysql:
     ports:
-      - "127.0.0.1:3307:3306"  # Localhost only, for DBeaver via SSH tunnel
+      - "127.0.0.1:3308:3306"  # Localhost only, for DBeaver via SSH tunnel
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
