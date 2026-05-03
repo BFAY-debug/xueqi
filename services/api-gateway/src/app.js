@@ -53,18 +53,19 @@ app.use((req, res, next) => {
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 500,
+  windowMs: 60 * 1000,
+  max: 300,
   message: { success: false, message: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/user/captcha' || req.path === '/health'
 });
 app.use(limiter);
 
 // Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 20,
   message: { success: false, message: '登录尝试过多，请稍后再试' }
 });
 
