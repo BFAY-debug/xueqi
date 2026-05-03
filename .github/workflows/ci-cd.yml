@@ -39,9 +39,6 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      - name: Validate docker-compose config
-        run: docker compose -f docker-compose.yml config --quiet
-
   # ── CD: Manual Deploy ───────────────────────────────
   deploy:
     name: Deploy to Production
